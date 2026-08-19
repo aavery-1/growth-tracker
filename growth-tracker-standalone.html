@@ -899,7 +899,7 @@ body.edit-on .edit-pill { display: inline-flex; }
 .pm-gprog span{display:block;height:100%;border-radius:var(--r-full)}
 .pm-group-body{padding-left:6px}
 .pm-item{border-top:1px solid var(--outline-variant)}
-.pm-item-head{display:grid;grid-template-columns:20px 14px 1fr 110px 96px 120px 40px;align-items:center;gap:8px;padding:9px 6px;cursor:pointer}
+.pm-item-head{display:grid;grid-template-columns:20px 14px 1fr 120px 120px 40px;align-items:center;gap:8px;padding:9px 6px;cursor:pointer}
 .pm-item-head:hover{background:color-mix(in srgb,var(--on-surface) 3%,transparent)}
 .pm-title{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pm-due{font-size:12px;color:var(--on-surface-variant);text-align:right}
@@ -1297,6 +1297,15 @@ body.edit-on .edit-pill { display: inline-flex; }
 .dash-hero-legend span{display:inline-flex;align-items:center;gap:6px}
 .dash-hero-legend i{width:9px;height:9px;border-radius:50%}
 
+/* ---- opening-year show/hide chips ---- */
+.oybar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:16px}
+.oy-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--on-surface-variant);margin-right:3px}
+.oychip{appearance:none;border:1px solid var(--outline-variant);background:var(--surface);color:var(--on-surface);border-radius:var(--r-full);padding:5px 13px;font-size:12.5px;font-weight:600;cursor:pointer;transition:background .12s,opacity .12s}
+.oychip:hover{background:var(--surface-container)}
+.oychip.on{background:color-mix(in srgb,var(--primary) 13%,transparent);color:var(--primary);border-color:color-mix(in srgb,var(--primary) 34%,transparent)}
+.oychip:not(.on){opacity:.5;text-decoration:line-through}
+.oy-all{margin-left:4px;font-weight:700}
+
 </style>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%2316357F'/><text x='50' y='70' font-size='56' font-weight='700' text-anchor='middle' fill='white' font-family='Roboto,Arial'>K</text></svg>" />
   <script>
@@ -1454,7 +1463,7 @@ body.edit-on .edit-pill { display: inline-flex; }
       }
     ],
     "updated": "2026-08-18",
-    "version": 10,
+    "version": 11,
     "statusMeta": {
       "not_started": {
         "label": "Not started",
@@ -1725,40 +1734,6 @@ body.edit-on .edit-pill { display: inline-flex; }
       "location": "Paterson",
       "fiscal_year": 2031,
       "opening_date": "2030-09-01"
-    },
-    {
-      "market": "Newark",
-      "code": "ES5",
-      "name": "Newark ES5",
-      "band": "ES",
-      "openingFY": 2030,
-      "confirmed": false,
-      "state": "NJ",
-      "openingQuarter": "Q1",
-      "priority": false,
-      "school_type": "ES",
-      "pod_number": 5,
-      "display_label": "ES5",
-      "location": "Newark",
-      "fiscal_year": 2030,
-      "opening_date": "2029-09-01"
-    },
-    {
-      "market": "Newark",
-      "code": "MS5",
-      "name": "Newark MS5",
-      "band": "MS",
-      "openingFY": 2030,
-      "confirmed": false,
-      "state": "NJ",
-      "openingQuarter": "Q1",
-      "priority": false,
-      "school_type": "MS",
-      "pod_number": 5,
-      "display_label": "MS5",
-      "location": "Newark",
-      "fiscal_year": 2030,
-      "opening_date": "2029-09-01"
     },
     {
       "market": "Newark",
@@ -3320,41 +3295,6 @@ body.edit-on .edit-pill { display: inline-flex; }
       ]
     },
     {
-      "id": "ffe95e8f78",
-      "state": "NJ",
-      "market": "Newark",
-      "team": "Finance",
-      "workstream": "Real Estate Finance",
-      "activity": "Financing / affordability analysis done for ES5 and MS5 sites",
-      "schools": [
-        "ES5",
-        "MS5"
-      ],
-      "targetFY": 2027,
-      "targetQuarter": "",
-      "openingFY": 2030,
-      "status": "not_started",
-      "owner": "Susie Chu",
-      "dependency": "",
-      "keyMilestone": true,
-      "greenlight": false,
-      "transition": false,
-      "notes": "",
-      "stage": "to_do",
-      "progress_percent": 0,
-      "priority": "high",
-      "functional_area": "Finance",
-      "location": "Newark",
-      "due_date": "2027-06-30",
-      "tags": [
-        "NJ",
-        "Finance",
-        "ES5",
-        "MS5",
-        "FY27"
-      ]
-    },
-    {
       "id": "73381df0a6",
       "state": "FL",
       "market": "Broward",
@@ -3987,76 +3927,6 @@ body.edit-on .edit-pill { display: inline-flex; }
       "tags": [
         "FL",
         "Talent",
-        "FY28"
-      ]
-    },
-    {
-      "id": "37cccb6875",
-      "state": "NJ",
-      "market": "Newark",
-      "team": "Talent",
-      "workstream": "Leadership",
-      "activity": "School leaders and DSOs for MS5 and ES5 are hired into a fellowship program.",
-      "schools": [
-        "ES5",
-        "MS5"
-      ],
-      "targetFY": 2028,
-      "targetQuarter": "",
-      "openingFY": 2030,
-      "status": "not_started",
-      "owner": "David Branson",
-      "dependency": "",
-      "keyMilestone": true,
-      "greenlight": false,
-      "transition": false,
-      "notes": "",
-      "stage": "to_do",
-      "progress_percent": 0,
-      "priority": "high",
-      "functional_area": "Talent",
-      "location": "Newark",
-      "due_date": "2028-06-30",
-      "tags": [
-        "NJ",
-        "Talent",
-        "ES5",
-        "MS5",
-        "FY28"
-      ]
-    },
-    {
-      "id": "35b18e3653",
-      "state": "NJ",
-      "market": "Newark",
-      "team": "Talent",
-      "workstream": "Staffing",
-      "activity": "Staff & teachers for MS5 and ES5 are hired",
-      "schools": [
-        "ES5",
-        "MS5"
-      ],
-      "targetFY": 2028,
-      "targetQuarter": "",
-      "openingFY": 2030,
-      "status": "not_started",
-      "owner": "David Branson",
-      "dependency": "",
-      "keyMilestone": true,
-      "greenlight": false,
-      "transition": false,
-      "notes": "",
-      "stage": "to_do",
-      "progress_percent": 0,
-      "priority": "high",
-      "functional_area": "Talent",
-      "location": "Newark",
-      "due_date": "2028-06-30",
-      "tags": [
-        "NJ",
-        "Talent",
-        "ES5",
-        "MS5",
         "FY28"
       ]
     },
@@ -6316,7 +6186,7 @@ const state = {
   progressView: 'charts',        // charts | list
   progressDim: 'team',           // team | year | market | school | state
   expanded: {},                  // progress section/item expand map
-  filters: { states: new Set(), fys: new Set(), types: new Set(), areas: new Set(), markets: new Set(), statuses: new Set(), priorities: new Set(), schoolId: '', search: '', timing: '' },
+  filters: { states: new Set(), fys: new Set(), types: new Set(), areas: new Set(), markets: new Set(), statuses: new Set(), priorities: new Set(), openingFYs: new Set(), schoolId: '', search: '', timing: '' },
   sb: { connected: false, client: null },
 };
 
@@ -6412,6 +6282,7 @@ function passFilters(m) {
   if (f.statuses.size && !f.statuses.has(effectiveStatus(m))) return false;
   if (f.priorities.size && !f.priorities.has(m.priority)) return false;
   if (f.timing && timingLevel(m) !== f.timing) return false;
+  if (f.openingFYs.size && m.openingFY && !f.openingFYs.has(m.openingFY)) return false;
   if (f.schoolId) { const sc = state.data.schools.find(x => x.id === f.schoolId); if (!sc || !((m.schools || []).includes(sc.code) && m.market === sc.market && m.openingFY === sc.openingFY)) return false; }
   if (f.search) { const q = f.search.toLowerCase(); if (!`${m.activity} ${m.workstream} ${m.functional_area} ${m.market} ${m.owner} ${(m.tags || []).join(' ')}`.toLowerCase().includes(q)) return false; }
   return true;
@@ -6439,7 +6310,11 @@ function toggleFilter(key, val, cast) {
   if (key === 'states') { const ok = new Set(marketsForStates()); [...state.filters.markets].forEach(mk => { if (!ok.has(mk)) state.filters.markets.delete(mk); }); }
   if (key === 'states' || key === 'markets') { const sc = state.filters.schoolId && schoolById(state.filters.schoolId); if (sc && !schoolFacetPass(sc, null)) state.filters.schoolId = ''; }
 }
-function clearFilters() { ['states', 'fys', 'types', 'areas', 'markets', 'statuses', 'priorities'].forEach(k => state.filters[k].clear()); state.filters.schoolId = ''; state.filters.search = ''; state.filters.timing = ''; }
+function clearFilters() { ['states', 'fys', 'types', 'areas', 'markets', 'statuses', 'priorities', 'openingFYs'].forEach(k => state.filters[k].clear()); state.filters.schoolId = ''; state.filters.search = ''; state.filters.timing = ''; }
+/* which opening cohorts (fiscal years) to display — empty = show all */
+function openingYears() { return [...new Set(state.data.schools.filter(s => s.openingFY).map(s => s.openingFY))].sort((a, b) => a - b); }
+function oyShown(fy) { return !state.filters.openingFYs.size || state.filters.openingFYs.has(fy); }
+function toggleOpeningYear(fy) { const all = openingYears(), f = state.filters.openingFYs; if (!f.size) all.forEach(y => f.add(y)); f.has(fy) ? f.delete(fy) : f.add(fy); if (f.size === all.length) f.clear(); }
 
 /* ============================================================
    TAB 1 — SCHOOL OPENING TIMELINE (Gantt)
@@ -6450,7 +6325,8 @@ function ganttSchools() {
     .filter(s => !f.states.size || f.states.has(s.state))
     .filter(s => !f.types.size || f.types.has(s.school_type))
     .filter(s => !f.markets.size || f.markets.has(s.market))
-    .filter(s => !f.fys.size || f.fys.has(s.openingFY));
+    .filter(s => !f.fys.size || f.fys.has(s.openingFY))
+    .filter(s => oyShown(s.openingFY));
 }
 function chipRow(label, items) {
   return `<div class="chiprow"><span class="chiprow-label">${esc(label)}</span>${items}</div>`;
@@ -6499,12 +6375,18 @@ function filterOpts(key) {
   if (key === 'priorities') return ['high', 'medium', 'low'].map(p => [p, PRIORITY[p].label, PRIORITY[p].color]);
   return [];
 }
-function activeCount() { let n = 0; ['states', 'types', 'markets', 'fys', 'areas', 'statuses', 'priorities'].forEach(k => n += state.filters[k].size); if (state.filters.schoolId) n++; if (state.filters.search) n++; if (state.filters.timing) n++; return n; }
+function activeCount() { let n = 0; ['states', 'types', 'markets', 'fys', 'areas', 'statuses', 'priorities', 'openingFYs'].forEach(k => n += state.filters[k].size); if (state.filters.schoolId) n++; if (state.filters.search) n++; if (state.filters.timing) n++; return n; }
 function filterBar(menus, opts = {}) {
   const search = opts.search ? `<div class="fb-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input id="fSearch" autocomplete="off" placeholder="Search…" value="${esc(state.filters.search)}"></div>` : '';
   const btns = menus.map(k => { const n = state.filters[k].size; return `<button class="fb-menu ${n ? 'on' : ''}" data-fmenu="${k}"><span>${FILTER_LABEL[k]}</span>${n ? `<span class="fb-count">${n}</span>` : ''}<svg class="fb-chev" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg></button>`; }).join('');
   const school = opts.school ? `<select id="dashSchool" class="fb-select"><option value="">All schools</option>${state.data.schools.filter(s => s.openingFY && schoolFacetPass(s, null) && (!state.filters.fys.size || state.filters.fys.has(s.openingFY))).sort((a, b) => (a.openingFY - b.openingFY) || a.market.localeCompare(b.market)).map(s => `<option value="${s.id}" ${state.filters.schoolId === s.id ? 'selected' : ''}>${esc(s.display_label)} · ${esc(s.market)}</option>`).join('')}</select>` : '';
   return `<div class="filterbar" id="filterbar"><span class="fb-label">Filters</span>${search}${btns}${school}<button class="fb-clear ${activeCount() ? '' : 'hide'}" id="clearFilters">Clear all</button><span class="fb-spacer"></span>${opts.right || ''}</div>`;
+}
+/* toggle chips to show / hide opening-year cohorts */
+function openingYearBar() {
+  const ys = openingYears(); if (ys.length <= 1) return '';
+  const allOn = !state.filters.openingFYs.size;
+  return `<div class="oybar"><span class="oy-label">Show openings</span>${ys.map(fy => `<button class="oychip ${oyShown(fy) ? 'on' : ''}" data-oyear="${fy}">Fall ${fy - 1}</button>`).join('')}<button class="oychip oy-all ${allOn ? 'on' : ''}" data-oyall="1">All</button></div>`;
 }
 function openFilterMenu(anchor, key) {
   const set = state.filters[key];
@@ -6525,7 +6407,7 @@ function updateMenuBadge(key) {
 }
 function refreshBody() { const sec = $('#view-' + state.view); const b = sec ? sec.querySelector('#viewBody') : $('#viewBody'); if (!b) return rerender(); if (state.view === 'timeline') b.innerHTML = ganttBodyHtml(); else if (state.view === 'progress') b.innerHTML = progressBodyHtml(); else b.innerHTML = planBodyHtml(); }
 function ganttBodyHtml() {
-  const fys = fyList().filter(fy => state.data.schools.some(s => s.openingFY === fy) || fy <= currentFY() + 2).slice(0, 7);
+  const fys = fyList().filter(fy => fy >= currentFY() && (state.data.schools.some(s => s.openingFY === fy) || fy <= currentFY() + 2)).slice(0, 7);
   const minFy = fys[0], nFy = fys.length;
   const list = ganttSchools();
   const headCells = fys.map(fy => `<div class="g-col ${fy === currentFY() ? 'now' : ''}">${fyLabel(fy)}<span class="g-col-sub">FY${String(fy).slice(-2)}</span></div>`).join('');
@@ -6544,7 +6426,7 @@ function ganttBodyHtml() {
       body += `<div class="g-row g-click" data-drillschool="${esc(s.id)}" style="grid-template-columns:230px repeat(${nFy},1fr)" title="${esc(tip)}">
         <div class="g-label"><button class="g-edit" data-editschool="${esc(s.id)}" title="Edit / remove this school & its tasks"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
           <div class="g-lab-main"><b>${esc(s.display_label)}</b> <span class="muted">${esc(s.market)} · ${esc(s.school_type)}</span>
-            <div class="g-lab-sub"><span class="g-status" style="background:${SM(roll).color}1f;color:${SM(roll).color};border-color:${SM(roll).color}66">${SM(roll).label}</span><span class="muted">${nTasks} task${nTasks === 1 ? '' : 's'}</span></div></div></div>
+            <div class="g-lab-sub"><span class="muted">${nTasks} task${nTasks === 1 ? '' : 's'}</span></div></div></div>
         <div class="g-track" style="grid-column:2 / ${nFy + 2};grid-template-columns:repeat(${nFy},1fr)">
           <div class="g-bar" style="grid-column:${c1} / ${c2 + 1};background:${mkColor(s.market)}" title="Opens ${esc(fmtDate(s.opening_date))}">
             <span class="g-bar-label">${esc(s.display_label)}</span>
@@ -6566,7 +6448,8 @@ function renderTimeline() {
     <div class="view-head"><div><h2>Openings Timeline</h2></div>
       <button class="btn btn-filled" id="addSchool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>Add school opening</button>
     </div>
-    ${filterBar(['states', 'markets', 'fys', 'types'])}
+    ${filterBar(['states', 'markets', 'types'])}
+    ${openingYearBar()}
     <div id="viewBody">${ganttBodyHtml()}</div>`;
 }
 
@@ -6583,7 +6466,6 @@ function pmItem(m) {
       ${chev(open)}${statusDot(es)}
       <span class="pm-title">${m.keyMilestone ? '★ ' : ''}${esc(m.activity)}<span class="dept-chip">${esc(m.functional_area)}</span></span>
       <span class="pm-due">${dueBadge(m) || (m.due_date ? `<span class="due-ok">${fmtDate(m.due_date)}</span>` : '<span class="muted">—</span>')}</span>
-      <span class="stpill" style="background:${pcol}22;color:${pcol === '#E0E0E0' ? '#5A5A5A' : pcol}">${SM(es).label}</span>
       <div class="pm-prog"><span style="width:${m.progress_percent || 0}%;background:${pcol}"></span></div>
       <span class="pm-pct">${m.progress_percent || 0}%</span>
     </div>
@@ -6676,19 +6558,19 @@ function progressBodyHtml() {
       <div class="pm-items">${items.map(pmItem).join('') || '<div class="empty-state">No items match these filters.</div>'}</div></div>`;
   }
   return kpis + `<div class="pm-urgency"><span class="muted" style="font-size:12.5px">Click any section to expand · click a callout above to drill in</span><span class="tb-spacer"></span><button class="btn btn-text btn-sm" id="pmExpandAll">Expand all</button><button class="btn btn-text btn-sm" id="pmCollapseAll">Collapse all</button></div>
-    ${section('sec:prio', 'Key milestones & greenlights', [{ key: 'prio:all', name: 'Flagged milestones, greenlights & transitions', list: prio }], 'The decisions and gateways that unlock each opening')}
-    ${section('sec:area', 'By workstream', byArea)}
+    ${section('sec:prio', 'Key Milestones & Greenlights', [{ key: 'prio:all', name: 'Flagged milestones, greenlights & transitions', list: prio }], 'The decisions and gateways that unlock each opening')}
+    ${section('sec:area', 'By Workstream', byArea)}
     ${section('sec:nj', 'By Market (New Jersey)', byNJ)}
     ${section('sec:fl', 'By Market (Florida)', byFL)}`;
 }
 function renderProgress() {
   const isCharts = state.progressView === 'charts';
-  const toggle = `<div class="segmented"><button class="seg ${isCharts ? 'on' : ''}" data-progressview="charts"><span>Dashboard</span></button><button class="seg ${!isCharts ? 'on' : ''}" data-progressview="list"><span>Detailed view</span></button></div>`;
-  const asOf = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const toggle = `<div class="segmented"><button class="seg ${isCharts ? 'on' : ''}" data-progressview="charts"><span>Dashboard</span></button><button class="seg ${!isCharts ? 'on' : ''}" data-progressview="list"><span>Detailed View</span></button></div>`;
   const printBtn = isCharts ? `<button class="btn btn-tonal" id="dashPrint"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Print / PDF</button>` : '';
   $('#view-progress').innerHTML = `
-    <div class="view-head"><div><h2>Dashboard</h2>${isCharts ? `<div class="ex-asof muted">Network Growth Committee · as of ${asOf}</div>` : ''}</div><div class="vh-actions">${toggle}${printBtn}</div></div>
-    ${filterBar(['states', 'markets', 'fys', 'areas', 'statuses'], { school: true })}
+    <div class="view-head"><div><h2>Dashboard</h2></div><div class="vh-actions">${toggle}${printBtn}</div></div>
+    ${filterBar(['states', 'markets', 'areas', 'statuses'], { school: true })}
+    ${openingYearBar()}
     <div id="viewBody">${progressBodyHtml()}</div>`;
 }
 
@@ -6700,9 +6582,9 @@ function planCard(m) {
   const scol = SM(es).color;
   const tags = (m.tags || []).slice(0, 2).map(t => `<span class="ptag">${esc(t)}</span>`).join('');
   const urgent = t === 'overdue' || t === 'this_month';
-  return `<div class="kcard ${urgent ? 'urgent' : ''}" draggable="true" data-id="${m.id}" style="border-left-color:${scol}">
+  return `<div class="kcard ${urgent ? 'urgent' : ''}" draggable="true" data-id="${m.id}" style="border-left-color:${pr.color}">
     <div class="kc-top"><span class="kc-title" data-expand="${m.id}">${esc(m.activity)}</span></div>
-    <div class="kc-tags"><span class="kc-status" style="background:${scol}1c;color:${scol}"><i style="background:${scol}"></i>${SM(es).label}</span><span class="ptag prio prio-${m.priority}" title="Priority"><i style="background:${pr.color}"></i>${pr.label}</span>${tags}</div>
+    <div class="kc-tags"><span class="ptag prio prio-${m.priority}" title="Priority"><i style="background:${pr.color}"></i>${pr.label}</span>${tags}</div>
     <div class="kc-foot">${m.owner ? `<span class="owner-avatar sm">${esc(initials(m.owner))}</span><span class="kc-owner">${esc(m.owner)}</span>` : '<span class="muted">Unassigned</span>'}<span class="kc-due">${dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : '')}</span></div>
   </div>`;
 }
@@ -6758,6 +6640,7 @@ function schoolsInView() {
     .filter(s => !f.states.size || f.states.has(s.state))
     .filter(s => !f.markets.size || f.markets.has(s.market))
     .filter(s => !f.fys.size || f.fys.has(s.openingFY))
+    .filter(s => oyShown(s.openingFY))
     .sort((a, b) => (a.openingFY - b.openingFY) || a.market.localeCompare(b.market));
 }
 function fmtMoney(n) { return n >= 1e6 ? '$' + (n / 1e6).toFixed(n % 1e6 ? 1 : 0) + 'M' : n >= 1e3 ? '$' + Math.round(n / 1e3) + 'K' : '$' + (n || 0); }
@@ -6777,7 +6660,7 @@ function ragReady(list) {
   if (!list.length) return { key: 'none', color: RAG.none, label: 'No tasks yet' };
   const eff = list.map(effectiveStatus), done = eff.filter(s => s === 'complete').length, pctc = Math.round(100 * done / list.length);
   if (done === list.length) return { key: 'green', color: RAG.green, label: 'All complete' };
-  if (eff.some(s => s === 'behind' || s === 'blocked')) return { key: 'red', color: RAG.red, label: 'Behind / blocked · ' + pctc + '% done' };
+  if (eff.some(s => s === 'behind' || s === 'blocked')) return { key: 'red', color: RAG.red, label: 'Behind / Blocked · ' + pctc + '% done' };
   if (eff.some(s => s === 'at_risk')) return { key: 'yellow', color: RAG.yellow, label: 'At risk · ' + pctc + '% done' };
   if (eff.some(s => s === 'on_track')) return { key: 'green', color: RAG.green, label: 'On track · ' + pctc + '% done' };
   return { key: 'none', color: RAG.none, label: 'Not started yet' };
@@ -6812,10 +6695,9 @@ function dashboardHtml(list) {
       <div class="dash-cohort-n">${c.cs.length} <span>school${c.cs.length === 1 ? '' : 's'}</span></div>
       <div class="dash-cohort-mkts">${esc(c.mkts.join(' · '))}</div>
       <div class="dash-cohort-bar"><span style="width:${c.prep}%"></span></div>
-      <div class="dash-cohort-sum">${c.ms.length ? c.prep + '% of pre-opening milestones cleared' : 'no milestones yet'}</div></div>`;
+      <div class="dash-cohort-sum">${c.ms.length ? c.prep + '% of pre-opening milestones cleared' : 'No milestones yet'}</div></div>`;
   const hero = `<section class="dash-hero">
-    <div class="dash-hero-head"><div class="dash-hero-eyebrow">Upcoming school openings</div>
-      ${nextS ? `<div class="dash-hero-next">Next up: <b>${esc(nextS.display_label)} · ${esc(nextS.market)}</b> opens ${esc(fmtDate(nextS.opening_date))} — <b>${nextC.mo} month${nextC.mo === 1 ? '' : 's'}</b> out</div>` : ''}</div>
+    <div class="dash-hero-head"><div class="dash-hero-eyebrow">Upcoming school openings</div></div>
     <div class="dash-cohorts">${cohorts.map(cohortCard).join('') || '<div class="muted" style="opacity:.8">No upcoming openings in view.</div>'}</div></section>`;
 
   // READINESS INDEX — where every opening stands, by workstream (full width)
@@ -6830,9 +6712,9 @@ function dashboardHtml(list) {
     }).join('');
     return `<tr class="ex-band"><td colspan="${3 + tms.length}"><span class="state-badge" style="background:${stColor(st.code)}">${st.code}</span> ${esc(st.name)} <span class="muted">· ${rows.length} openings</span></td></tr>${body}`;
   }).join('');
-  const readiness = `<section class="ex-card"><div class="ex-card-head"><h3>Readiness index</h3><span class="muted ex-hint">Are we on schedule? · click a row to open</span></div>
+  const readiness = `<section class="ex-card"><div class="ex-card-head"><h3>Readiness Index</h3><span class="muted ex-hint">Schedule health by workstream · click a row to open</span></div>
     <div class="ex-grid-wrap"><table class="ex-grid"><thead><tr><th>School</th><th>Opens</th><th>Overall</th>${tms.map(t => `<th class="ex-th-team"><span>${esc(t)}</span></th>`).join('')}</tr></thead><tbody>${grid}</tbody></table></div>
-    <div class="ex-legend"><span><i class="rag" style="background:${RAG.green}"></i>On track</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind / blocked</span><span><i class="rag" style="background:${RAG.none}"></i>Not started</span></div></section>`;
+    <div class="ex-legend"><span><i class="rag" style="background:${RAG.green}"></i>On track</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind / Blocked</span><span><i class="rag" style="background:${RAG.none}"></i>Not started</span></div></section>`;
 
   // PRIORITIES & RISKS
   const soon = Date.now() + 90 * 864e5;
@@ -6840,7 +6722,7 @@ function dashboardHtml(list) {
     .sort((a, b) => parseDate(a.due_date) - parseDate(b.due_date)).slice(0, 8);
   const stuck = list.filter(m => (m.status === 'blocked' || timingLevel(m) === 'overdue') && effectiveStatus(m) !== 'complete').sort(bySortUrgency);
   const risksOpen = !state.expanded.dashrisks_collapsed;
-  const prCard = `<section class="ex-card"><div class="ex-card-head"><h3>Priorities &amp; risks</h3></div>
+  const prCard = `<section class="ex-card"><div class="ex-card-head"><h3>Priorities &amp; Risks</h3></div>
     <div class="dash-block-h">Next 90 days<span class="dash-count">${upcoming.length}</span></div>
     ${upcoming.length ? `<div class="ex-list">${upcoming.map(m => exLi(m, m.greenlight ? '◆ ' : m.transition ? '⇄ ' : '')).join('')}</div>` : '<div class="muted ex-empty">Nothing in the next 90 days.</div>'}
     <div class="dash-block-h toggle" data-toggle="dashrisks_collapsed">${chev(risksOpen)}Blocked or past due<span class="dash-count ${stuck.length ? 'bad' : ''}">${stuck.length}</span></div>
@@ -6848,14 +6730,14 @@ function dashboardHtml(list) {
 
   // GROWTH FUNDRAISING
   const camps = (state.data.campaigns || []).filter(c => !state.filters.states.size || state.filters.states.has(c.state));
-  const capital = camps.length ? `<section class="ex-card"><div class="ex-card-head"><h3>Growth fundraising</h3></div><div class="ex-caps">${camps.map(c => {
+  const capital = camps.length ? `<section class="ex-card"><div class="ex-card-head"><h3>Growth Fundraising</h3></div><div class="ex-caps">${camps.map(c => {
     const p = c.target ? Math.min(100, Math.round(100 * c.raised / c.target)) : 0;
     return `<div class="ex-cap"><div class="ex-cap-top"><b>${esc(c.name)}</b><span>${fmtMoney(c.raised)} <span class="muted">/ ${fmtMoney(c.target)}</span></span></div>
       <div class="ex-cap-bar"><span style="width:${p}%"></span></div><div class="ex-cap-foot muted">${p}% raised · ${esc(c.owner || '')}</div></div>`;
   }).join('')}</div></section>` : '';
 
   // WORKLOAD — pacing across fiscal years (kept; the donut was redundant, removed)
-  const workload = `<section class="ex-card"><div class="ex-card-head"><h3>Workload by fiscal year</h3><span class="muted ex-hint">when milestones are due</span></div>${columnChart(list)}</section>`;
+  const workload = `<section class="ex-card"><div class="ex-card-head"><h3>Workload by Fiscal Year</h3><span class="muted ex-hint">when milestones are due</span></div>${columnChart(list)}</section>`;
 
   return `<div class="dash">${hero}${readiness}<div class="ex-cols2">${prCard}<div class="ex-side">${capital}${workload}</div></div></div>`;
 }
@@ -6967,7 +6849,7 @@ function openSchoolModal(id) {
   const sm = isNew ? [] : schoolMs(s);
   const roll = sm.length ? rollupStatus(sm) : 'not_started';
   const taskList = sm.length ? sm.slice().sort(bySortUrgency).map(m => `<div class="sm-task" data-expand="${m.id}">${statusDot(effectiveStatus(m))}<span class="sm-t-title">${esc(m.activity)}</span><span class="sm-t-team">${esc(m.functional_area || '')}</span><span class="sm-t-due">${dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : '—')}</span></div>`).join('') : '<div class="muted" style="font-size:12.5px">No tasks yet — add the first one below.</div>';
-  const summary = isNew ? '' : `<div class="sm-summary"><span class="g-status" style="background:${SM(roll).color}1f;color:${SM(roll).color};border-color:${SM(roll).color}66">${SM(roll).label}</span>
+  const summary = isNew ? '' : `<div class="sm-summary">
     <span><b>${esc(s.market)}</b> · ${esc(s.school_type)}</span><span class="muted">Opens ${esc(fmtDate(s.opening_date) || fyLabel(s.openingFY))}</span><span class="muted">${sm.length} task${sm.length === 1 ? '' : 's'}</span></div>`;
   const fyField = `<div class="field"><label>Opening fiscal year</label><select id="sFy">${fyList().map(fy => `<option value="${fy}" ${s.openingFY === fy ? 'selected' : ''}>${fyLabel(fy)}</option>`).join('')}</select></div>`;
   const qField = `<div class="field"><label>Opening quarter</label><select id="sQ">${opt(['Q1', 'Q2', 'Q3', 'Q4'], s.openingQuarter || 'Q1')}</select></div>`;
@@ -7113,7 +6995,7 @@ function renderDrawer() {
     <p class="dw-intro">Every change saves automatically on this device. To share <b>one live board</b> with the whole committee, connect Supabase once below.</p>
 
     <section class="dw-sec">
-      <div class="dw-h"><span class="dw-num">1</span><h4>Share with the committee</h4></div>
+      <div class="dw-h"><span class="dw-num">1</span><h4>Share with the Committee</h4></div>
       ${connected ? `<div class="status-note ok">● Live — everyone connected to <span class="mono">${esc((sc.url || '').replace(/^https?:\/\//, ''))}</span> shares this board.</div><div class="dw-btns"><button class="btn btn-tonal" id="sbDisconnect">Disconnect</button></div>`
       : `<p class="dw-help">Paste your Supabase <b>Project URL</b> and <b>anon public key</b> (Supabase → Project Settings → API). First time only: open <b>SQL setup</b> and run it once in Supabase.</p>
          <div class="field"><label>Project URL</label><input id="sbUrl" class="mono" placeholder="https://xxxx.supabase.co" value="${esc(sc.url || '')}"></div>
@@ -7129,7 +7011,7 @@ function renderDrawer() {
     </section>
 
     <section class="dw-sec">
-      <div class="dw-h"><span class="dw-num">2</span><h4>Access password</h4></div>
+      <div class="dw-h"><span class="dw-num">2</span><h4>Access Password</h4></div>
       <label class="field-check"><input type="checkbox" id="gateEnable" ${gateOn() ? 'checked' : ''}> Require a shared password to open the board</label>
       <div class="field" style="margin-top:10px"><label>Change the password</label><input id="gateNew" type="text" autocomplete="off" placeholder="Leave blank to keep the current one"></div>
       <div class="dw-btns"><button class="btn btn-filled" id="gateSave">Save</button><button class="btn btn-text" id="gateLock">Lock &amp; sign out</button></div>
@@ -7137,14 +7019,14 @@ function renderDrawer() {
       <p class="dw-help">After changing it, Connect (or Commit) so everyone gets the new password. A light gate to keep casual visitors out — not strong security.</p>
     </section>
 
-    <details class="dw-sec dw-fold"><summary><span class="dw-num">3</span>Customize markets, workstreams &amp; owners</summary>
+    <details class="dw-sec dw-fold"><summary><span class="dw-num">3</span>Customize Markets, Workstreams &amp; Owners</summary>
       <p class="dw-help">Rename or add your own; changes save everywhere. Anything in use can’t be deleted until its items are reassigned.</p>
       ${czSection('State', 'markets', statesMeta().flatMap(s => s.markets.map(mk => ({ mk, st: s.code }))))}
       ${czSection('Workstream', 'teams', teams().map(t => ({ mk: t })))}
       ${czOwners()}
     </details>
 
-    <details class="dw-sec dw-fold"><summary><span class="dw-num">4</span>Back up &amp; restore data</summary>
+    <details class="dw-sec dw-fold"><summary><span class="dw-num">4</span>Back Up &amp; Restore Data</summary>
       <p class="dw-help">Download a copy of everything, or load one back in.</p>
       <div class="dw-btns"><button class="btn" id="expBtn">Export data.json</button><button class="btn" id="impBtn">Import</button><input type="file" id="impFile" accept="application/json" class="hide"></div>
     </details>
@@ -7265,6 +7147,8 @@ function wireEvents() {
 
   $('.container').addEventListener('click', e => {
     const fm = e.target.closest('.fb-menu'); if (fm) return openFilterMenu(fm, fm.dataset.fmenu);
+    const oy = e.target.closest('[data-oyear]'); if (oy) { toggleOpeningYear(+oy.dataset.oyear); return rerender(); }
+    if (e.target.closest('[data-oyall]')) { state.filters.openingFYs.clear(); return rerender(); }
     if (e.target.closest('#clearFilters')) { clearFilters(); return rerender(); }
     if (e.target.closest('#clearFilters2')) { clearFilters(); return rerender(); }
     if (e.target.closest('#pmExpandAll')) { (state._pmKeys || []).forEach(k => state.expanded[k] = true); return refreshBody(); }
