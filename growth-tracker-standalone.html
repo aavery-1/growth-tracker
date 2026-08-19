@@ -6930,6 +6930,8 @@ function addTaskForSchool() {
 let sbPushTimer = null, sbLastPushed = new Map(), sbLastSchools = new Map();
 const S = () => state.data.schools;
 const SB_TABLE = { m: 'growth_milestones', s: 'growth_schools' };
+/* Pre-filled shared project so the committee auto-connects on load (publishable key is public by design). */
+const SB_DEFAULT = { url: 'https://cwjmlunqfhaioyuijhkk.supabase.co', key: 'sb_publishable_LrqAQcM7hwFlKfdy1dc1Bg_ucLMiggk' };
 const SB_SQL = `-- run once in Supabase → SQL Editor
 create table if not exists growth_milestones (id text primary key, doc jsonb not null, updated_at timestamptz default now());
 create table if not exists growth_schools    (id text primary key, doc jsonb not null, updated_at timestamptz default now());
@@ -6990,7 +6992,7 @@ function sbPushDebounced() { clearTimeout(sbPushTimer); sbPushTimer = setTimeout
 /* ---------- drawer / export ---------- */
 function ghConfig() { try { return JSON.parse(lsGet(LS.gh) || '{}'); } catch (e) { return {}; } }
 function renderDrawer() {
-  const cfg = ghConfig(), sc = sbSavedCfg() || {}, connected = state.sb && state.sb.connected;
+  const cfg = ghConfig(), sc = sbSavedCfg() || SB_DEFAULT, connected = state.sb && state.sb.connected;
   $('#drawerBody').innerHTML = `
     <p class="dw-intro">Every change saves automatically on this device. To share <b>one live board</b> with the whole committee, connect Supabase once below.</p>
 
@@ -7237,7 +7239,7 @@ function bootApp() {
   const initial = (location.hash || '').replace('#', '');
   setView(VIEWS.includes(initial) ? initial : 'progress', true);
   if (!location.hash) { try { history.replaceState({ v: state.view }, '', '#' + state.view); } catch (e) {} }
-  const sc = sbSavedCfg(); if (sc && sc.url && sc.key) sbConnect(sc.url, sc.key, true);
+  const sc = sbSavedCfg() || (SB_DEFAULT.url ? SB_DEFAULT : null); if (sc && sc.url && sc.key) sbConnect(sc.url, sc.key, true);
 }
 document.addEventListener('DOMContentLoaded', init);
 
