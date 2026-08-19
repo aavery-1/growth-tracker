@@ -93,7 +93,7 @@
       }
     ],
     "updated": "2026-08-18",
-    "version": 11,
+    "version": 12,
     "statusMeta": {
       "not_started": {
         "label": "Not started",
@@ -158,7 +158,9 @@
       "Marketing & Recruitment"
     ],
     "gateEnabled": true,
-    "gateHash": "1774240092958723"
+    "gateHash": "1774240092958723",
+    "adminEnabled": true,
+    "adminHash": "6991410205949042"
   },
   "schools": [
     {

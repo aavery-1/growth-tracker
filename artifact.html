@@ -1300,6 +1300,13 @@ body.edit-on .edit-pill { display: inline-flex; }
 .oychip:not(.on){opacity:.5;text-decoration:line-through}
 .oy-all{margin-left:4px;font-weight:700}
 
+/* ---- admin password prompt + settings divider ---- */
+.pw-prompt{width:100%;padding:11px 14px;border:1px solid var(--outline);border-radius:10px;background:var(--surface);color:var(--on-surface);font-size:15px;text-align:center;margin:8px 0 4px;box-sizing:border-box}
+.pw-prompt:focus{outline:2px solid var(--primary);border-color:var(--primary)}
+.pw-prompt-err{font-size:12.5px;color:#E1523D;font-weight:600;margin-bottom:6px}
+.dw-divider{height:1px;background:var(--outline-variant);margin:16px 0 14px}
+.dw-sublabel{font-size:11px;font-weight:700;color:var(--on-surface-variant);margin-bottom:9px;text-transform:uppercase;letter-spacing:.03em}
+
 </style>
 <script>
     // Visible fail-safe: if anything throws, show it instead of a blank screen.
@@ -1457,7 +1464,7 @@ body.edit-on .edit-pill { display: inline-flex; }
       }
     ],
     "updated": "2026-08-18",
-    "version": 11,
+    "version": 12,
     "statusMeta": {
       "not_started": {
         "label": "Not started",
@@ -1522,7 +1529,9 @@ body.edit-on .edit-pill { display: inline-flex; }
       "Marketing & Recruitment"
     ],
     "gateEnabled": true,
-    "gateHash": "1774240092958723"
+    "gateHash": "1774240092958723",
+    "adminEnabled": true,
+    "adminHash": "6991410205949042"
   },
   "schools": [
     {
@@ -6182,6 +6191,7 @@ const state = {
   expanded: {},                  // progress section/item expand map
   filters: { states: new Set(), fys: new Set(), types: new Set(), areas: new Set(), markets: new Set(), statuses: new Set(), priorities: new Set(), openingFYs: new Set(), schoolId: '', search: '', timing: '' },
   sb: { connected: false, client: null },
+  adminUnlocked: false,
 };
 
 /* ---------- palette (spec colors) ---------- */
@@ -7013,6 +7023,13 @@ function renderDrawer() {
       <div class="dw-btns"><button class="btn btn-filled" id="gateSave">Save</button><button class="btn btn-text" id="gateLock">Lock &amp; sign out</button></div>
       <div id="gateStatus"></div>
       <p class="dw-help">After changing it, Connect (or Commit) so everyone gets the new password. A light gate to keep casual visitors out — not strong security.</p>
+      <div class="dw-divider"></div>
+      <div class="dw-sublabel">Admin lock — protects this Settings panel</div>
+      <label class="field-check"><input type="checkbox" id="adminEnable" ${adminOn() ? 'checked' : ''}> Require an admin password to open Settings (only you)</label>
+      <div class="field" style="margin-top:10px"><label>Change the admin password</label><input id="adminNew" type="text" autocomplete="off" placeholder="Leave blank to keep the current one"></div>
+      <div class="dw-btns"><button class="btn btn-filled" id="adminSave">Save admin password</button></div>
+      <div id="adminStatus"></div>
+      <p class="dw-help">This one is just for you — teammates use the board password above but can’t open Settings without this.</p>
     </section>
 
     <details class="dw-sec dw-fold"><summary><span class="dw-num">3</span>Customize Markets, Workstreams &amp; Owners</summary>
@@ -7118,7 +7135,11 @@ function setView(v, fromPop) {
 function wireEvents() {
   $('#navTabs').addEventListener('click', e => { const t = e.target.closest('.nav-tab'); if (t) setView(t.dataset.view); });
   $('#themeBtn').addEventListener('click', () => applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
-  const openDrawer = () => { renderDrawer(); $('#drawer').classList.add('open'); $('#drawerBackdrop').classList.add('open'); };
+  const showDrawer = () => { renderDrawer(); $('#drawer').classList.add('open'); $('#drawerBackdrop').classList.add('open'); };
+  const openDrawer = () => {
+    if (adminOn() && !state.adminUnlocked) return promptPassword({ title: 'Admin settings', message: 'Enter the settings password.', verify: v => pwHash(v) === String(meta().adminHash), onOk: () => { state.adminUnlocked = true; showDrawer(); } });
+    showDrawer();
+  };
   const closeDrawer = () => { $('#drawer').classList.remove('open'); $('#drawerBackdrop').classList.remove('open'); };
   $('#settingsBtn').addEventListener('click', openDrawer); $('#drawerClose').addEventListener('click', closeDrawer); $('#drawerBackdrop').addEventListener('click', closeDrawer);
   $('#modalClose').addEventListener('click', closeModal); $('#modalCancel').addEventListener('click', closeModal); $('#modalSave').addEventListener('click', saveModal); $('#modalDelete').addEventListener('click', deleteModal);
@@ -7173,6 +7194,7 @@ function wireEvents() {
     else if (e.target.id === 'sbDisconnect') sbDisconnect(); else if (e.target.id === 'sbShowSql') $('#sbSqlBox').classList.toggle('hide');
     else if (e.target.id === 'ghSave') commitToGitHub(); else if (e.target.id === 'expBtn') exportJson(); else if (e.target.id === 'impBtn') $('#impFile').click();
     else if (e.target.id === 'gateSave') return saveGateSettings();
+    else if (e.target.id === 'adminSave') return saveAdminSettings();
     else if (e.target.id === 'gateLock') return lockNow();
     const cza = e.target.closest('[data-czadd]'); if (cza) return czAdd(cza.dataset.czadd);
     const czd = e.target.closest('.cz-del'); if (czd) return czRemove(czd.dataset.cztype, czd.dataset.czval);
@@ -7211,6 +7233,32 @@ function showGate(err) {
   setTimeout(() => { const i = $('#gatePw'); if (i) i.focus(); }, 30);
 }
 function lockNow() { lsDel(LS.gate); location.reload(); }
+/* admin gate — protects the ⚙ Settings drawer (admin-only) */
+function adminOn() { return !!(meta().adminEnabled && meta().adminHash); }
+function promptPassword(opts) {
+  closeConfirm();
+  const w = document.createElement('div'); w.className = 'confirm-backdrop'; w.id = 'confirmBackdrop';
+  w.innerHTML = `<div class="confirm-box"><div class="confirm-ic">🔒</div><h3>${esc(opts.title)}</h3>
+    ${opts.message ? `<div class="confirm-msg">${esc(opts.message)}</div>` : ''}
+    <input id="pwPromptInput" type="password" class="pw-prompt" placeholder="${esc(opts.placeholder || 'Password')}" autocomplete="off">
+    <div class="pw-prompt-err hide" id="pwPromptErr">That password didn’t match.</div>
+    <div class="confirm-actions"><button class="btn btn-tonal" id="cfgCancel">Cancel</button><button class="btn btn-filled" id="cfgOk">${esc(opts.confirmLabel || 'Unlock')}</button></div></div>`;
+  document.body.appendChild(w);
+  const input = $('#pwPromptInput');
+  const submit = () => { if (opts.verify(input.value)) { closeConfirm(); opts.onOk && opts.onOk(); } else { $('#pwPromptErr').classList.remove('hide'); input.select(); } };
+  w.addEventListener('click', e => { if (e.target === w || e.target.id === 'cfgCancel') closeConfirm(); else if (e.target.id === 'cfgOk') submit(); });
+  w.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
+  setTimeout(() => input.focus(), 40);
+}
+function saveAdminSettings() {
+  const enabled = $('#adminEnable').checked, pw = ($('#adminNew').value || '').trim();
+  meta().adminEnabled = enabled;
+  if (pw) meta().adminHash = pwHash(pw);
+  if (enabled && !meta().adminHash) { meta().adminEnabled = false; $('#adminStatus').innerHTML = '<div class="status-note err">Set a password first.</div>'; return; }
+  autosave();
+  $('#adminStatus').innerHTML = `<div class="status-note ok">✓ Saved${pw ? ' — new admin password set' : ''}. Commit/Export so it applies for you everywhere.</div>`;
+  const nb = $('#adminNew'); if (nb) nb.value = '';
+}
 function saveGateSettings() {
   const enabled = $('#gateEnable').checked, pw = ($('#gateNew').value || '').trim();
   meta().gateEnabled = enabled;
