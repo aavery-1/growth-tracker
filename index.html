@@ -6,6 +6,16 @@
   <title>Network Growth Committee — Master Growth Project Plan</title>
   <link rel="stylesheet" href="styles.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%2316357F'/><text x='50' y='70' font-size='56' font-weight='700' text-anchor='middle' fill='white' font-family='Roboto,Arial'>K</text></svg>" />
+  <script>
+    // Visible fail-safe: if anything throws, show it instead of a blank screen.
+    window.addEventListener('error', function (e) {
+      var b = document.body; if (!b) return;
+      var d = document.getElementById('__err') || document.createElement('pre');
+      d.id = '__err'; d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99999;margin:0;max-height:40vh;overflow:auto;background:#7a0010;color:#fff;padding:10px 14px;font:12px/1.5 monospace;white-space:pre-wrap';
+      d.textContent = 'Something failed to load: ' + (e.message || e.error) + (e.error && e.error.stack ? '\n' + e.error.stack : '');
+      if (!d.parentNode) b.appendChild(d);
+    });
+  </script>
 </head>
 <body>
   <header class="app-header">
@@ -15,8 +25,8 @@
     <div class="brand-sub"><b>Network Growth Committee</b><span>School Opening Timeline &amp; PM</span></div>
 
     <nav class="nav-tabs" id="navTabs" role="tablist">
-      <button class="nav-tab active" data-view="timeline" role="tab"><span>Openings Timeline</span></button>
-      <button class="nav-tab" data-view="progress" role="tab"><span>Progress Dashboard</span></button>
+      <button class="nav-tab active" data-view="progress" role="tab"><span>Dashboard</span></button>
+      <button class="nav-tab" data-view="timeline" role="tab"><span>Openings Timeline</span></button>
       <button class="nav-tab" data-view="plan" role="tab"><span>Project Plan</span></button>
     </nav>
 
