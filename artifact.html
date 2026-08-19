@@ -6925,7 +6925,7 @@ let sbPushTimer = null, sbLastPushed = new Map(), sbLastSchools = new Map();
 const S = () => state.data.schools;
 const SB_TABLE = { m: 'growth_milestones', s: 'growth_schools' };
 /* Pre-filled shared project so the committee auto-connects on load (publishable key is public by design). */
-const SB_DEFAULT = { url: 'https://cwjmlunqfhaioyuijhkk.supabase.co', key: 'sb_publishable_LrqAQcM7hwFlKfdy1dc1Bg_ucLMiggk' };
+const SB_DEFAULT = { url: 'https://cwjmlunqfhaioyuijhkk.supabase.co', key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN3am1sdW5xZmhhaW95dWlqaGtrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjk3OTcsImV4cCI6MjEwMjc0NTc5N30.1OeHzNFoeCu7ezocqyqxvvpOinjYnnocGuwBGVbKynU' };
 const SB_SQL = `-- run once in Supabase → SQL Editor
 create table if not exists growth_milestones (id text primary key, doc jsonb not null, updated_at timestamptz default now());
 create table if not exists growth_schools    (id text primary key, doc jsonb not null, updated_at timestamptz default now());
@@ -7233,7 +7233,7 @@ function bootApp() {
   const initial = (location.hash || '').replace('#', '');
   setView(VIEWS.includes(initial) ? initial : 'progress', true);
   if (!location.hash) { try { history.replaceState({ v: state.view }, '', '#' + state.view); } catch (e) {} }
-  const sc = sbSavedCfg() || (SB_DEFAULT.url ? SB_DEFAULT : null); if (sc && sc.url && sc.key) sbConnect(sc.url, sc.key, true);
+  let sc = sbSavedCfg(); if (SB_DEFAULT.url && (!sc || sc.url === SB_DEFAULT.url)) sc = SB_DEFAULT; if (sc && sc.url && sc.key) sbConnect(sc.url, sc.key, true);
 }
 document.addEventListener('DOMContentLoaded', init);
 
