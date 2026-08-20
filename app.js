@@ -454,8 +454,7 @@ function renderPlan() {
     <select id="planGroupSel">${[['stage', 'Kanban (stages)'], ['team', 'Workstream'], ['market', 'Market'], ['year', 'Year'], ['school', 'School opening']].map(([v, l]) => `<option value="${v}" ${state.planGroup === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`;
   const right = `${viewSel}<button class="btn btn-filled" id="newItem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>New task</button>`;
   $('#view-plan').innerHTML = `
-    <div class="view-head"><div><h2>Project Plan</h2></div>
-      <span class="muted" style="font-size:13px">${risk} at risk/behind · ${list.length} of ${M().length}</span></div>
+    <div class="view-head"><div><h2>Project Plan</h2></div></div>
     ${filterBar(['states', 'markets', 'fys', 'areas'], { search: true, school: true, right })}
     <div id="viewBody">${planBodyHtml()}</div>`;
 }
@@ -878,7 +877,7 @@ function renderDrawer() {
       <div class="dw-btns"><button class="btn" id="expBtn">Export data.json</button><button class="btn" id="impBtn">Import</button><input type="file" id="impFile" accept="application/json" class="hide"></div>
     </details>
 
-    <div class="dw-about">Growth Hub · ${M().length} milestones · ${state.data.schools.length} schools · v${meta().version || 1}</div>`;
+    <div class="dw-about">Network Growth Hub · ${M().length} milestones · ${state.data.schools.length} schools · v${meta().version || 1}</div>`;
 }
 
 /* ---------- customize (markets / teams / owners) ---------- */
@@ -1056,7 +1055,7 @@ function showGate(err) {
   if (!g) { g = document.createElement('div'); g.id = 'gateScreen'; g.className = 'gate-screen'; document.body.appendChild(g); }
   g.innerHTML = `<div class="gate-card">
       <img class="gate-logo" src="${(document.querySelector('.brand-logo') || {}).src || ''}" alt="KIPP">
-      <h1>Growth Hub</h1>
+      <h1>Network Growth Hub</h1>
       <p>Enter the password.</p>
       <form id="gateForm" autocomplete="off"><input id="gatePw" type="password" placeholder="Password" autofocus>
         <button type="submit" class="btn btn-filled">Unlock</button></form>
