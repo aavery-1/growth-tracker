@@ -257,7 +257,7 @@ function ganttBodyHtml() {
       const c1 = Math.max(1, startFy - minFy + 1), c2 = Math.min(nFy, s.openingFY - minFy + 1);
       const nTasks = sm.length;
       const tip = `Open ${s.display_label} — ${s.market}\nOpens ${fmtDate(s.opening_date)} · ${nTasks} task${nTasks === 1 ? '' : 's'}`;
-      body += `<div class="g-row g-click" data-drillschool="${esc(s.id)}" style="grid-template-columns:230px repeat(${nFy},1fr)" title="${esc(tip)}">
+      body += `<div class="g-row g-click" data-drillschool="${esc(s.id)}" style="grid-template-columns:var(--g-label,230px) repeat(${nFy},1fr)" title="${esc(tip)}">
         <div class="g-label"><button class="g-edit" data-editschool="${esc(s.id)}" title="Edit / remove this school & its tasks"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
           <div class="g-lab-main"><b>${esc(s.display_label)}</b> <span class="muted">${esc(s.market)} · ${esc(s.school_type)}</span>
             <div class="g-lab-sub"><span class="muted">${nTasks} task${nTasks === 1 ? '' : 's'}</span></div></div></div>
@@ -272,7 +272,7 @@ function ganttBodyHtml() {
   });
 
   return `<div class="gantt card">
-      <div class="g-row g-head" style="grid-template-columns:210px repeat(${nFy},1fr)"><div class="g-label">School</div><div class="g-track" style="grid-column:2 / ${nFy + 2};grid-template-columns:repeat(${nFy},1fr)">${headCells}</div></div>
+      <div class="g-row g-head" style="grid-template-columns:var(--g-label,230px) repeat(${nFy},1fr)"><div class="g-label">School</div><div class="g-track" style="grid-column:2 / ${nFy + 2};grid-template-columns:repeat(${nFy},1fr)">${headCells}</div></div>
       ${body || '<div class="empty-state">No schools match the filters.</div>'}
     </div>
     <div class="rag-legend" style="margin-top:12px">${['not_started','on_track','at_risk','behind','complete'].map(k => `<span class="lg">${statusDot(k)}${SM(k).label}</span>`).join('')}<span class="muted">· click a school to see its tasks · bar = development window through opening</span></div>`;

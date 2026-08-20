@@ -1357,3 +1357,12 @@ body.edit-on .edit-pill { display: inline-flex; }
   .save-state { display: none; }            /* free up header room on tiny screens */
   .btn { padding: 0 14px; }
 }
+
+/* timeline (gantt) mobile: smaller label + readable columns that scroll */
+@media (max-width: 760px) {
+  .gantt { --g-label: 132px; }
+  .gantt .g-row { min-width: 620px; }
+  .g-lab-main > b { font-size: 12px; }
+  .g-bar-label { font-size: 10px; }
+  .g-open { font-size: 9px; padding: 2px 5px; }
+}
