@@ -1395,6 +1395,76 @@ body.edit-on .edit-pill { display: inline-flex; }
 .ot-legend i.rag { width: 11px; height: 11px; border-radius: 50%; }
 @media (max-width: 760px) { .ot-term { gap: 12px; } .ot-grid { grid-template-columns: 1fr; } }
 
+/* ============ desktop sidebar navigation ============ */
+@media (min-width: 1000px) {
+  .app-header {
+    position: fixed; left: 0; top: 0; bottom: 0; width: 238px; height: 100vh;
+    flex-direction: column; align-items: stretch; gap: 0;
+    padding: 20px 14px 16px; overflow-y: auto;
+    background: var(--surface-container-low); box-shadow: none;
+    border-right: 1px solid var(--outline-variant); z-index: 60;
+  }
+  .brand-lockup { padding: 2px 8px 0; }
+  .brand-lockup { padding: 2px 6px 0; }
+  .brand-lockup .brand-logo { max-width: 100%; width: auto; height: auto; }
+  .brand-sub { display: block !important; border-left: 0; padding: 0 8px; margin: 12px 0 22px; }
+  .brand-sub b { font-size: 14px; }
+  .nav-tabs { flex-direction: column; align-items: stretch; height: auto; gap: 5px; }
+  .nav-tab { justify-content: flex-start; text-align: left; height: auto; padding: 12px 14px; border-radius: 10px; font-size: 14.5px; color: var(--on-surface-variant); }
+  .nav-tab.active { background: var(--primary-container); color: var(--on-primary-container); font-weight: 700; }
+  .nav-tab.active::after { display: none; }
+  .header-spacer { flex: 1; }
+  .header-actions { flex-wrap: wrap; gap: 6px; padding-top: 14px; margin-top: 8px; border-top: 1px solid var(--outline-variant); }
+  .header-actions .save-state { flex: 1 1 100%; text-align: center; }
+  .container { margin-left: 238px; max-width: 1160px; }
+}
+
+/* ============ legibility pass ============ */
+body { background: var(--surface-container-low); }
+.ex-card { background: var(--surface-container-lowest); border: 1px solid var(--outline-variant); box-shadow: 0 1px 2px rgba(16,24,64,.05); padding: 18px 20px; }
+.dash { gap: 18px; }
+.ex-card-head { margin-bottom: 15px; }
+.ex-card h3 { font-size: 16px; letter-spacing: -.1px; }
+.ex-grid td, .ex-grid th { padding-top: 11px; padding-bottom: 11px; }
+.ex-grid .ex-sch { font-size: 13.5px; }
+.rag { width: 14px; height: 14px; }
+.dash-hero { padding: 26px 28px; }
+.dash-cohort { background: rgba(255,255,255,.09); }
+.ot-card { background: var(--surface-container-lowest); }
+.filterbar { background: var(--surface-container-lowest); border: 1px solid var(--outline-variant); }
+
+/* ============ deliberate typography & spacing pass ============ */
+body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+/* type scale: page title > section heading > body > meta */
+.view-head h2 { font-size: 27px; font-weight: 600; letter-spacing: -.4px; line-height: 1.15; }
+.ex-card h3, .ot-term-h h3 { font-weight: 700; line-height: 1.25; }
+.ex-hint, .ex-card-mkt, .ot-when, .dw-help, .muted { line-height: 1.45; }
+.ex-li-t { font-size: 13px; font-weight: 500; line-height: 1.35; }
+.ex-li-m { font-size: 11.5px; }
+.ex-list .ex-li { padding: 8px 4px; }
+/* readable numbers/labels in the hero */
+.dash-cohort-fy { letter-spacing: -.2px; }
+.dash-cohort-sum { line-height: 1.4; }
+/* consistent section rhythm */
+.dash { gap: 18px; }
+.ex-legend, .ot-legend { margin-top: 15px; }
+/* readiness table: clearer column headers */
+.ex-th-team { font-weight: 700; }
+.ex-grid .ex-sch b { font-weight: 700; }
+/* nav labels a touch larger for tap targets */
+.nav-tab { letter-spacing: .1px; }
+
+/* ============ reduce scrolling: tall sections scroll internally ============ */
+.ex-grid-wrap { max-height: 44vh; overflow-y: auto; }
+.ex-grid thead th { position: sticky; top: 0; z-index: 2; background: var(--surface-container-lowest); box-shadow: 0 1px 0 var(--outline-variant); }
+.ex-band td { position: sticky; top: 34px; z-index: 1; }
+.ex-grid-wrap::-webkit-scrollbar { width: 9px; height: 9px; }
+.ex-grid-wrap::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 8px; }
+/* tighten section rhythm a touch (still legible) */
+.dash { gap: 15px; }
+.dash-hero { padding: 22px 26px; }
+.ex-card { padding: 16px 18px; }
+
 </style>
 <script>
     // Visible fail-safe: if anything throws, show it instead of a blank screen.
@@ -6503,7 +6573,7 @@ function otCard(s) {
   return `<article class="ot-card" data-drillschool="${esc(s.id)}" style="--mk:${mkColor(s.market)}" title="Open ${esc(s.display_label)} — ${esc(s.market)}">
       <div class="ot-card-h"><span class="state-badge sm" style="background:${stColor(s.state)}">${esc(s.state)}</span><b>${esc(s.display_label)}</b><span class="ot-type">${esc(s.school_type)}</span><span class="ot-rag" style="background:${r.color}" title="${esc(r.label)}"></span></div>
       <div class="ot-card-mkt"><i style="background:${mkColor(s.market)}"></i>${esc(s.market)}</div>
-      <div class="ot-card-f"><span>Opens ${esc(fmtDate(s.opening_date))}</span><span class="muted">${n} task${n === 1 ? '' : 's'}</span></div>
+      <div class="ot-card-f"><span>Opens August ${s.openingFY - 1}</span><span class="muted">${n} task${n === 1 ? '' : 's'}</span></div>
     </article>`;
 }
 function ganttBodyHtml() {
@@ -6937,7 +7007,7 @@ function openSchoolModal(id) {
   const roll = sm.length ? rollupStatus(sm) : 'not_started';
   const taskList = sm.length ? sm.slice().sort(bySortUrgency).map(m => `<div class="sm-task" data-expand="${m.id}">${statusDot(effectiveStatus(m))}<span class="sm-t-title">${esc(m.activity)}</span><span class="sm-t-team">${esc(m.functional_area || '')}</span><span class="sm-t-due">${dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : '—')}</span></div>`).join('') : '<div class="muted" style="font-size:12.5px">No tasks yet — add the first one below.</div>';
   const summary = isNew ? '' : `<div class="sm-summary">
-    <span><b>${esc(s.market)}</b> · ${esc(s.school_type)}</span><span class="muted">Opens ${esc(fmtDate(s.opening_date) || fyLabel(s.openingFY))}</span><span class="muted">${sm.length} task${sm.length === 1 ? '' : 's'}</span></div>`;
+    <span><b>${esc(s.market)}</b> · ${esc(s.school_type)}</span><span class="muted">Opens August ${s.openingFY - 1}</span><span class="muted">${sm.length} task${sm.length === 1 ? '' : 's'}</span></div>`;
   const fyField = `<div class="field"><label>Opening fiscal year</label><select id="sFy">${fyList().map(fy => `<option value="${fy}" ${s.openingFY === fy ? 'selected' : ''}>${fyLabel(fy)}</option>`).join('')}</select></div>`;
   const qField = `<div class="field"><label>Opening quarter</label><select id="sQ">${opt(['Q1', 'Q2', 'Q3', 'Q4'], s.openingQuarter || 'Q1')}</select></div>`;
   const labelField = `<div class="field-row"><div class="field"><label>Label (e.g., ES4)</label><input id="sLabel" value="${esc(s.display_label || s.code || '')}" placeholder="ES4"></div><div class="field"><label>School type</label><select id="sType">${opt([['ES', 'Elementary (ES)'], ['MS', 'Middle (MS)'], ['HS', 'High (HS)']], s.school_type)}</select></div></div>`;

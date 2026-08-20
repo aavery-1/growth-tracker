@@ -245,7 +245,7 @@ function otCard(s) {
   return `<article class="ot-card" data-drillschool="${esc(s.id)}" style="--mk:${mkColor(s.market)}" title="Open ${esc(s.display_label)} — ${esc(s.market)}">
       <div class="ot-card-h"><span class="state-badge sm" style="background:${stColor(s.state)}">${esc(s.state)}</span><b>${esc(s.display_label)}</b><span class="ot-type">${esc(s.school_type)}</span><span class="ot-rag" style="background:${r.color}" title="${esc(r.label)}"></span></div>
       <div class="ot-card-mkt"><i style="background:${mkColor(s.market)}"></i>${esc(s.market)}</div>
-      <div class="ot-card-f"><span>Opens ${esc(fmtDate(s.opening_date))}</span><span class="muted">${n} task${n === 1 ? '' : 's'}</span></div>
+      <div class="ot-card-f"><span>Opens August ${s.openingFY - 1}</span><span class="muted">${n} task${n === 1 ? '' : 's'}</span></div>
     </article>`;
 }
 function ganttBodyHtml() {
@@ -679,7 +679,7 @@ function openSchoolModal(id) {
   const roll = sm.length ? rollupStatus(sm) : 'not_started';
   const taskList = sm.length ? sm.slice().sort(bySortUrgency).map(m => `<div class="sm-task" data-expand="${m.id}">${statusDot(effectiveStatus(m))}<span class="sm-t-title">${esc(m.activity)}</span><span class="sm-t-team">${esc(m.functional_area || '')}</span><span class="sm-t-due">${dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : '—')}</span></div>`).join('') : '<div class="muted" style="font-size:12.5px">No tasks yet — add the first one below.</div>';
   const summary = isNew ? '' : `<div class="sm-summary">
-    <span><b>${esc(s.market)}</b> · ${esc(s.school_type)}</span><span class="muted">Opens ${esc(fmtDate(s.opening_date) || fyLabel(s.openingFY))}</span><span class="muted">${sm.length} task${sm.length === 1 ? '' : 's'}</span></div>`;
+    <span><b>${esc(s.market)}</b> · ${esc(s.school_type)}</span><span class="muted">Opens August ${s.openingFY - 1}</span><span class="muted">${sm.length} task${sm.length === 1 ? '' : 's'}</span></div>`;
   const fyField = `<div class="field"><label>Opening fiscal year</label><select id="sFy">${fyList().map(fy => `<option value="${fy}" ${s.openingFY === fy ? 'selected' : ''}>${fyLabel(fy)}</option>`).join('')}</select></div>`;
   const qField = `<div class="field"><label>Opening quarter</label><select id="sQ">${opt(['Q1', 'Q2', 'Q3', 'Q4'], s.openingQuarter || 'Q1')}</select></div>`;
   const labelField = `<div class="field-row"><div class="field"><label>Label (e.g., ES4)</label><input id="sLabel" value="${esc(s.display_label || s.code || '')}" placeholder="ES4"></div><div class="field"><label>School type</label><select id="sType">${opt([['ES', 'Elementary (ES)'], ['MS', 'Middle (MS)'], ['HS', 'High (HS)']], s.school_type)}</select></div></div>`;

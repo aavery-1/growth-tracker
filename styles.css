@@ -1393,3 +1393,73 @@ body.edit-on .edit-pill { display: inline-flex; }
 .ot-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .ot-legend i.rag { width: 11px; height: 11px; border-radius: 50%; }
 @media (max-width: 760px) { .ot-term { gap: 12px; } .ot-grid { grid-template-columns: 1fr; } }
+
+/* ============ desktop sidebar navigation ============ */
+@media (min-width: 1000px) {
+  .app-header {
+    position: fixed; left: 0; top: 0; bottom: 0; width: 238px; height: 100vh;
+    flex-direction: column; align-items: stretch; gap: 0;
+    padding: 20px 14px 16px; overflow-y: auto;
+    background: var(--surface-container-low); box-shadow: none;
+    border-right: 1px solid var(--outline-variant); z-index: 60;
+  }
+  .brand-lockup { padding: 2px 8px 0; }
+  .brand-lockup { padding: 2px 6px 0; }
+  .brand-lockup .brand-logo { max-width: 100%; width: auto; height: auto; }
+  .brand-sub { display: block !important; border-left: 0; padding: 0 8px; margin: 12px 0 22px; }
+  .brand-sub b { font-size: 14px; }
+  .nav-tabs { flex-direction: column; align-items: stretch; height: auto; gap: 5px; }
+  .nav-tab { justify-content: flex-start; text-align: left; height: auto; padding: 12px 14px; border-radius: 10px; font-size: 14.5px; color: var(--on-surface-variant); }
+  .nav-tab.active { background: var(--primary-container); color: var(--on-primary-container); font-weight: 700; }
+  .nav-tab.active::after { display: none; }
+  .header-spacer { flex: 1; }
+  .header-actions { flex-wrap: wrap; gap: 6px; padding-top: 14px; margin-top: 8px; border-top: 1px solid var(--outline-variant); }
+  .header-actions .save-state { flex: 1 1 100%; text-align: center; }
+  .container { margin-left: 238px; max-width: 1160px; }
+}
+
+/* ============ legibility pass ============ */
+body { background: var(--surface-container-low); }
+.ex-card { background: var(--surface-container-lowest); border: 1px solid var(--outline-variant); box-shadow: 0 1px 2px rgba(16,24,64,.05); padding: 18px 20px; }
+.dash { gap: 18px; }
+.ex-card-head { margin-bottom: 15px; }
+.ex-card h3 { font-size: 16px; letter-spacing: -.1px; }
+.ex-grid td, .ex-grid th { padding-top: 11px; padding-bottom: 11px; }
+.ex-grid .ex-sch { font-size: 13.5px; }
+.rag { width: 14px; height: 14px; }
+.dash-hero { padding: 26px 28px; }
+.dash-cohort { background: rgba(255,255,255,.09); }
+.ot-card { background: var(--surface-container-lowest); }
+.filterbar { background: var(--surface-container-lowest); border: 1px solid var(--outline-variant); }
+
+/* ============ deliberate typography & spacing pass ============ */
+body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+/* type scale: page title > section heading > body > meta */
+.view-head h2 { font-size: 27px; font-weight: 600; letter-spacing: -.4px; line-height: 1.15; }
+.ex-card h3, .ot-term-h h3 { font-weight: 700; line-height: 1.25; }
+.ex-hint, .ex-card-mkt, .ot-when, .dw-help, .muted { line-height: 1.45; }
+.ex-li-t { font-size: 13px; font-weight: 500; line-height: 1.35; }
+.ex-li-m { font-size: 11.5px; }
+.ex-list .ex-li { padding: 8px 4px; }
+/* readable numbers/labels in the hero */
+.dash-cohort-fy { letter-spacing: -.2px; }
+.dash-cohort-sum { line-height: 1.4; }
+/* consistent section rhythm */
+.dash { gap: 18px; }
+.ex-legend, .ot-legend { margin-top: 15px; }
+/* readiness table: clearer column headers */
+.ex-th-team { font-weight: 700; }
+.ex-grid .ex-sch b { font-weight: 700; }
+/* nav labels a touch larger for tap targets */
+.nav-tab { letter-spacing: .1px; }
+
+/* ============ reduce scrolling: tall sections scroll internally ============ */
+.ex-grid-wrap { max-height: 44vh; overflow-y: auto; }
+.ex-grid thead th { position: sticky; top: 0; z-index: 2; background: var(--surface-container-lowest); box-shadow: 0 1px 0 var(--outline-variant); }
+.ex-band td { position: sticky; top: 34px; z-index: 1; }
+.ex-grid-wrap::-webkit-scrollbar { width: 9px; height: 9px; }
+.ex-grid-wrap::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 8px; }
+/* tighten section rhythm a touch (still legible) */
+.dash { gap: 15px; }
+.dash-hero { padding: 22px 26px; }
+.ex-card { padding: 16px 18px; }
