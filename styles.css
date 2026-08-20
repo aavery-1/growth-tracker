@@ -1555,3 +1555,22 @@ body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 
 .dash-cohort.is-roadmap { opacity: .72; }
 .dash-cohort.is-roadmap .dash-cohort-sum { font-style: italic; }
+
+/* ---------- initials-only person chips (Asana/Jira-style colored avatars) ---------- */
+.pchip { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; color: #fff; font-size: 10.5px; font-weight: 800; letter-spacing: .01em; flex: 0 0 auto; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); user-select: none; }
+.pchip-sm { width: 20px; height: 20px; font-size: 9.5px; }
+.pchip-none { background: transparent; color: var(--on-surface-variant, #6b7280); border: 1.5px dashed var(--outline, #cfd4df); font-weight: 700; box-shadow: none; }
+.pm-item-head .pchip { margin: 0 4px; }
+
+/* ---------- navy sidebar (desktop): high contrast vs. white content, on-brand ---------- */
+@media (min-width: 1000px) {
+  .app-header { background: #16357F; border-right: 1px solid rgba(0,0,0,.18); box-shadow: 2px 0 14px rgba(16,24,64,.12); }
+  .app-header .brand-logo { filter: brightness(0) invert(1); }
+  .app-header .brand-sub, .app-header .brand-sub b { color: #fff; }
+  .app-header .brand-sub { opacity: .82; }
+  .app-header .nav-tab { color: rgba(255,255,255,.74); }
+  .app-header .nav-tab:hover { background: rgba(255,255,255,.10); color: #fff; }
+  .app-header .nav-tab.active { background: #fff; color: #16357F; font-weight: 700; }
+  .app-header .header-actions { border-top-color: rgba(255,255,255,.18); }
+  .app-header .icon-btn { color: rgba(255,255,255,.86); }
+}

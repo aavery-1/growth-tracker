@@ -42,6 +42,14 @@ function fyLabel(fy) { return fy ? `${String(fy - 1).slice(-2)}–${String(fy).s
 function fyList() { return [2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033]; }
 function currentFY() { const n = new Date(); return n.getMonth() >= 6 ? n.getFullYear() + 1 : n.getFullYear(); }
 function initials(n) { return String(n || '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase(); }
+// deterministic per-person avatar color (Asana/Jira-style), so each owner is visually distinct
+const AVATAR_COLORS = ['#2563EB', '#7C3AED', '#059669', '#D97706', '#DB2777', '#0891B2', '#4F46E5', '#65A30D', '#DC2626', '#0D9488'];
+function avatarColor(n) { const s = String(n || ''); let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return AVATAR_COLORS[h % AVATAR_COLORS.length]; }
+// initials-only person chip: colored circle, full name on hover. `unassigned` = neutral dashed circle.
+function personChip(name, cls) {
+  if (!name) return `<span class="pchip pchip-none ${cls || ''}" title="Unassigned">–</span>`;
+  return `<span class="pchip ${cls || ''}" title="${esc(name)}" style="background:${avatarColor(name)}">${esc(initials(name))}</span>`;
+}
 function fmtMoney(n) { return n >= 1e6 ? '$' + (n / 1e6).toFixed(n % 1e6 ? 1 : 0) + 'M' : n >= 1e3 ? '$' + Math.round(n / 1e3) + 'K' : '$' + n; }
 function parseDate(s) { return s ? new Date(s + 'T00:00:00') : null; }
 function daysUntil(s) { const d = parseDate(s); if (!d) return null; return Math.round((d - new Date(new Date().toDateString())) / 86400000); }
@@ -320,6 +328,7 @@ function pmItem(m) {
     <div class="pm-item-head" data-toggle="it:${m.id}">
       ${chev(open)}${statusDot(es)}
       <span class="pm-title">${m.keyMilestone ? '★ ' : ''}${esc(m.activity)}<span class="dept-chip">${esc(m.functional_area)}</span></span>
+      ${personChip(m.owner, 'pchip-sm')}
       <span class="pm-due">${dueBadge(m) || (m.due_date ? `<span class="due-ok">${fmtDate(m.due_date)}</span>` : '<span class="muted">—</span>')}</span>
       <div class="pm-prog"><span style="width:${m.progress_percent || 0}%;background:${pcol}"></span></div>
       <span class="pm-pct">${m.progress_percent || 0}%</span>
@@ -439,7 +448,7 @@ function planCard(m) {
   const nc = (m.noteLog || []).length;
   return `<div class="kcard ${urgent ? 'urgent' : ''}" draggable="true" data-id="${m.id}" style="border-left-color:${scol}">
     <div class="kc-top"><span class="kc-title" data-expand="${m.id}">${esc(m.activity)}</span></div>
-    <div class="kc-foot">${m.owner ? `<span class="owner-avatar sm">${esc(initials(m.owner))}</span><span class="kc-owner">${esc(m.owner)}</span>` : '<span class="muted">Unassigned</span>'}<span class="kc-foot-r">${nc ? `<span class="kc-notes" title="${nc} note${nc === 1 ? '' : 's'}">💬 ${nc}</span>` : ''}<span class="kc-due">${dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : '')}</span></span></div>
+    <div class="kc-foot">${personChip(m.owner)}<span class="kc-foot-r">${nc ? `<span class="kc-notes" title="${nc} note${nc === 1 ? '' : 's'}">💬 ${nc}</span>` : ''}<span class="kc-due">${dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : '')}</span></span></div>
   </div>`;
 }
 function planFocusHtml() {

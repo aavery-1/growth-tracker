@@ -1557,6 +1557,25 @@ body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 .dash-cohort.is-roadmap { opacity: .72; }
 .dash-cohort.is-roadmap .dash-cohort-sum { font-style: italic; }
 
+/* ---------- initials-only person chips (Asana/Jira-style colored avatars) ---------- */
+.pchip { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; color: #fff; font-size: 10.5px; font-weight: 800; letter-spacing: .01em; flex: 0 0 auto; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); user-select: none; }
+.pchip-sm { width: 20px; height: 20px; font-size: 9.5px; }
+.pchip-none { background: transparent; color: var(--on-surface-variant, #6b7280); border: 1.5px dashed var(--outline, #cfd4df); font-weight: 700; box-shadow: none; }
+.pm-item-head .pchip { margin: 0 4px; }
+
+/* ---------- navy sidebar (desktop): high contrast vs. white content, on-brand ---------- */
+@media (min-width: 1000px) {
+  .app-header { background: #16357F; border-right: 1px solid rgba(0,0,0,.18); box-shadow: 2px 0 14px rgba(16,24,64,.12); }
+  .app-header .brand-logo { filter: brightness(0) invert(1); }
+  .app-header .brand-sub, .app-header .brand-sub b { color: #fff; }
+  .app-header .brand-sub { opacity: .82; }
+  .app-header .nav-tab { color: rgba(255,255,255,.74); }
+  .app-header .nav-tab:hover { background: rgba(255,255,255,.10); color: #fff; }
+  .app-header .nav-tab.active { background: #fff; color: #16357F; font-weight: 700; }
+  .app-header .header-actions { border-top-color: rgba(255,255,255,.18); }
+  .app-header .icon-btn { color: rgba(255,255,255,.86); }
+}
+
 </style>
 <script>
     // Visible fail-safe: if anything throws, show it instead of a blank screen.
@@ -6462,6 +6481,14 @@ function fyLabel(fy) { return fy ? `${String(fy - 1).slice(-2)}–${String(fy).s
 function fyList() { return [2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033]; }
 function currentFY() { const n = new Date(); return n.getMonth() >= 6 ? n.getFullYear() + 1 : n.getFullYear(); }
 function initials(n) { return String(n || '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase(); }
+// deterministic per-person avatar color (Asana/Jira-style), so each owner is visually distinct
+const AVATAR_COLORS = ['#2563EB', '#7C3AED', '#059669', '#D97706', '#DB2777', '#0891B2', '#4F46E5', '#65A30D', '#DC2626', '#0D9488'];
+function avatarColor(n) { const s = String(n || ''); let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return AVATAR_COLORS[h % AVATAR_COLORS.length]; }
+// initials-only person chip: colored circle, full name on hover. `unassigned` = neutral dashed circle.
+function personChip(name, cls) {
+  if (!name) return `<span class="pchip pchip-none ${cls || ''}" title="Unassigned">–</span>`;
+  return `<span class="pchip ${cls || ''}" title="${esc(name)}" style="background:${avatarColor(name)}">${esc(initials(name))}</span>`;
+}
 function fmtMoney(n) { return n >= 1e6 ? '$' + (n / 1e6).toFixed(n % 1e6 ? 1 : 0) + 'M' : n >= 1e3 ? '$' + Math.round(n / 1e3) + 'K' : '$' + n; }
 function parseDate(s) { return s ? new Date(s + 'T00:00:00') : null; }
 function daysUntil(s) { const d = parseDate(s); if (!d) return null; return Math.round((d - new Date(new Date().toDateString())) / 86400000); }
@@ -6740,6 +6767,7 @@ function pmItem(m) {
     <div class="pm-item-head" data-toggle="it:${m.id}">
       ${chev(open)}${statusDot(es)}
       <span class="pm-title">${m.keyMilestone ? '★ ' : ''}${esc(m.activity)}<span class="dept-chip">${esc(m.functional_area)}</span></span>
+      ${personChip(m.owner, 'pchip-sm')}
       <span class="pm-due">${dueBadge(m) || (m.due_date ? `<span class="due-ok">${fmtDate(m.due_date)}</span>` : '<span class="muted">—</span>')}</span>
       <div class="pm-prog"><span style="width:${m.progress_percent || 0}%;background:${pcol}"></span></div>
       <span class="pm-pct">${m.progress_percent || 0}%</span>
@@ -6859,7 +6887,7 @@ function planCard(m) {
   const nc = (m.noteLog || []).length;
   return `<div class="kcard ${urgent ? 'urgent' : ''}" draggable="true" data-id="${m.id}" style="border-left-color:${scol}">
     <div class="kc-top"><span class="kc-title" data-expand="${m.id}">${esc(m.activity)}</span></div>
-    <div class="kc-foot">${m.owner ? `<span class="owner-avatar sm">${esc(initials(m.owner))}</span><span class="kc-owner">${esc(m.owner)}</span>` : '<span class="muted">Unassigned</span>'}<span class="kc-foot-r">${nc ? `<span class="kc-notes" title="${nc} note${nc === 1 ? '' : 's'}">💬 ${nc}</span>` : ''}<span class="kc-due">${dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : '')}</span></span></div>
+    <div class="kc-foot">${personChip(m.owner)}<span class="kc-foot-r">${nc ? `<span class="kc-notes" title="${nc} note${nc === 1 ? '' : 's'}">💬 ${nc}</span>` : ''}<span class="kc-due">${dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : '')}</span></span></div>
   </div>`;
 }
 function planFocusHtml() {
