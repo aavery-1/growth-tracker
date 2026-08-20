@@ -539,8 +539,8 @@ function dashboardHtml(list) {
   }).join('');
   const rOpen = !state.expanded['dash:readiness'];
   const readiness = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:readiness"><div class="ex-cardhead-l">${chev(rOpen)}<h3>Readiness Index</h3></div><span class="muted ex-hint">Click a row to open</span></div>
-    <div class="ex-card-body ${rOpen ? '' : 'hide'}"><div class="ex-grid-wrap"><table class="ex-grid"><thead><tr><th>School</th><th>Opens</th><th>Overall</th>${tms.map(t => `<th class="ex-th-team"><span>${esc(t)}</span></th>`).join('')}</tr></thead><tbody>${grid}</tbody></table></div>
-    <div class="ex-legend"><span><i class="rag" style="background:${RAG.green}"></i>On track</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind / Blocked</span><span><i class="rag" style="background:${RAG.none}"></i>Not started</span></div></div></section>`;
+    <div class="ex-card-body ${rOpen ? '' : 'hide'}"><div class="ex-legend ex-legend-top"><span><i class="rag" style="background:${RAG.green}"></i>On track</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind / Blocked</span><span><i class="rag" style="background:${RAG.none}"></i>Not started</span></div>
+    <div class="ex-grid-wrap"><table class="ex-grid"><thead><tr><th>School</th><th>Opens</th><th>Overall</th>${tms.map(t => `<th class="ex-th-team"><span>${esc(t)}</span></th>`).join('')}</tr></thead><tbody>${grid}</tbody></table></div></div></section>`;
 
   // PRIORITIES & RISKS
   const soon = Date.now() + 90 * 864e5;
@@ -568,7 +568,7 @@ function dashboardHtml(list) {
   const wOpen = !state.expanded['dash:workload'];
   const workload = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:workload"><div class="ex-cardhead-l">${chev(wOpen)}<h3>Workload by Fiscal Year</h3></div><span class="muted ex-hint">when milestones are due</span></div><div class="ex-card-body ${wOpen ? '' : 'hide'}">${columnChart(list)}</div></section>`;
 
-  return `<div class="dash">${hero}${readiness}<div class="ex-cols2">${prCard}<div class="ex-side">${capital}${workload}</div></div></div>`;
+  return `<div class="dash">${hero}${readiness}${prCard}<div class="ex-cols2 ex-cols-even">${capital}${workload}</div></div>`;
 }
 function applyDrill(dim, val) {
   if (dim === 'team') state.filters.areas = new Set([val]);

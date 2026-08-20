@@ -1465,6 +1465,29 @@ body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 .dash-hero { padding: 22px 26px; }
 .ex-card { padding: 16px 18px; }
 
+/* sticky filter bar on desktop (sidebar layout) — controls never scroll away */
+@media (min-width: 1000px) {
+  .filterbar { position: sticky; top: 8px; z-index: 40; box-shadow: 0 2px 10px rgba(16,24,64,.06); }
+}
+
+.ex-cols-even{grid-template-columns:1fr 1fr}
+@media(max-width:900px){.ex-cols-even{grid-template-columns:1fr}}
+
+.ex-legend-top{margin-top:0;margin-bottom:12px}
+
+/* project plan: columns scroll internally so status headers stay visible (desktop) */
+@media (min-width: 1000px) {
+  .kcol-body { max-height: 66vh; overflow-y: auto; }
+  .kcol-body::-webkit-scrollbar { width: 9px; }
+  .kcol-body::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 8px; }
+}
+
+/* holistic sticky context (desktop): keep the "where am I" label pinned while scrolling */
+@media (min-width: 1000px) {
+  .ot-term-h { position: sticky; top: 62px; z-index: 6; background: var(--surface-container-low); padding: 6px 0 8px; margin-bottom: 0; }
+  .plan-group-head { position: sticky; top: 62px; z-index: 6; background: var(--surface-container-low); padding: 8px 2px; }
+}
+
 </style>
 <script>
     // Visible fail-safe: if anything throws, show it instead of a blank screen.
@@ -6867,8 +6890,8 @@ function dashboardHtml(list) {
   }).join('');
   const rOpen = !state.expanded['dash:readiness'];
   const readiness = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:readiness"><div class="ex-cardhead-l">${chev(rOpen)}<h3>Readiness Index</h3></div><span class="muted ex-hint">Click a row to open</span></div>
-    <div class="ex-card-body ${rOpen ? '' : 'hide'}"><div class="ex-grid-wrap"><table class="ex-grid"><thead><tr><th>School</th><th>Opens</th><th>Overall</th>${tms.map(t => `<th class="ex-th-team"><span>${esc(t)}</span></th>`).join('')}</tr></thead><tbody>${grid}</tbody></table></div>
-    <div class="ex-legend"><span><i class="rag" style="background:${RAG.green}"></i>On track</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind / Blocked</span><span><i class="rag" style="background:${RAG.none}"></i>Not started</span></div></div></section>`;
+    <div class="ex-card-body ${rOpen ? '' : 'hide'}"><div class="ex-legend ex-legend-top"><span><i class="rag" style="background:${RAG.green}"></i>On track</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind / Blocked</span><span><i class="rag" style="background:${RAG.none}"></i>Not started</span></div>
+    <div class="ex-grid-wrap"><table class="ex-grid"><thead><tr><th>School</th><th>Opens</th><th>Overall</th>${tms.map(t => `<th class="ex-th-team"><span>${esc(t)}</span></th>`).join('')}</tr></thead><tbody>${grid}</tbody></table></div></div></section>`;
 
   // PRIORITIES & RISKS
   const soon = Date.now() + 90 * 864e5;
@@ -6896,7 +6919,7 @@ function dashboardHtml(list) {
   const wOpen = !state.expanded['dash:workload'];
   const workload = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:workload"><div class="ex-cardhead-l">${chev(wOpen)}<h3>Workload by Fiscal Year</h3></div><span class="muted ex-hint">when milestones are due</span></div><div class="ex-card-body ${wOpen ? '' : 'hide'}">${columnChart(list)}</div></section>`;
 
-  return `<div class="dash">${hero}${readiness}<div class="ex-cols2">${prCard}<div class="ex-side">${capital}${workload}</div></div></div>`;
+  return `<div class="dash">${hero}${readiness}${prCard}<div class="ex-cols2 ex-cols-even">${capital}${workload}</div></div>`;
 }
 function applyDrill(dim, val) {
   if (dim === 'team') state.filters.areas = new Set([val]);
