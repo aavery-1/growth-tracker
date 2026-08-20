@@ -6848,8 +6848,8 @@ function ragReady(list) {
   if (done === list.length) return { key: 'green', color: RAG.green, label: 'All complete' };
   if (eff.some(s => s === 'behind' || s === 'blocked')) return { key: 'red', color: RAG.red, label: 'Behind / Blocked · ' + pctc + '% done' };
   if (eff.some(s => s === 'at_risk')) return { key: 'yellow', color: RAG.yellow, label: 'At risk · ' + pctc + '% done' };
-  if (eff.some(s => s === 'on_track')) return { key: 'green', color: RAG.green, label: 'On track · ' + pctc + '% done' };
-  return { key: 'none', color: RAG.none, label: 'Not started yet' };
+  if (eff.some(s => s === 'on_track' || s === 'complete')) return { key: 'green', color: RAG.green, label: 'On track · ' + pctc + '% done' };
+  return { key: 'none', color: RAG.none, label: 'Not started' };
 }
 function ragDotR(list, prefix) { const r = ragReady(list); return `<span class="rag" style="background:${r.color}" title="${esc((prefix ? prefix + ' — ' : '') + r.label)}"></span>`; }
 function exLi(m, flag) { return `<div class="ex-li nodot" data-expand="${m.id}"><span class="ex-li-t">${flag || ''}${esc(m.activity)}</span><span class="ex-li-m muted">${esc(m.market)} · ${esc(m.functional_area)}</span><span class="ex-li-d muted">${m.due_date ? fmtDate(m.due_date) : ''}</span></div>`; }
