@@ -178,7 +178,7 @@
       "display_label": "ES3",
       "location": "Broward",
       "fiscal_year": 2028,
-      "opening_date": "2027-09-01"
+      "opening_date": "2027-08-01"
     },
     {
       "market": "Broward",
@@ -195,7 +195,7 @@
       "display_label": "MS3",
       "location": "Broward",
       "fiscal_year": 2028,
-      "opening_date": "2027-09-01"
+      "opening_date": "2027-08-01"
     },
     {
       "market": "Broward",
@@ -212,7 +212,7 @@
       "display_label": "ES4",
       "location": "Broward",
       "fiscal_year": 2029,
-      "opening_date": "2028-09-01"
+      "opening_date": "2028-08-01"
     },
     {
       "market": "Broward",
@@ -229,7 +229,7 @@
       "display_label": "MS4",
       "location": "Broward",
       "fiscal_year": 2029,
-      "opening_date": "2028-09-01"
+      "opening_date": "2028-08-01"
     },
     {
       "market": "Broward",
@@ -246,7 +246,7 @@
       "display_label": "ES5",
       "location": "Broward",
       "fiscal_year": 2031,
-      "opening_date": "2030-09-01"
+      "opening_date": "2030-08-01"
     },
     {
       "market": "Broward",
@@ -263,7 +263,7 @@
       "display_label": "MS5",
       "location": "Broward",
       "fiscal_year": 2031,
-      "opening_date": "2030-09-01"
+      "opening_date": "2030-08-01"
     },
     {
       "market": "Broward",
@@ -314,7 +314,7 @@
       "display_label": "HS2",
       "location": "Broward",
       "fiscal_year": 2031,
-      "opening_date": "2030-09-01"
+      "opening_date": "2030-08-01"
     },
     {
       "market": "Paterson",
@@ -331,7 +331,7 @@
       "display_label": "ES2",
       "location": "Paterson",
       "fiscal_year": 2028,
-      "opening_date": "2027-09-01"
+      "opening_date": "2027-08-01"
     },
     {
       "market": "Paterson",
@@ -348,7 +348,7 @@
       "display_label": "MS2",
       "location": "Paterson",
       "fiscal_year": 2028,
-      "opening_date": "2027-09-01"
+      "opening_date": "2027-08-01"
     },
     {
       "market": "Paterson",
@@ -365,7 +365,7 @@
       "display_label": "HS1",
       "location": "Paterson",
       "fiscal_year": 2031,
-      "opening_date": "2030-09-01"
+      "opening_date": "2030-08-01"
     },
     {
       "market": "Newark",
@@ -382,7 +382,7 @@
       "display_label": "ES6",
       "location": "Newark",
       "fiscal_year": 2029,
-      "opening_date": "2028-09-01"
+      "opening_date": "2028-08-01"
     },
     {
       "market": "Newark",
@@ -399,7 +399,7 @@
       "display_label": "MS6",
       "location": "Newark",
       "fiscal_year": 2029,
-      "opening_date": "2028-09-01"
+      "opening_date": "2028-08-01"
     },
     {
       "market": "Orange",
@@ -416,7 +416,7 @@
       "display_label": "ES1",
       "location": "Orange",
       "fiscal_year": 2030,
-      "opening_date": "2029-09-01"
+      "opening_date": "2029-08-01"
     },
     {
       "market": "Orange",
@@ -433,7 +433,7 @@
       "display_label": "MS1",
       "location": "Orange",
       "fiscal_year": 2030,
-      "opening_date": "2029-09-01"
+      "opening_date": "2029-08-01"
     },
     {
       "market": "Orange",
@@ -450,7 +450,7 @@
       "display_label": "ES2",
       "location": "Orange",
       "fiscal_year": 2031,
-      "opening_date": "2030-09-01"
+      "opening_date": "2030-08-01"
     },
     {
       "market": "Orange",
@@ -467,7 +467,7 @@
       "display_label": "MS2",
       "location": "Orange",
       "fiscal_year": 2031,
-      "opening_date": "2030-09-01"
+      "opening_date": "2030-08-01"
     },
     {
       "market": "Orange",
@@ -484,7 +484,7 @@
       "display_label": "HS1",
       "location": "Orange",
       "fiscal_year": 2032,
-      "opening_date": "2031-09-01"
+      "opening_date": "2031-08-01"
     },
     {
       "market": "Orange",
@@ -501,7 +501,7 @@
       "display_label": "ES3",
       "location": "Orange",
       "fiscal_year": 2033,
-      "opening_date": "2032-09-01"
+      "opening_date": "2032-08-01"
     },
     {
       "market": "Orange",
@@ -518,7 +518,7 @@
       "display_label": "MS3",
       "location": "Orange",
       "fiscal_year": 2033,
-      "opening_date": "2032-09-01"
+      "opening_date": "2032-08-01"
     }
   ],
   "campaigns": [

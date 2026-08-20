@@ -542,7 +542,7 @@ function ragDotP(list, prefix) { const r = ragProgress(list); return `<span clas
 function ragReady(list) {
   if (!list.length) return { key: 'none', color: RAG.none, label: 'Not started' };
   const eff = list.map(effectiveStatus), done = eff.filter(s => s === 'complete').length, pctc = Math.round(100 * done / list.length);
-  if (done === list.length) return { key: 'cleared', color: RAG.green, label: 'Cleared · gate met' };
+  if (done === list.length) return { key: 'green', color: RAG.green, label: 'Cleared · gate met' };
   if (eff.some(s => s === 'behind' || s === 'blocked')) return { key: 'red', color: RAG.red, label: 'Behind · ' + pctc + '% cleared' };
   if (eff.some(s => s === 'at_risk')) return { key: 'yellow', color: RAG.yellow, label: 'At risk · ' + pctc + '% cleared' };
   if (eff.some(s => s === 'on_track' || s === 'complete')) return { key: 'blue', color: RAG.blue, label: 'In progress · ' + pctc + '% cleared' };
@@ -814,7 +814,7 @@ function saveSchool() {
   s.pod_number = $('#sPod').value ? +$('#sPod').value : null;
   s.market = $('#sMarket').value; s.location = s.market; s.state = stateOfMarket(s.market);
   s.openingFY = +$('#sFy').value; s.fiscal_year = s.openingFY; s.openingQuarter = $('#sQ').value;
-  s.opening_date = `${s.openingFY - 1}-09-01`; s.confirmed = $('#sConf').checked;
+  s.opening_date = `${s.openingFY - 1}-08-01`; s.confirmed = $('#sConf').checked;
   const shiftEl = $('#sShift');
   const shift = (old.openingFY && s.openingFY && (!shiftEl || shiftEl.checked)) ? (s.openingFY - old.openingFY) : 0;
   if (isNew) { delete s._new; state.data.schools.push(s); }
