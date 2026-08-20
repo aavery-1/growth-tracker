@@ -1503,6 +1503,44 @@ body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 #addSchool:hover, #newItem:hover { transform: translateY(-2px); box-shadow: 0 11px 28px rgba(16,24,64,.36); }
 @media (max-width: 760px) { #addSchool, #newItem { right: 16px; bottom: 16px; height: 50px; padding: 0 20px; } }
 
+/* ---------- threaded notes (task + school modals) ---------- */
+.notes-field { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--outline-variant, #dfe2ea); }
+.notes-label { display: block; font-size: 12px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; color: var(--muted, #5a6172); margin-bottom: 8px; }
+.note-thread { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; padding-right: 4px; margin-bottom: 10px; }
+.note-item { background: var(--surface-container-low, #f4f6fa); border: 1px solid var(--outline-variant, #e4e7ef); border-radius: 10px; padding: 8px 11px; }
+.note-meta { font-size: 11px; color: var(--muted, #6b7280); margin-bottom: 3px; }
+.note-meta b { color: var(--on-surface, #1a1f2b); font-weight: 700; }
+.note-text { font-size: 13.5px; line-height: 1.45; color: var(--on-surface, #1a1f2b); white-space: pre-wrap; word-break: break-word; }
+.note-empty { font-size: 13px; font-style: italic; padding: 4px 2px; }
+.note-add { display: flex; gap: 8px; align-items: stretch; }
+.note-author { flex: 0 0 34%; min-width: 0; }
+.note-input { flex: 1 1 auto; min-width: 0; }
+.note-add input { padding: 9px 11px; border: 1px solid var(--outline, #cfd4df); border-radius: 9px; font: inherit; font-size: 13.5px; background: var(--surface, #fff); color: var(--on-surface, #1a1f2b); }
+.note-add input:focus { outline: 2px solid var(--primary, #16357F); outline-offset: -1px; border-color: transparent; }
+.note-add .btn-sm { flex: 0 0 auto; white-space: nowrap; }
+@media (max-width: 620px) { .note-author { flex-basis: 40%; } }
+
+/* ---------- Project Plan streamlining: focus toggle, slim cards, group outline ---------- */
+.btn-focus { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 15px; border: 1px solid var(--outline, #cfd4df); border-radius: 999px; background: var(--surface, #fff); color: var(--on-surface, #1a1f2b); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.btn-focus:hover { border-color: var(--primary, #16357F); }
+.btn-focus.on { background: #FEF3F2; border-color: #F0B4AE; color: #B42318; }
+.btn-focus .focus-n { display: inline-flex; align-items: center; justify-content: center; min-width: 19px; height: 19px; padding: 0 5px; border-radius: 999px; background: #DC2626; color: #fff; font-size: 11px; font-weight: 800; }
+.btn-focus.on .focus-n { background: #B42318; }
+.btn-ghost { background: transparent; border: 1px solid var(--outline-variant, #dfe2ea); color: var(--on-surface-variant, #5a6172); }
+.btn-ghost:hover { border-color: var(--outline, #cfd4df); background: var(--surface-container-low, #f4f6fa); }
+.tb-group.is-dim { opacity: .5; }
+.tb-group.is-dim select { cursor: not-allowed; }
+
+.pg-name { flex: 1 1 auto; }
+.pm-gflag { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: #FEF3F2; color: #B42318; border: 1px solid #F5C6C0; font-size: 11px; font-weight: 800; }
+.plan-group.is-collapsed { margin-bottom: 10px; }
+.plan-group.is-collapsed .plan-group-head { margin-bottom: 0; opacity: .92; }
+
+.plan-focus-note { font-size: 13px; color: var(--on-surface-variant, #5a6172); margin: 2px 2px 12px; font-weight: 600; }
+
+.kc-foot-r { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
+.kc-notes { display: inline-flex; align-items: center; gap: 2px; font-size: 11px; color: var(--on-surface-variant, #6b7280); white-space: nowrap; }
+
 </style>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%2316357F'/><text x='50' y='70' font-size='56' font-weight='700' text-anchor='middle' fill='white' font-family='Roboto,Arial'>K</text></svg>" />
   <script>
@@ -6381,7 +6419,8 @@ function lsDel(k) { try { lsDel(k); } catch (e) {} }
 const state = {
   data: null,
   view: 'progress',              // progress(dashboard) | timeline | plan
-  planGroup: 'stage',            // stage | team | school | priority
+  planGroup: 'team',             // team | stage | market | year | school  (default: Workstream)
+  planFocus: false,              // "Needs attention" quick filter (overdue/due-soon/behind)
   progressView: 'charts',        // charts | list
   progressDim: 'team',           // team | year | market | school | state
   expanded: {},                  // progress section/item expand map
@@ -6411,6 +6450,34 @@ function fmtMoney(n) { return n >= 1e6 ? '$' + (n / 1e6).toFixed(n % 1e6 ? 1 : 0
 function parseDate(s) { return s ? new Date(s + 'T00:00:00') : null; }
 function daysUntil(s) { const d = parseDate(s); if (!d) return null; return Math.round((d - new Date(new Date().toDateString())) / 86400000); }
 function fmtDate(s) { const d = parseDate(s); return d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'; }
+/* ---------- threaded notes (attach to a task or school; surface wherever it's opened) ---------- */
+function fmtWhen(t) { try { return new Date(t).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } }
+function noteItemHtml(nt) { return `<div class="note-item"><div class="note-meta"><b>${nt.by ? esc(nt.by) : 'Someone'}</b> · ${esc(fmtWhen(nt.t))}</div><div class="note-text">${esc(nt.text)}</div></div>`; }
+function postNote(wrap) {
+  if (!wrap) return;
+  const kind = wrap.dataset.notekind, id = wrap.dataset.noteid;
+  const inp = wrap.querySelector('#noteInput'), au = wrap.querySelector('#noteAuthor');
+  const text = (inp.value || '').trim(); if (!text) { inp.focus(); return; }
+  const by = (au.value || '').trim();
+  const ent = kind === 'school' ? (state.data.schools || []).find(x => x.id === id) : findM(id);
+  if (!ent) return;
+  if (!Array.isArray(ent.noteLog)) ent.noteLog = [];
+  const nt = { t: Date.now(), by, text };
+  ent.noteLog.push(nt);
+  if (by) lsSet('ngc_author', by);
+  autosave();
+  const thread = wrap.querySelector('.note-thread');
+  const empty = thread.querySelector('.note-empty'); if (empty) empty.remove();
+  thread.insertAdjacentHTML('beforeend', noteItemHtml(nt));
+  inp.value = ''; inp.focus();
+  thread.scrollTop = thread.scrollHeight;
+}
+function notesSection(kind, id, log) {
+  const items = (log || []).slice().sort((a, b) => a.t - b.t).map(noteItemHtml).join('') || '<div class="note-empty muted">No notes yet — add the first update.</div>';
+  return `<div class="notes-field" data-notekind="${kind}" data-noteid="${esc(id)}"><label class="notes-label">Notes &amp; updates</label>
+    <div class="note-thread">${items}</div>
+    <div class="note-add"><input id="noteAuthor" class="note-author" placeholder="Your name" value="${esc(lsGet('ngc_author') || '')}"><input id="noteInput" class="note-input" placeholder="Add a note or status update…"><button class="btn btn-filled btn-sm" id="noteAdd">Post</button></div></div>`;
+}
 
 /* ---------- status meta ---------- */
 const SM = k => (state.data.meta.statusMeta[k] || { label: k, color: '#ccc', text: '#000' });
@@ -6633,7 +6700,7 @@ function ganttBodyHtml() {
     </section>`;
   }).join('');
   return `<div class="ot">${body}</div>
-    <div class="ot-legend"><span><i class="rag" style="background:${RAG.green}"></i>On track</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind / blocked</span><span><i class="rag" style="background:${RAG.none}"></i>Not started</span><span class="muted">· click a school to open its tasks</span></div>`;
+    <div class="ot-legend"><span><i class="rag" style="background:${RAG.none}"></i>Not started</span><span><i class="rag" style="background:${RAG.blue}"></i>In progress</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind</span><span><i class="rag" style="background:${RAG.green}"></i>Cleared</span><span class="muted">· click a school to open its tasks</span></div>`;
 }
 function renderTimeline() {
   $('#view-timeline').innerHTML = `
@@ -6770,15 +6837,20 @@ function renderProgress() {
    TAB 3 — PROJECT PLAN (Kanban)
    ============================================================ */
 function planCard(m) {
-  const pr = PRIORITY[m.priority] || PRIORITY.medium, es = effectiveStatus(m), t = timingLevel(m);
-  const scol = SM(es).color;
-  const tags = (m.tags || []).slice(0, 2).map(t => `<span class="ptag">${esc(t)}</span>`).join('');
+  const es = effectiveStatus(m), t = timingLevel(m), scol = SM(es).color;
   const urgent = t === 'overdue' || t === 'this_month';
-  return `<div class="kcard ${urgent ? 'urgent' : ''}" draggable="true" data-id="${m.id}" style="border-left-color:${pr.color}">
+  const nc = (m.noteLog || []).length;
+  return `<div class="kcard ${urgent ? 'urgent' : ''}" draggable="true" data-id="${m.id}" style="border-left-color:${scol}">
     <div class="kc-top"><span class="kc-title" data-expand="${m.id}">${esc(m.activity)}</span></div>
-    <div class="kc-tags"><span class="ptag prio prio-${m.priority}" title="Priority"><i style="background:${pr.color}"></i>${pr.label}</span>${tags}</div>
-    <div class="kc-foot">${m.owner ? `<span class="owner-avatar sm">${esc(initials(m.owner))}</span><span class="kc-owner">${esc(m.owner)}</span>` : '<span class="muted">Unassigned</span>'}<span class="kc-due">${dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : '')}</span></div>
+    <div class="kc-foot">${m.owner ? `<span class="owner-avatar sm">${esc(initials(m.owner))}</span><span class="kc-owner">${esc(m.owner)}</span>` : '<span class="muted">Unassigned</span>'}<span class="kc-foot-r">${nc ? `<span class="kc-notes" title="${nc} note${nc === 1 ? '' : 's'}">💬 ${nc}</span>` : ''}<span class="kc-due">${dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : '')}</span></span></div>
   </div>`;
+}
+function planFocusHtml() {
+  const list = filtered().filter(m => ['overdue', 'this_month'].includes(timingLevel(m)) || ['behind', 'at_risk'].includes(effectiveStatus(m)));
+  if (!list.length) return '<div class="empty-state">Nothing needs attention right now — no overdue, due-soon, or off-track tasks in this filter.</div>';
+  const rank = m => timingLevel(m) === 'overdue' ? 0 : effectiveStatus(m) === 'behind' ? 1 : timingLevel(m) === 'this_month' ? 2 : 3;
+  list.sort((a, b) => rank(a) - rank(b) || (parseDate(a.due_date) || 9e15) - (parseDate(b.due_date) || 9e15));
+  return `<div class="plan-focus-note">${list.length} task${list.length === 1 ? '' : 's'} overdue, due this month, or off-track — sorted by urgency.</div><div class="plan-cards">${list.map(planCard).join('')}</div>`;
 }
 function planKanbanHtml() {
   const list = filtered();
@@ -6802,15 +6874,27 @@ function planListHtml() {
   list.forEach(m => { const k = keyOf(m) || '—'; (g[k] = g[k] || []).push(m); });
   const keys = Object.keys(g).sort((a, b) => gb === 'year' ? (order[a] || 9999) - (order[b] || 9999) : a.localeCompare(b));
   if (!keys.length) return '<div class="empty-state">No tasks match the filters.</div>';
-  return keys.map(k => { const ck = 'pg:' + k, open = !state.expanded[ck]; return `<div class="plan-group"><div class="plan-group-head" data-toggle="${esc(ck)}">${chev(open)}${esc(k)}<span class="pm-gcount">${g[k].length}</span></div><div class="plan-cards ${open ? '' : 'hide'}">${g[k].map(planCard).join('')}</div></div>`; }).join('');
+  state._planKeys = keys.map(k => 'pg:' + k);
+  // groups default COLLAPSED so the page opens as a scannable outline, not 132 cards
+  return keys.map(k => {
+    const ck = 'pg:' + k, open = !!state.expanded[ck];
+    const risk = g[k].filter(m => ['overdue', 'this_month'].includes(timingLevel(m)) || ['behind', 'at_risk'].includes(effectiveStatus(m))).length;
+    const flag = risk ? `<span class="pm-gflag" title="${risk} need attention">${risk}</span>` : '';
+    return `<div class="plan-group ${open ? '' : 'is-collapsed'}"><div class="plan-group-head" data-toggle="${esc(ck)}">${chev(open)}<span class="pg-name">${esc(k)}</span>${flag}<span class="pm-gcount">${g[k].length}</span></div><div class="plan-cards ${open ? '' : 'hide'}">${g[k].map(planCard).join('')}</div></div>`;
+  }).join('');
 }
-function planBodyHtml() { return state.planGroup === 'stage' ? planKanbanHtml() : planListHtml(); }
+function planBodyHtml() {
+  if (state.planFocus) return planFocusHtml();
+  return state.planGroup === 'stage' ? planKanbanHtml() : planListHtml();
+}
 function renderPlan() {
   const list = filtered();
-  const risk = list.filter(m => ['behind', 'at_risk'].includes(effectiveStatus(m))).length;
-  const viewSel = `<label class="tb-group">Group by
-    <select id="planGroupSel">${[['stage', 'Kanban (stages)'], ['team', 'Workstream'], ['market', 'Market'], ['year', 'Year'], ['school', 'School opening']].map(([v, l]) => `<option value="${v}" ${state.planGroup === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`;
-  const right = `${viewSel}<button class="btn btn-filled" id="newItem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>New task</button>`;
+  const focusN = list.filter(m => ['overdue', 'this_month'].includes(timingLevel(m)) || ['behind', 'at_risk'].includes(effectiveStatus(m))).length;
+  const focusBtn = `<button class="btn btn-focus ${state.planFocus ? 'on' : ''}" id="planFocus" title="Show only overdue, due-soon, and off-track tasks">Needs attention${focusN ? ` <span class="focus-n">${focusN}</span>` : ''}</button>`;
+  const viewSel = `<label class="tb-group ${state.planFocus ? 'is-dim' : ''}">Group by
+    <select id="planGroupSel" ${state.planFocus ? 'disabled' : ''}>${[['team', 'Workstream'], ['school', 'School opening'], ['market', 'Market'], ['year', 'Year'], ['stage', 'Kanban (stages)']].map(([v, l]) => `<option value="${v}" ${state.planGroup === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`;
+  const expandBtns = (!state.planFocus && state.planGroup !== 'stage') ? `<button class="btn btn-ghost btn-sm" id="planExpandAll">Expand all</button><button class="btn btn-ghost btn-sm" id="planCollapseAll">Collapse all</button>` : '';
+  const right = `${focusBtn}${viewSel}${expandBtns}<button class="btn btn-filled" id="newItem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>New task</button>`;
   $('#view-plan').innerHTML = `
     <div class="view-head"><div><h2>Project Plan</h2></div></div>
     ${filterBar(['states', 'markets', 'fys', 'areas'], { search: true, school: true, right })}
@@ -6837,8 +6921,9 @@ function schoolsInView() {
 function fmtMoney(n) { return n >= 1e6 ? '$' + (n / 1e6).toFixed(n % 1e6 ? 1 : 0) + 'M' : n >= 1e3 ? '$' + Math.round(n / 1e3) + 'K' : '$' + (n || 0); }
 function ragDot(st, title) { const c = st === 'x' ? '#C9CDD6' : SM(st).color; return `<span class="rag" style="background:${c}" title="${esc(title || (st === 'x' ? 'no tasks' : SM(st).label))}"></span>`; }
 /* consistent R/Y/G by milestone completion: <50% red · ≥50% yellow · all complete green */
-/* readiness = traffic-light status, deliberately distinct from the market brand colors */
-const RAG = { green: '#16A34A', yellow: '#EAB308', red: '#DC2626', none: '#C7CCD6' };
+/* greenlight/gating status per domain — deliberately distinct from market brand colors.
+   grey = not started · blue = in progress · green = cleared (gate met) · amber/red = off-track */
+const RAG = { green: '#16A34A', blue: '#2563EB', yellow: '#EAB308', red: '#DC2626', none: '#C7CCD6' };
 function ragProgress(list) {
   if (!list.length) return { key: 'none', color: RAG.none, label: 'No tasks yet', pct: null };
   const done = list.filter(m => effectiveStatus(m) === 'complete').length, pctc = Math.round(100 * done / list.length);
@@ -6849,12 +6934,12 @@ function ragProgress(list) {
 function ragDotP(list, prefix) { const r = ragProgress(list); return `<span class="rag" style="background:${r.color}" title="${esc((prefix ? prefix + ' — ' : '') + r.label)}"></span>`; }
 /* readiness = are we ON SCHEDULE (timing-aware), with % complete kept in the tooltip */
 function ragReady(list) {
-  if (!list.length) return { key: 'none', color: RAG.none, label: 'No tasks yet' };
+  if (!list.length) return { key: 'none', color: RAG.none, label: 'Not started' };
   const eff = list.map(effectiveStatus), done = eff.filter(s => s === 'complete').length, pctc = Math.round(100 * done / list.length);
-  if (done === list.length) return { key: 'green', color: RAG.green, label: 'All complete' };
-  if (eff.some(s => s === 'behind' || s === 'blocked')) return { key: 'red', color: RAG.red, label: 'Behind / Blocked · ' + pctc + '% done' };
-  if (eff.some(s => s === 'at_risk')) return { key: 'yellow', color: RAG.yellow, label: 'At risk · ' + pctc + '% done' };
-  if (eff.some(s => s === 'on_track' || s === 'complete')) return { key: 'green', color: RAG.green, label: 'On track · ' + pctc + '% done' };
+  if (done === list.length) return { key: 'cleared', color: RAG.green, label: 'Cleared · gate met' };
+  if (eff.some(s => s === 'behind' || s === 'blocked')) return { key: 'red', color: RAG.red, label: 'Behind · ' + pctc + '% cleared' };
+  if (eff.some(s => s === 'at_risk')) return { key: 'yellow', color: RAG.yellow, label: 'At risk · ' + pctc + '% cleared' };
+  if (eff.some(s => s === 'on_track' || s === 'complete')) return { key: 'blue', color: RAG.blue, label: 'In progress · ' + pctc + '% cleared' };
   return { key: 'none', color: RAG.none, label: 'Not started' };
 }
 function ragDotR(list, prefix) { const r = ragReady(list); return `<span class="rag" style="background:${r.color}" title="${esc((prefix ? prefix + ' — ' : '') + r.label)}"></span>`; }
@@ -6905,8 +6990,8 @@ function dashboardHtml(list) {
     return `<tr class="ex-band"><td colspan="${3 + tms.length}"><span class="state-badge" style="background:${stColor(st.code)}">${st.code}</span> ${esc(st.name)} <span class="muted">· ${rows.length} openings</span></td></tr>${body}`;
   }).join('');
   const rOpen = !state.expanded['dash:readiness'];
-  const readiness = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:readiness"><div class="ex-cardhead-l">${chev(rOpen)}<h3>Readiness Index</h3></div><span class="muted ex-hint">Click a row to open</span></div>
-    <div class="ex-card-body ${rOpen ? '' : 'hide'}"><div class="ex-legend ex-legend-top"><span><i class="rag" style="background:${RAG.green}"></i>On track</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind / Blocked</span><span><i class="rag" style="background:${RAG.none}"></i>Not started</span></div>
+  const readiness = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:readiness"><div class="ex-cardhead-l">${chev(rOpen)}<h3>Greenlight Readiness</h3></div><span class="muted ex-hint">Gate status by domain · click a row to open</span></div>
+    <div class="ex-card-body ${rOpen ? '' : 'hide'}"><div class="ex-legend ex-legend-top"><span><i class="rag" style="background:${RAG.none}"></i>Not started</span><span><i class="rag" style="background:${RAG.blue}"></i>In progress</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind</span><span><i class="rag" style="background:${RAG.green}"></i>Cleared</span></div>
     <div class="ex-grid-wrap"><table class="ex-grid"><thead><tr><th>School</th><th>Opens</th><th>Overall</th>${tms.map(t => `<th class="ex-th-team"><span>${esc(t)}</span></th>`).join('')}</tr></thead><tbody>${grid}</tbody></table></div></div></section>`;
 
   // PRIORITIES & RISKS
@@ -6917,7 +7002,7 @@ function dashboardHtml(list) {
   const risksOpen = !state.expanded.dashrisks_collapsed;
   const pOpen = !state.expanded['dash:priorities'];
   const prCard = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:priorities"><div class="ex-cardhead-l">${chev(pOpen)}<h3>Priorities &amp; Risks</h3></div></div>
-    <div class="ex-card-body ${pOpen ? '' : 'hide'}"><div class="dash-block-h">Next 90 days<span class="dash-count">${upcoming.length}</span></div>
+    <div class="ex-card-body ${pOpen ? '' : 'hide'}"><div class="dash-block-h">Key milestones &amp; greenlights · next 90 days<span class="dash-count">${upcoming.length}</span></div>
     ${upcoming.length ? `<div class="ex-list">${upcoming.map(m => exLi(m, m.greenlight ? '◆ ' : m.transition ? '⇄ ' : '')).join('')}</div>` : '<div class="muted ex-empty">Nothing in the next 90 days.</div>'}
     <div class="dash-block-h toggle" data-toggle="dashrisks_collapsed">${chev(risksOpen)}Blocked or past due<span class="dash-count ${stuck.length ? 'bad' : ''}">${stuck.length}</span></div>
     <div class="ex-risks ${risksOpen ? '' : 'hide'}">${stuck.length ? `<div class="ex-list">${stuck.slice(0, 20).map(m => exLi(m, m.status === 'blocked' ? '⛔ ' : '')).join('')}${stuck.length > 20 ? `<div class="muted ex-empty">+ ${stuck.length - 20} more</div>` : ''}</div>` : '<div class="muted ex-empty">Nothing blocked or overdue.</div>'}</div></div></section>`;
@@ -6933,7 +7018,7 @@ function dashboardHtml(list) {
 
   // WORKLOAD — pacing across fiscal years
   const wOpen = !state.expanded['dash:workload'];
-  const workload = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:workload"><div class="ex-cardhead-l">${chev(wOpen)}<h3>Workload by Fiscal Year</h3></div><span class="muted ex-hint">when milestones are due</span></div><div class="ex-card-body ${wOpen ? '' : 'hide'}">${columnChart(list)}</div></section>`;
+  const workload = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:workload"><div class="ex-cardhead-l">${chev(wOpen)}<h3>Milestones Due by Fiscal Year</h3></div></div><div class="ex-card-body ${wOpen ? '' : 'hide'}">${columnChart(list)}</div></section>`;
 
   return `<div class="dash">${hero}${readiness}${prCard}<div class="ex-cols2 ex-cols-even">${capital}${workload}</div></div>`;
 }
@@ -6987,7 +7072,8 @@ function openModal(id) {
     <div class="field-row"><div class="field"><label>Owner</label><input id="mOwner" value="${esc(m.owner)}"></div><div class="field"><label>Due date</label><input id="mDue" type="date" value="${esc(m.due_date || '')}"></div></div>
     <div class="field"><label>Dependency / blockers</label><input id="mDep" value="${esc(m.dependency)}"></div>
     <div class="field"><label>Notes / next steps</label><textarea id="mNotes">${esc(m.notes)}</textarea></div>
-    <div class="field-row"><label class="field-check"><input type="checkbox" id="mKey" ${m.keyMilestone ? 'checked' : ''}> ★ Key milestone</label><label class="field-check"><input type="checkbox" id="mTrans" ${m.transition ? 'checked' : ''}> ⇄ Transition to Regional Ops</label></div>`;
+    <div class="field-row"><label class="field-check"><input type="checkbox" id="mKey" ${m.keyMilestone ? 'checked' : ''}> ★ Key milestone</label><label class="field-check"><input type="checkbox" id="mTrans" ${m.transition ? 'checked' : ''}> ⇄ Transition to Regional Ops</label></div>
+    ${notesSection('task', m.id, m.noteLog)}`;
   $('#modalBackdrop').classList.add('open');
 }
 function saveModal() {
@@ -7071,7 +7157,8 @@ function openSchoolModal(id) {
       ${labelField}
       ${marketField}
       <div class="field-row">${confField}</div>
-    </details>`;
+    </details>
+    ${notesSection('school', s.id, s.noteLog)}`;
   $('#modalDelete').style.display = isNew ? 'none' : '';
   $('#modalBackdrop').classList.add('open');
 }
@@ -7338,9 +7425,11 @@ function wireEvents() {
   $('#modalBackdrop').addEventListener('click', e => { if (e.target.id === 'modalBackdrop') closeModal(); });
   // the modal lives outside .container, so clicks inside it need their own delegation
   $('#modalBody').addEventListener('click', e => {
+    if (e.target.closest('#noteAdd')) return postNote(e.target.closest('.notes-field'));
     if (e.target.closest('#addTaskForSchool')) { taskReturnSchool = schoolId; return addTaskForSchool(); }
     const ex = e.target.closest('[data-expand]'); if (ex) { if (modalMode === 'school') taskReturnSchool = schoolId; return openModal(ex.dataset.expand); }
   });
+  $('#modalBody').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'noteInput') { e.preventDefault(); postNote(e.target.closest('.notes-field')); } });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeDrawer(); closePopover(); closeConfirm(); } });
 
   // keep timing colors live vs. the real date (on return-to-tab and hourly rollover)
@@ -7370,6 +7459,9 @@ function wireEvents() {
     const es2 = e.target.closest('[data-editschool]'); if (es2) return openSchoolModal(es2.dataset.editschool);
     const ds = e.target.closest('[data-drillschool]'); if (ds) return openSchoolModal(ds.dataset.drillschool);
     const gp = e.target.closest('[data-goplan]'); if (gp) { const m = findM(gp.dataset.goplan); state.filters.search = m ? m.workstream : ''; setView('plan'); return; }
+    if (e.target.closest('#planFocus')) { state.planFocus = !state.planFocus; return renderPlan(); }
+    if (e.target.closest('#planExpandAll')) { (state._planKeys || []).forEach(k => state.expanded[k] = true); return refreshBody(); }
+    if (e.target.closest('#planCollapseAll')) { (state._planKeys || []).forEach(k => delete state.expanded[k]); return refreshBody(); }
     if (e.target.closest('#addSchool')) return openSchoolModal(null);
     if (e.target.closest('#addTaskForSchool')) return addTaskForSchool();
     if (e.target.closest('#newItem')) return addItem();
