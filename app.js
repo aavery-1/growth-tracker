@@ -433,7 +433,6 @@ function renderProgress() {
   const printBtn = isCharts ? `<button class="btn btn-tonal" id="dashPrint"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Print / PDF</button>` : '';
   $('#view-progress').innerHTML = `
     <div class="view-head"><div><h2>Dashboard</h2></div><div class="vh-actions">${toggle}${printBtn}</div></div>
-    ${isCharts ? northStarHtml() : ''}
     ${filterBar(['states', 'markets', 'areas', 'statuses'], { school: true })}
     ${openingYearBar()}
     <div id="viewBody">${progressBodyHtml()}</div>`;
@@ -618,6 +617,17 @@ function dashboardHtml(list) {
     <div class="dash-hero-head"><div class="dash-hero-eyebrow">Upcoming school openings</div></div>
     <div class="dash-cohorts">${cohorts.map(cohortCard).join('') || '<div class="muted" style="opacity:.8">No upcoming openings in view.</div>'}</div></section>`;
 
+  // KPI SUMMARY — restrained, clearly-labeled cards; each number tied to a click-through
+  const b = cnt('blue'), attention = r + y, onTrack = total - attention;
+  const overdue = list.filter(m => timingLevel(m) === 'overdue').length;
+  const kpi = (num, den, lbl, sub, cls, drill) => `<${drill ? 'button' : 'div'} class="kcard2 ${cls || ''} ${drill ? 'drill' : ''}" ${drill || ''}><div class="k-num">${num}${den ? `<span class="k-den">${den}</span>` : ''}</div><div class="k-lbl">${lbl}</div><div class="k-sub">${sub}</div></${drill ? 'button' : 'div'}>`;
+  const kpiStrip = `<section class="kpi-strip">
+    ${kpi(onTrack, `/ ${total}`, 'Schools on track', 'Not slipping on any milestone')}
+    ${kpi(attention, '', 'Need attention', attention ? 'Behind or at risk — view' : 'Nothing off-track', attention ? 'k-alert' : '', attention ? 'data-drilldim="riskbehind" data-drillval=""' : '')}
+    ${nextC ? kpi(nextC.mo <= 0 ? 'Now' : nextC.mo, nextC.mo <= 0 ? '' : ' mo', 'Next opening', `Fall ${nextC.fy - 1} · ${esc(nextC.mkts.join(' · '))}`, '', `data-drilldim="year" data-drillval="${nextC.fy}"`) : ''}
+    ${kpi(overdue, '', 'Milestones overdue', overdue ? 'Past due — view' : 'None past due', overdue ? 'k-alert' : '', overdue ? 'data-drilldim="timing" data-drillval="overdue"' : '')}
+  </section>`;
+
 
   // READINESS INDEX — where every opening stands, by workstream (full width)
   const grid = statesMeta().map(st => {
@@ -662,7 +672,7 @@ function dashboardHtml(list) {
   const wOpen = !state.expanded['dash:workload'];
   const workload = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:workload"><div class="ex-cardhead-l">${chev(wOpen)}<h3>Milestones Due by Fiscal Year</h3></div></div><div class="ex-card-body ${wOpen ? '' : 'hide'}">${columnChart(list)}</div></section>`;
 
-  return `<div class="dash">${hero}${readiness}${prCard}<div class="ex-cols2 ex-cols-even">${capital}${workload}</div></div>`;
+  return `<div class="dash">${hero}${kpiStrip}${readiness}${prCard}<div class="ex-cols2 ex-cols-even">${capital}${workload}</div></div>`;
 }
 function applyDrill(dim, val) {
   if (dim === 'team') state.filters.areas = new Set([val]);
