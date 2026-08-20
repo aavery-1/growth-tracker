@@ -627,7 +627,7 @@ function dashboardHtml(list) {
       const sm = schoolMs(s);
       const cells = tms.map(t => { const tl = sm.filter(m => m.functional_area === t); return `<td>${tl.length ? ragDotR(tl, t) : ragDot('x')}</td>`; }).join('');
       return `<tr class="ex-grow" data-drillschool="${esc(s.id)}"><td class="ex-sch"><b>${esc(s.display_label)}</b> <span class="muted">${esc(s.market)}</span></td>
-        <td class="ex-open">${esc(fyLabel(s.openingFY))}</td><td>${ragDotR(sm, 'Overall')}</td>${cells}</tr>`;
+        <td class="ex-open">${s.openingFY ? 'Aug ' + (s.openingFY - 1) : '—'}</td><td>${ragDotR(sm, 'Overall')}</td>${cells}</tr>`;
     }).join('');
     return `<tr class="ex-band"><td colspan="${3 + tms.length}"><span class="state-badge" style="background:${stColor(st.code)}">${st.code}</span> ${esc(st.name)} <span class="muted">· ${rows.length} openings</span></td></tr>${body}`;
   }).join('');
@@ -704,17 +704,21 @@ function openModal(id) {
   const opt = (arr, val) => arr.map(x => Array.isArray(x) ? `<option value="${x[0]}" ${x[0] === val ? 'selected' : ''}>${esc(x[1])}</option>` : `<option ${x === val ? 'selected' : ''}>${esc(x)}</option>`).join('');
   const schoolChecks = state.data.schools.filter(s => s.market === m.market).map(s => `<label class="field-check"><input type="checkbox" class="m-school" value="${esc(s.code)}" ${(m.schools || []).includes(s.code) ? 'checked' : ''}> ${esc(s.display_label)}</label>`).join('') || '<span class="muted">No schools in this market.</span>';
   $('#modalBody').innerHTML = `
-    <div class="field"><label>Title</label><textarea id="mAct">${esc(m.activity)}</textarea></div>
+    <div class="field"><label>Task</label><textarea id="mAct">${esc(m.activity)}</textarea></div>
+    <div class="field-row"><div class="field"><label>Owner</label><input id="mOwner" value="${esc(m.owner)}" placeholder="Who owns this"></div><div class="field"><label>Due date</label><input id="mDue" type="date" value="${esc(m.due_date || '')}"></div></div>
+    <div class="field"><label>Status</label><select id="mStatus">${opt(meta().statuses.map(s => [s, SM(s).label]), m.status)}</select>
+      <div class="help-text">Overdue or due-this-month tasks flag automatically, even if marked “On track.”</div></div>
     <div class="field-row"><div class="field"><label>Market / location</label><select id="mMarket">${opt(markets(), m.market)}</select></div><div class="field"><label>Workstream</label><select id="mTeam">${opt(teams(), m.functional_area)}</select></div></div>
-    <div class="field"><label>Workstream</label><input id="mWs" value="${esc(m.workstream)}"></div>
-    <div class="field"><label>Schools</label><div id="mSchools" class="check-box">${schoolChecks}</div></div>
-    <div class="field-row"><div class="field"><label>Target FY</label><select id="mFy"><option value="">—</option>${fyList().map(fy => `<option value="${fy}" ${m.targetFY === fy ? 'selected' : ''}>${fyLabel(fy)}</option>`).join('')}</select></div><div class="field"><label>Quarter</label><select id="mQ">${opt(['', 'Q1', 'Q2', 'Q3', 'Q4'], m.targetQuarter)}</select></div></div>
-    <div class="field-row"><div class="field"><label>Status (health)</label><select id="mStatus">${opt(meta().statuses.map(s => [s, SM(s).label]), m.status)}</select></div><div class="field"><label>Stage (workflow)</label><select id="mStage">${opt(meta().stages, m.stage || 'to_do')}</select></div></div>
-    <div class="field-row"><div class="field"><label>Priority</label><select id="mPri">${opt([['high', 'High'], ['medium', 'Medium'], ['low', 'Low']], m.priority)}</select></div><div class="field"><label>Progress %</label><input id="mProg" type="number" min="0" max="100" value="${m.progress_percent || 0}"></div></div>
-    <div class="field-row"><div class="field"><label>Owner</label><input id="mOwner" value="${esc(m.owner)}"></div><div class="field"><label>Due date</label><input id="mDue" type="date" value="${esc(m.due_date || '')}"></div></div>
-    <div class="field"><label>Dependency / blockers</label><input id="mDep" value="${esc(m.dependency)}"></div>
+    <div class="field"><label>School(s) this belongs to</label><div id="mSchools" class="check-box">${schoolChecks}</div></div>
     <div class="field"><label>Notes / next steps</label><textarea id="mNotes">${esc(m.notes)}</textarea></div>
-    <div class="field-row"><label class="field-check"><input type="checkbox" id="mKey" ${m.keyMilestone ? 'checked' : ''}> ★ Key milestone</label><label class="field-check"><input type="checkbox" id="mTrans" ${m.transition ? 'checked' : ''}> ⇄ Transition to Regional Ops</label></div>
+    <details class="sm-details"><summary>More options</summary>
+      <div class="field"><label>Detail / sub-workstream</label><input id="mWs" value="${esc(m.workstream)}"></div>
+      <div class="field-row"><div class="field"><label>Priority</label><select id="mPri">${opt([['high', 'High'], ['medium', 'Medium'], ['low', 'Low']], m.priority)}</select></div><div class="field"><label>Progress %</label><input id="mProg" type="number" min="0" max="100" value="${m.progress_percent || 0}"></div></div>
+      <div class="field-row"><div class="field"><label>Target fiscal year</label><select id="mFy"><option value="">—</option>${fyList().map(fy => `<option value="${fy}" ${m.targetFY === fy ? 'selected' : ''}>${fyLabel(fy)}</option>`).join('')}</select></div><div class="field"><label>Quarter</label><select id="mQ">${opt(['', 'Q1', 'Q2', 'Q3', 'Q4'], m.targetQuarter)}</select></div></div>
+      <div class="field"><label>Stage (Kanban)</label><select id="mStage">${opt(meta().stages, m.stage || 'to_do')}</select></div>
+      <div class="field"><label>Dependency / blockers</label><input id="mDep" value="${esc(m.dependency)}"></div>
+      <div class="field-row"><label class="field-check"><input type="checkbox" id="mKey" ${m.keyMilestone ? 'checked' : ''}> ★ Key milestone</label><label class="field-check"><input type="checkbox" id="mTrans" ${m.transition ? 'checked' : ''}> ⇄ Transition to Regional Ops</label></div>
+    </details>
     ${notesSection('task', m.id, m.noteLog)}`;
   $('#modalBackdrop').classList.add('open');
 }
@@ -775,16 +779,21 @@ function openSchoolModal(id) {
   const taskList = sm.length ? sm.slice().sort(bySortUrgency).map(m => `<div class="sm-task" data-expand="${m.id}">${statusDot(effectiveStatus(m))}<span class="sm-t-title">${esc(m.activity)}</span><span class="sm-t-team">${esc(m.functional_area || '')}</span><span class="sm-t-due">${dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : '—')}</span></div>`).join('') : '<div class="muted" style="font-size:12.5px">No tasks yet — add the first one below.</div>';
   const summary = isNew ? '' : `<div class="sm-summary">
     <span><b>${esc(s.market)}</b> · ${esc(s.school_type)}</span><span class="muted">Opens August ${s.openingFY - 1}</span><span class="muted">${sm.length} task${sm.length === 1 ? '' : 's'}</span></div>`;
-  const fyField = `<div class="field"><label>Opening fiscal year</label><select id="sFy">${fyList().map(fy => `<option value="${fy}" ${s.openingFY === fy ? 'selected' : ''}>${fyLabel(fy)}</option>`).join('')}</select></div>`;
+  // plain calendar year — a school with openingFY=2028 opens in August 2027, so we show "2027"
+  const fyField = `<div class="field"><label>Opens in — August of…</label><select id="sFy">${fyList().map(fy => `<option value="${fy}" ${s.openingFY === fy ? 'selected' : ''}>${fy - 1}</option>`).join('')}</select></div>`;
   const qField = `<div class="field"><label>Opening quarter</label><select id="sQ">${opt(['Q1', 'Q2', 'Q3', 'Q4'], s.openingQuarter || 'Q1')}</select></div>`;
+  const marketOnly = `<div class="field"><label>Market / location</label><select id="sMarket">${opt(markets(), s.market)}</select></div>`;
   const labelField = `<div class="field-row"><div class="field"><label>Label (e.g., ES4)</label><input id="sLabel" value="${esc(s.display_label || s.code || '')}" placeholder="ES4"></div><div class="field"><label>School type</label><select id="sType">${opt([['ES', 'Elementary (ES)'], ['MS', 'Middle (MS)'], ['HS', 'High (HS)']], s.school_type)}</select></div></div>`;
   const marketField = `<div class="field-row"><div class="field"><label>Market / location</label><select id="sMarket">${opt(markets(), s.market)}</select></div><div class="field"><label>Pod #</label><input id="sPod" type="number" min="1" value="${s.pod_number || ''}" placeholder="4"></div></div>`;
   const confField = `<label class="field-check"><input type="checkbox" id="sConf" ${s.confirmed !== false ? 'checked' : ''}> Opening confirmed</label>`;
   $('#modalBody').innerHTML = isNew ? `
     ${labelField}
-    ${marketField}
-    <div class="field-row">${fyField}${qField}</div>
+    ${marketOnly}
+    ${fyField}
     <div class="field-row">${confField}</div>
+    <details class="sm-details"><summary>More details</summary>
+      <div class="field-row"><div class="field"><label>Pod #</label><input id="sPod" type="number" min="1" value="${s.pod_number || ''}" placeholder="4"></div>${qField}</div>
+    </details>
     <div class="help-text">Save the school first, then add its tasks, deadlines &amp; owners.</div>`
     : `
     ${summary}

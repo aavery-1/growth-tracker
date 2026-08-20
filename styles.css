@@ -1535,7 +1535,7 @@ body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 .kc-notes { display: inline-flex; align-items: center; gap: 2px; font-size: 11px; color: var(--on-surface-variant, #6b7280); white-space: nowrap; }
 
 /* ---------- North Star band (charter's "are we on track?" answer, dashboard top) ---------- */
-.north-star { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 28px; background: var(--primary, #16357F); color: #fff; border-radius: 16px; padding: 20px 24px; margin-bottom: 16px; box-shadow: var(--elev-1, 0 6px 20px rgba(16,24,64,.14)); }
+.north-star { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 28px; background: #16357F; color: #fff; border-radius: 16px; padding: 20px 24px; margin-bottom: 16px; box-shadow: 0 6px 20px rgba(16,24,64,.14); }
 .ns-eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .82; }
 .ns-big { display: flex; align-items: baseline; gap: 9px; margin-top: 5px; }
 .ns-big b { font-size: 44px; line-height: 1; font-weight: 800; }
