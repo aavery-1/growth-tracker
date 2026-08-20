@@ -500,7 +500,7 @@ function ragReady(list) {
   return { key: 'none', color: RAG.none, label: 'Not started yet' };
 }
 function ragDotR(list, prefix) { const r = ragReady(list); return `<span class="rag" style="background:${r.color}" title="${esc((prefix ? prefix + ' — ' : '') + r.label)}"></span>`; }
-function exLi(m, flag) { return `<div class="ex-li" data-expand="${m.id}">${ragDot(effectiveStatus(m))}<span class="ex-li-t">${flag || ''}${esc(m.activity)}</span><span class="ex-li-m muted">${esc(m.market)} · ${esc(m.functional_area)}</span><span class="ex-li-d">${dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : '')}</span></div>`; }
+function exLi(m, flag) { return `<div class="ex-li nodot" data-expand="${m.id}"><span class="ex-li-t">${flag || ''}${esc(m.activity)}</span><span class="ex-li-m muted">${esc(m.market)} · ${esc(m.functional_area)}</span><span class="ex-li-d muted">${m.due_date ? fmtDate(m.due_date) : ''}</span></div>`; }
 function dashboardHtml(list) {
   const schools = schoolsInView();
   const total = schools.length;
@@ -547,7 +547,7 @@ function dashboardHtml(list) {
     return `<tr class="ex-band"><td colspan="${3 + tms.length}"><span class="state-badge" style="background:${stColor(st.code)}">${st.code}</span> ${esc(st.name)} <span class="muted">· ${rows.length} openings</span></td></tr>${body}`;
   }).join('');
   const rOpen = !state.expanded['dash:readiness'];
-  const readiness = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:readiness"><div class="ex-cardhead-l">${chev(rOpen)}<h3>Readiness Index</h3></div><span class="muted ex-hint">Schedule health by workstream · click a row to open</span></div>
+  const readiness = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:readiness"><div class="ex-cardhead-l">${chev(rOpen)}<h3>Readiness Index</h3></div><span class="muted ex-hint">Click a row to open</span></div>
     <div class="ex-card-body ${rOpen ? '' : 'hide'}"><div class="ex-grid-wrap"><table class="ex-grid"><thead><tr><th>School</th><th>Opens</th><th>Overall</th>${tms.map(t => `<th class="ex-th-team"><span>${esc(t)}</span></th>`).join('')}</tr></thead><tbody>${grid}</tbody></table></div>
     <div class="ex-legend"><span><i class="rag" style="background:${RAG.green}"></i>On track</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind / Blocked</span><span><i class="rag" style="background:${RAG.none}"></i>Not started</span></div></div></section>`;
 

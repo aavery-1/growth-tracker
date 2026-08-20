@@ -1312,3 +1312,48 @@ body.edit-on .edit-pill { display: inline-flex; }
 .ex-cardhead-l h3{margin:0}
 .ex-card-head .chev{flex-shrink:0;color:var(--on-surface-variant)}
 .ex-card-head.toggle:hover .chev{color:var(--primary)}
+
+/* priorities & risks items without the status dot */
+.ex-li.nodot{grid-template-columns:1fr auto}
+.ex-li.nodot .ex-li-m{grid-column:1}
+
+/* ============ mobile responsiveness ============ */
+@media (max-width: 760px) {
+  .container { padding: 16px 12px 90px; }
+  .view-head h2 { font-size: 22px; }
+  .view-head { gap: 10px; }
+  .vh-actions { flex-wrap: wrap; gap: 8px; }
+  /* dashboard */
+  .dash { gap: 12px; }
+  .dash-hero { padding: 18px 16px; }
+  .dash-cohorts { gap: 10px; }
+  .dash-cohort { flex: 1 1 calc(50% - 5px); min-width: 0; }
+  .ex-card { padding: 15px 15px; }
+  .ex-card-head .ex-hint { display: none; }
+  .ex-grid { font-size: 12px; }
+  .ex-grid td, .ex-grid th { padding-left: 3px; padding-right: 3px; }
+  .ex-th-team span { max-width: 58px; font-size: 9px; }
+  /* filters */
+  .fb-search { flex: 1 1 100%; }
+  .oybar { gap: 6px; }
+  /* kanban: stack columns vertically */
+  .kanban { flex-direction: column; overflow-x: visible; }
+  .kcol { min-width: 0; width: 100%; flex: none; }
+  .kcol.collapsed { flex: none; min-width: 0; width: 100%; }
+  .kcol.collapsed .kcol-head { writing-mode: horizontal-tb; transform: none; height: auto; }
+  .plan-cards { grid-template-columns: 1fr; }
+  /* project plan header row */
+  .tb-group { font-size: 12px; }
+  /* modal + drawer */
+  .modal-backdrop { padding: 14px 10px; }
+  .drawer { width: 100%; max-width: 100%; }
+  /* timeline scrolls horizontally (overflow-x on .gantt) — no grid override needed */
+}
+@media (max-width: 440px) {
+  .dash-cohort { flex: 1 1 100%; }          /* one opening cohort per row */
+  .dash-hero-kpis, .dash-kpi-n { font-size: 26px; }
+  .view-head h2 { font-size: 20px; }
+  .brand-sub { display: none; }
+  .save-state { display: none; }            /* free up header room on tiny screens */
+  .btn { padding: 0 14px; }
+}
