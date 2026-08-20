@@ -1494,6 +1494,15 @@ body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
   .plan-group-head { position: sticky; top: 62px; z-index: 6; background: var(--surface-container-low); padding: 8px 2px; }
 }
 
+/* floating action buttons — Add school opening / New task */
+#addSchool, #newItem {
+  position: fixed; right: 26px; bottom: 26px; z-index: 45;
+  height: 54px; border-radius: 27px; padding: 0 26px;
+  box-shadow: 0 8px 24px rgba(16,24,64,.30);
+}
+#addSchool:hover, #newItem:hover { transform: translateY(-2px); box-shadow: 0 11px 28px rgba(16,24,64,.36); }
+@media (max-width: 760px) { #addSchool, #newItem { right: 16px; bottom: 16px; height: 50px; padding: 0 20px; } }
+
 </style>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%2316357F'/><text x='50' y='70' font-size='56' font-weight='700' text-anchor='middle' fill='white' font-family='Roboto,Arial'>K</text></svg>" />
   <script>
@@ -6828,7 +6837,8 @@ function schoolsInView() {
 function fmtMoney(n) { return n >= 1e6 ? '$' + (n / 1e6).toFixed(n % 1e6 ? 1 : 0) + 'M' : n >= 1e3 ? '$' + Math.round(n / 1e3) + 'K' : '$' + (n || 0); }
 function ragDot(st, title) { const c = st === 'x' ? '#C9CDD6' : SM(st).color; return `<span class="rag" style="background:${c}" title="${esc(title || (st === 'x' ? 'no tasks' : SM(st).label))}"></span>`; }
 /* consistent R/Y/G by milestone completion: <50% red · ≥50% yellow · all complete green */
-const RAG = { green: '#00A651', yellow: '#F5A623', red: '#E1523D', none: '#D2D6DE' };
+/* readiness = traffic-light status, deliberately distinct from the market brand colors */
+const RAG = { green: '#16A34A', yellow: '#EAB308', red: '#DC2626', none: '#C7CCD6' };
 function ragProgress(list) {
   if (!list.length) return { key: 'none', color: RAG.none, label: 'No tasks yet', pct: null };
   const done = list.filter(m => effectiveStatus(m) === 'complete').length, pctc = Math.round(100 * done / list.length);

@@ -1486,3 +1486,12 @@ body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
   .ot-term-h { position: sticky; top: 62px; z-index: 6; background: var(--surface-container-low); padding: 6px 0 8px; margin-bottom: 0; }
   .plan-group-head { position: sticky; top: 62px; z-index: 6; background: var(--surface-container-low); padding: 8px 2px; }
 }
+
+/* floating action buttons — Add school opening / New task */
+#addSchool, #newItem {
+  position: fixed; right: 26px; bottom: 26px; z-index: 45;
+  height: 54px; border-radius: 27px; padding: 0 26px;
+  box-shadow: 0 8px 24px rgba(16,24,64,.30);
+}
+#addSchool:hover, #newItem:hover { transform: translateY(-2px); box-shadow: 0 11px 28px rgba(16,24,64,.36); }
+@media (max-width: 760px) { #addSchool, #newItem { right: 16px; bottom: 16px; height: 50px; padding: 0 20px; } }

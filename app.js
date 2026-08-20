@@ -471,7 +471,8 @@ function schoolsInView() {
 function fmtMoney(n) { return n >= 1e6 ? '$' + (n / 1e6).toFixed(n % 1e6 ? 1 : 0) + 'M' : n >= 1e3 ? '$' + Math.round(n / 1e3) + 'K' : '$' + (n || 0); }
 function ragDot(st, title) { const c = st === 'x' ? '#C9CDD6' : SM(st).color; return `<span class="rag" style="background:${c}" title="${esc(title || (st === 'x' ? 'no tasks' : SM(st).label))}"></span>`; }
 /* consistent R/Y/G by milestone completion: <50% red · ≥50% yellow · all complete green */
-const RAG = { green: '#00A651', yellow: '#F5A623', red: '#E1523D', none: '#D2D6DE' };
+/* readiness = traffic-light status, deliberately distinct from the market brand colors */
+const RAG = { green: '#16A34A', yellow: '#EAB308', red: '#DC2626', none: '#C7CCD6' };
 function ragProgress(list) {
   if (!list.length) return { key: 'none', color: RAG.none, label: 'No tasks yet', pct: null };
   const done = list.filter(m => effectiveStatus(m) === 'complete').length, pctc = Math.round(100 * done / list.length);
