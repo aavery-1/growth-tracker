@@ -240,42 +240,34 @@ function updateMenuBadge(key) {
   const cl = $('#clearFilters'); if (cl) cl.classList.toggle('hide', !activeCount());
 }
 function refreshBody() { const sec = $('#view-' + state.view); const b = sec ? sec.querySelector('#viewBody') : $('#viewBody'); if (!b) return rerender(); if (state.view === 'timeline') b.innerHTML = ganttBodyHtml(); else if (state.view === 'progress') b.innerHTML = progressBodyHtml(); else b.innerHTML = planBodyHtml(); }
+function otCard(s) {
+  const sm = schoolMs(s), r = ragReady(sm), n = sm.length;
+  return `<article class="ot-card" data-drillschool="${esc(s.id)}" style="--mk:${mkColor(s.market)}" title="Open ${esc(s.display_label)} — ${esc(s.market)}">
+      <div class="ot-card-h"><span class="state-badge sm" style="background:${stColor(s.state)}">${esc(s.state)}</span><b>${esc(s.display_label)}</b><span class="ot-type">${esc(s.school_type)}</span><span class="ot-rag" style="background:${r.color}" title="${esc(r.label)}"></span></div>
+      <div class="ot-card-mkt"><i style="background:${mkColor(s.market)}"></i>${esc(s.market)}</div>
+      <div class="ot-card-f"><span>Opens ${esc(fmtDate(s.opening_date))}</span><span class="muted">${n} task${n === 1 ? '' : 's'}</span></div>
+    </article>`;
+}
 function ganttBodyHtml() {
-  const fys = fyList().filter(fy => fy >= currentFY() && (state.data.schools.some(s => s.openingFY === fy) || fy <= currentFY() + 2)).slice(0, 7);
-  const minFy = fys[0], nFy = fys.length;
   const list = ganttSchools();
-  const headCells = fys.map(fy => `<div class="g-col ${fy === currentFY() ? 'now' : ''}">${fyLabel(fy)}<span class="g-col-sub">FY${String(fy).slice(-2)}</span></div>`).join('');
-
-  let body = '';
-  statesMeta().forEach(st => {
-    const rows = list.filter(s => s.state === st.code).sort((a, b) => (a.openingFY - b.openingFY) || (parseDate(a.opening_date) - parseDate(b.opening_date)) || a.market.localeCompare(b.market));
-    if (!rows.length) return;
-    body += `<div class="g-stateband" style="--sc:${stColor(st.code)}"><span class="state-badge" style="background:${stColor(st.code)}">${st.code}</span> ${esc(st.name)} <span class="muted">· ${rows.length} openings</span></div>`;
-    rows.forEach(s => {
-      const sm = schoolMs(s), roll = rollupStatus(sm);
-      const startFy = Math.max(minFy, Math.min(s.openingFY - 2, ...(sm.map(m => m.targetFY).filter(Boolean).concat([s.openingFY]))));
-      const c1 = Math.max(1, startFy - minFy + 1), c2 = Math.min(nFy, s.openingFY - minFy + 1);
-      const nTasks = sm.length;
-      const tip = `Open ${s.display_label} — ${s.market}\nOpens ${fmtDate(s.opening_date)} · ${nTasks} task${nTasks === 1 ? '' : 's'}`;
-      body += `<div class="g-row g-click" data-drillschool="${esc(s.id)}" style="grid-template-columns:var(--g-label,230px) repeat(${nFy},1fr)" title="${esc(tip)}">
-        <div class="g-label"><button class="g-edit" data-editschool="${esc(s.id)}" title="Edit / remove this school & its tasks"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
-          <div class="g-lab-main"><b>${esc(s.display_label)}</b> <span class="muted">${esc(s.market)} · ${esc(s.school_type)}</span>
-            <div class="g-lab-sub"><span class="muted">${nTasks} task${nTasks === 1 ? '' : 's'}</span></div></div></div>
-        <div class="g-track" style="grid-column:2 / ${nFy + 2};grid-template-columns:repeat(${nFy},1fr)">
-          <div class="g-bar" style="grid-column:${c1} / ${c2 + 1};background:${mkColor(s.market)}" title="Opens ${esc(fmtDate(s.opening_date))}">
-            <span class="g-bar-label">${esc(s.display_label)}</span>
-            <span class="g-open"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 21V4h11l-2.2 3.5L17 11H6"/></svg>Opens Fall ${s.openingFY - 1}</span>
-          </div>
-        </div>
-      </div>`;
-    });
-  });
-
-  return `<div class="gantt card">
-      <div class="g-row g-head" style="grid-template-columns:var(--g-label,230px) repeat(${nFy},1fr)"><div class="g-label">School</div><div class="g-track" style="grid-column:2 / ${nFy + 2};grid-template-columns:repeat(${nFy},1fr)">${headCells}</div></div>
-      ${body || '<div class="empty-state">No schools match the filters.</div>'}
-    </div>
-    <div class="rag-legend" style="margin-top:12px">${['not_started','on_track','at_risk','behind','complete'].map(k => `<span class="lg">${statusDot(k)}${SM(k).label}</span>`).join('')}<span class="muted">· click a school to see its tasks · bar = development window through opening</span></div>`;
+  if (!list.length) return '<div class="empty-state">No openings match the filters.</div>';
+  const now = Date.now();
+  const terms = [...new Set(list.map(s => s.openingFY))].filter(Boolean).sort((a, b) => a - b);
+  const body = terms.map(fy => {
+    const cs = list.filter(s => s.openingFY === fy).sort((a, b) => a.state.localeCompare(b.state) || a.market.localeCompare(b.market) || a.display_label.localeCompare(b.display_label));
+    const first = Math.min(...cs.map(s => +parseDate(s.opening_date)));
+    const mo = Math.max(0, Math.round((first - now) / 2.63e9));
+    const when = mo <= 0 ? 'opening now' : `${mo} month${mo === 1 ? '' : 's'} out`;
+    return `<section class="ot-term">
+      <div class="ot-rail"><span class="ot-node"></span></div>
+      <div class="ot-term-body">
+        <div class="ot-term-h"><h3>Fall ${fy - 1}</h3><span class="ot-when">${when} · ${cs.length} school${cs.length === 1 ? '' : 's'}</span></div>
+        <div class="ot-grid">${cs.map(otCard).join('')}</div>
+      </div>
+    </section>`;
+  }).join('');
+  return `<div class="ot">${body}</div>
+    <div class="ot-legend"><span><i class="rag" style="background:${RAG.green}"></i>On track</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind / blocked</span><span><i class="rag" style="background:${RAG.none}"></i>Not started</span><span class="muted">· click a school to open its tasks</span></div>`;
 }
 function renderTimeline() {
   $('#view-timeline').innerHTML = `

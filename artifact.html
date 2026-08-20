@@ -1368,6 +1368,33 @@ body.edit-on .edit-pill { display: inline-flex; }
   .g-open { font-size: 9px; padding: 2px 5px; }
 }
 
+/* ============ Openings Timeline — vertical term timeline (redesign) ============ */
+.ot { margin-top: 4px; }
+.ot-term { display: flex; gap: 16px; padding-bottom: 24px; }
+.ot-rail { position: relative; width: 16px; flex-shrink: 0; }
+.ot-rail::before { content: ""; position: absolute; left: 7px; top: 4px; bottom: -24px; width: 2px; background: var(--outline-variant); }
+.ot-term:last-child .ot-rail::before { display: none; }
+.ot-node { position: absolute; left: 0; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--outline-variant); }
+.ot-term-body { flex: 1; min-width: 0; }
+.ot-term-h { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.ot-term-h h3 { font-size: 17px; font-weight: 700; letter-spacing: -.2px; }
+.ot-when { font-size: 12.5px; color: var(--on-surface-variant); font-weight: 600; }
+.ot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(212px, 1fr)); gap: 12px; }
+.ot-card { position: relative; background: var(--surface-container-low); border: 1px solid var(--outline-variant); border-left: 4px solid var(--mk); border-radius: 13px; padding: 13px 15px; cursor: pointer; transition: transform .1s, box-shadow .12s, border-color .12s; }
+.ot-card:hover { transform: translateY(-2px); box-shadow: var(--elev-2); }
+.ot-card-h { display: flex; align-items: center; gap: 8px; }
+.ot-card-h b { font-size: 15px; font-weight: 700; color: var(--on-surface); }
+.ot-type { font-size: 9.5px; font-weight: 700; letter-spacing: .02em; color: var(--on-surface-variant); background: var(--surface-container-high); padding: 1px 7px; border-radius: var(--r-full); }
+.ot-rag { width: 12px; height: 12px; border-radius: 50%; margin-left: auto; flex-shrink: 0; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
+.state-badge.sm { font-size: 9px; padding: 1px 6px; }
+.ot-card-mkt { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--on-surface-variant); margin: 7px 0 11px; }
+.ot-card-mkt i { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+.ot-card-f { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--on-surface); }
+.ot-legend { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-top: 16px; font-size: 12px; color: var(--on-surface-variant); }
+.ot-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.ot-legend i.rag { width: 11px; height: 11px; border-radius: 50%; }
+@media (max-width: 760px) { .ot-term { gap: 12px; } .ot-grid { grid-template-columns: 1fr; } }
+
 </style>
 <script>
     // Visible fail-safe: if anything throws, show it instead of a blank screen.
@@ -6471,42 +6498,34 @@ function updateMenuBadge(key) {
   const cl = $('#clearFilters'); if (cl) cl.classList.toggle('hide', !activeCount());
 }
 function refreshBody() { const sec = $('#view-' + state.view); const b = sec ? sec.querySelector('#viewBody') : $('#viewBody'); if (!b) return rerender(); if (state.view === 'timeline') b.innerHTML = ganttBodyHtml(); else if (state.view === 'progress') b.innerHTML = progressBodyHtml(); else b.innerHTML = planBodyHtml(); }
+function otCard(s) {
+  const sm = schoolMs(s), r = ragReady(sm), n = sm.length;
+  return `<article class="ot-card" data-drillschool="${esc(s.id)}" style="--mk:${mkColor(s.market)}" title="Open ${esc(s.display_label)} — ${esc(s.market)}">
+      <div class="ot-card-h"><span class="state-badge sm" style="background:${stColor(s.state)}">${esc(s.state)}</span><b>${esc(s.display_label)}</b><span class="ot-type">${esc(s.school_type)}</span><span class="ot-rag" style="background:${r.color}" title="${esc(r.label)}"></span></div>
+      <div class="ot-card-mkt"><i style="background:${mkColor(s.market)}"></i>${esc(s.market)}</div>
+      <div class="ot-card-f"><span>Opens ${esc(fmtDate(s.opening_date))}</span><span class="muted">${n} task${n === 1 ? '' : 's'}</span></div>
+    </article>`;
+}
 function ganttBodyHtml() {
-  const fys = fyList().filter(fy => fy >= currentFY() && (state.data.schools.some(s => s.openingFY === fy) || fy <= currentFY() + 2)).slice(0, 7);
-  const minFy = fys[0], nFy = fys.length;
   const list = ganttSchools();
-  const headCells = fys.map(fy => `<div class="g-col ${fy === currentFY() ? 'now' : ''}">${fyLabel(fy)}<span class="g-col-sub">FY${String(fy).slice(-2)}</span></div>`).join('');
-
-  let body = '';
-  statesMeta().forEach(st => {
-    const rows = list.filter(s => s.state === st.code).sort((a, b) => (a.openingFY - b.openingFY) || (parseDate(a.opening_date) - parseDate(b.opening_date)) || a.market.localeCompare(b.market));
-    if (!rows.length) return;
-    body += `<div class="g-stateband" style="--sc:${stColor(st.code)}"><span class="state-badge" style="background:${stColor(st.code)}">${st.code}</span> ${esc(st.name)} <span class="muted">· ${rows.length} openings</span></div>`;
-    rows.forEach(s => {
-      const sm = schoolMs(s), roll = rollupStatus(sm);
-      const startFy = Math.max(minFy, Math.min(s.openingFY - 2, ...(sm.map(m => m.targetFY).filter(Boolean).concat([s.openingFY]))));
-      const c1 = Math.max(1, startFy - minFy + 1), c2 = Math.min(nFy, s.openingFY - minFy + 1);
-      const nTasks = sm.length;
-      const tip = `Open ${s.display_label} — ${s.market}\nOpens ${fmtDate(s.opening_date)} · ${nTasks} task${nTasks === 1 ? '' : 's'}`;
-      body += `<div class="g-row g-click" data-drillschool="${esc(s.id)}" style="grid-template-columns:var(--g-label,230px) repeat(${nFy},1fr)" title="${esc(tip)}">
-        <div class="g-label"><button class="g-edit" data-editschool="${esc(s.id)}" title="Edit / remove this school & its tasks"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
-          <div class="g-lab-main"><b>${esc(s.display_label)}</b> <span class="muted">${esc(s.market)} · ${esc(s.school_type)}</span>
-            <div class="g-lab-sub"><span class="muted">${nTasks} task${nTasks === 1 ? '' : 's'}</span></div></div></div>
-        <div class="g-track" style="grid-column:2 / ${nFy + 2};grid-template-columns:repeat(${nFy},1fr)">
-          <div class="g-bar" style="grid-column:${c1} / ${c2 + 1};background:${mkColor(s.market)}" title="Opens ${esc(fmtDate(s.opening_date))}">
-            <span class="g-bar-label">${esc(s.display_label)}</span>
-            <span class="g-open"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 21V4h11l-2.2 3.5L17 11H6"/></svg>Opens Fall ${s.openingFY - 1}</span>
-          </div>
-        </div>
-      </div>`;
-    });
-  });
-
-  return `<div class="gantt card">
-      <div class="g-row g-head" style="grid-template-columns:var(--g-label,230px) repeat(${nFy},1fr)"><div class="g-label">School</div><div class="g-track" style="grid-column:2 / ${nFy + 2};grid-template-columns:repeat(${nFy},1fr)">${headCells}</div></div>
-      ${body || '<div class="empty-state">No schools match the filters.</div>'}
-    </div>
-    <div class="rag-legend" style="margin-top:12px">${['not_started','on_track','at_risk','behind','complete'].map(k => `<span class="lg">${statusDot(k)}${SM(k).label}</span>`).join('')}<span class="muted">· click a school to see its tasks · bar = development window through opening</span></div>`;
+  if (!list.length) return '<div class="empty-state">No openings match the filters.</div>';
+  const now = Date.now();
+  const terms = [...new Set(list.map(s => s.openingFY))].filter(Boolean).sort((a, b) => a - b);
+  const body = terms.map(fy => {
+    const cs = list.filter(s => s.openingFY === fy).sort((a, b) => a.state.localeCompare(b.state) || a.market.localeCompare(b.market) || a.display_label.localeCompare(b.display_label));
+    const first = Math.min(...cs.map(s => +parseDate(s.opening_date)));
+    const mo = Math.max(0, Math.round((first - now) / 2.63e9));
+    const when = mo <= 0 ? 'opening now' : `${mo} month${mo === 1 ? '' : 's'} out`;
+    return `<section class="ot-term">
+      <div class="ot-rail"><span class="ot-node"></span></div>
+      <div class="ot-term-body">
+        <div class="ot-term-h"><h3>Fall ${fy - 1}</h3><span class="ot-when">${when} · ${cs.length} school${cs.length === 1 ? '' : 's'}</span></div>
+        <div class="ot-grid">${cs.map(otCard).join('')}</div>
+      </div>
+    </section>`;
+  }).join('');
+  return `<div class="ot">${body}</div>
+    <div class="ot-legend"><span><i class="rag" style="background:${RAG.green}"></i>On track</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind / blocked</span><span><i class="rag" style="background:${RAG.none}"></i>Not started</span><span class="muted">· click a school to open its tasks</span></div>`;
 }
 function renderTimeline() {
   $('#view-timeline').innerHTML = `
