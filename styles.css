@@ -1533,3 +1533,25 @@ body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 
 .kc-foot-r { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
 .kc-notes { display: inline-flex; align-items: center; gap: 2px; font-size: 11px; color: var(--on-surface-variant, #6b7280); white-space: nowrap; }
+
+/* ---------- North Star band (charter's "are we on track?" answer, dashboard top) ---------- */
+.north-star { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 28px; background: var(--primary, #16357F); color: #fff; border-radius: 16px; padding: 20px 24px; margin-bottom: 16px; box-shadow: var(--elev-1, 0 6px 20px rgba(16,24,64,.14)); }
+.ns-eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .82; }
+.ns-big { display: flex; align-items: baseline; gap: 9px; margin-top: 5px; }
+.ns-big b { font-size: 44px; line-height: 1; font-weight: 800; }
+.ns-big span { font-size: 16px; opacity: .9; font-weight: 600; }
+.ns-right { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; min-width: 240px; flex: 1 1 240px; }
+.ns-bar { display: flex; width: 100%; max-width: 340px; height: 12px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,.18); }
+.ns-bar span { display: block; }
+.ns-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.ns-chip { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 700; padding: 5px 11px; border-radius: 999px; border: none; background: rgba(255,255,255,.14); color: #fff; cursor: default; font-family: inherit; }
+.ns-chip i { width: 9px; height: 9px; border-radius: 50%; background: #fff; flex: 0 0 auto; }
+.ns-chip.att { background: #fff; color: #B42318; cursor: pointer; }
+.ns-chip.att i { background: #DC2626; }
+.ns-chip.att:hover { box-shadow: 0 3px 12px rgba(0,0,0,.28); }
+.ns-chip.ok i { background: #7CE0A3; }
+.ns-chip.none i { background: rgba(255,255,255,.55); }
+@media (max-width: 720px) { .north-star { padding: 16px 18px; } .ns-big b { font-size: 36px; } .ns-right { align-items: flex-start; min-width: 0; } .ns-chips, .ns-bar { justify-content: flex-start; } }
+
+.dash-cohort.is-roadmap { opacity: .72; }
+.dash-cohort.is-roadmap .dash-cohort-sum { font-style: italic; }

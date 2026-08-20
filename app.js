@@ -424,6 +424,7 @@ function renderProgress() {
   const printBtn = isCharts ? `<button class="btn btn-tonal" id="dashPrint"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Print / PDF</button>` : '';
   $('#view-progress').innerHTML = `
     <div class="view-head"><div><h2>Dashboard</h2></div><div class="vh-actions">${toggle}${printBtn}</div></div>
+    ${isCharts ? northStarHtml() : ''}
     ${filterBar(['states', 'markets', 'areas', 'statuses'], { school: true })}
     ${openingYearBar()}
     <div id="viewBody">${progressBodyHtml()}</div>`;
@@ -540,6 +541,33 @@ function ragReady(list) {
 }
 function ragDotR(list, prefix) { const r = ragReady(list); return `<span class="rag" style="background:${r.color}" title="${esc((prefix ? prefix + ' — ' : '') + r.label)}"></span>`; }
 function exLi(m, flag) { return `<div class="ex-li nodot" data-expand="${m.id}"><span class="ex-li-t">${flag || ''}${esc(m.activity)}</span><span class="ex-li-m muted">${esc(m.market)} · ${esc(m.functional_area)}</span><span class="ex-li-d muted">${m.due_date ? fmtDate(m.due_date) : ''}</span></div>`; }
+// NORTH STAR — the charter's stakeholder answer, rendered ABOVE the filters so a busy exec
+// (often on a phone) sees "are we on track?" before any controls.
+function northStarHtml() {
+  const schools = schoolsInView();
+  const total = schools.length;
+  const rags = schools.map(s => ({ s, r: ragReady(schoolMs(s)) }));
+  const cnt = k => rags.filter(x => x.r.key === k).length;
+  const g = cnt('green'), b = cnt('blue'), y = cnt('yellow'), r = cnt('red'), none = cnt('none');
+  const seg = (v, c) => v ? `<span style="flex:${v};background:${c}"></span>` : '';
+  const attention = r + y;                 // behind or at risk = the only "off-track" states
+  const onTrack = total - attention;       // everything not slipping counts as on track
+  const inMotion = g + b;
+  const nsBar = `<div class="ns-bar" title="${g} cleared · ${b} in progress · ${none} not yet started · ${y} at risk · ${r} behind">${seg(g, RAG.green)}${seg(b, RAG.blue)}${seg(none, RAG.none)}${seg(y, RAG.yellow)}${seg(r, RAG.red)}</div>`;
+  return `<section class="north-star">
+    <div class="ns-lead">
+      <div class="ns-eyebrow">On track to open on schedule</div>
+      <div class="ns-big"><b>${onTrack}</b><span>of ${total} schools</span></div>
+    </div>
+    <div class="ns-right">
+      ${nsBar}
+      <div class="ns-chips">
+        ${attention ? `<button class="ns-chip att drill" data-drilldim="riskbehind" data-drillval="" title="See the tasks that need attention"><i></i>${attention} need attention</button>` : '<span class="ns-chip ok"><i></i>Nothing off-track</span>'}
+        ${inMotion ? `<span class="ns-chip ok"><i></i>${inMotion} actively in prep</span>` : ''}
+      </div>
+    </div>
+  </section>`;
+}
 function dashboardHtml(list) {
   const schools = schoolsInView();
   const total = schools.length;
@@ -563,15 +591,24 @@ function dashboardHtml(list) {
   });
   const nextC = cohorts.find(c => c.mo >= 0) || cohorts[0];
   const nextS = nextC && nextC.cs.slice().sort((a, b) => parseDate(a.opening_date) - parseDate(b.opening_date))[0];
-  const cohortCard = c => `<div class="dash-cohort drill" data-drilldim="year" data-drillval="${c.fy}" title="See Fall ${c.fy - 1} openings">
+  // charter tracks active prep from ~24 months out; further-out cohorts read as roadmap, not "0% done"
+  const cohortCard = c => {
+    const active = c.mo <= 24;
+    const sum = c.ms.length === 0 ? 'Not yet scoped'
+      : active ? `${c.prep}% of pre-opening work cleared`
+      : `On the roadmap · prep begins ~${c.fy - 3}`;
+    const bar = active && c.ms.length ? `<div class="dash-cohort-bar"><span style="width:${c.prep}%"></span></div>` : '';
+    return `<div class="dash-cohort drill ${active ? '' : 'is-roadmap'}" data-drilldim="year" data-drillval="${c.fy}" title="See Fall ${c.fy - 1} openings">
       <div class="dash-cohort-top"><span class="dash-cohort-fy">Fall ${c.fy - 1}</span><span class="dash-cohort-mo">${c.mo <= 0 ? 'opening' : c.mo + ' mo out'}</span></div>
       <div class="dash-cohort-n">${c.cs.length} <span>school${c.cs.length === 1 ? '' : 's'}</span></div>
       <div class="dash-cohort-mkts">${esc(c.mkts.join(' · '))}</div>
-      <div class="dash-cohort-bar"><span style="width:${c.prep}%"></span></div>
-      <div class="dash-cohort-sum">${c.ms.length ? c.prep + '% of pre-opening milestones cleared' : 'No milestones yet'}</div></div>`;
+      ${bar}
+      <div class="dash-cohort-sum">${sum}</div></div>`;
+  };
   const hero = `<section class="dash-hero">
     <div class="dash-hero-head"><div class="dash-hero-eyebrow">Upcoming school openings</div></div>
     <div class="dash-cohorts">${cohorts.map(cohortCard).join('') || '<div class="muted" style="opacity:.8">No upcoming openings in view.</div>'}</div></section>`;
+
 
   // READINESS INDEX — where every opening stands, by workstream (full width)
   const grid = statesMeta().map(st => {
