@@ -706,6 +706,10 @@ body.edit-on .edit-pill { display: inline-flex; }
 .pop-field select { width: 100%; }
 
 /* kanban */
+.plan-view-toggle { display: inline-flex; border: 1px solid var(--outline-variant); border-radius: var(--r-md); overflow: hidden; }
+.pvt { appearance: none; border: 0; background: var(--surface); color: var(--on-surface-variant); padding: 6px 10px; cursor: pointer; display: inline-flex; align-items: center; }
+.pvt:hover { background: var(--surface-container); }
+.pvt.on { background: var(--primary); color: var(--on-primary); }
 .kanban { display: flex; gap: 14px; align-items: flex-start; overflow-x: auto; }
 .kcol { flex: 1 1 0; min-width: 220px; background: var(--surface-container-low); border-radius: var(--r-lg); padding: 8px; min-height: 120px; transition: flex-basis .15s, min-width .15s; }
 .kcol.collapsed { flex: 0 0 46px; min-width: 46px; }

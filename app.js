@@ -212,7 +212,7 @@ function fchip(key, val, label, color) {
 }
 
 /* ---------- unified filter bar (dropdown menus, live counts) ---------- */
-const FILTER_LABEL = { states: 'State', types: 'Type', markets: 'Market', fys: 'Year', areas: 'Team', statuses: 'Status', priorities: 'Priority' };
+const FILTER_LABEL = { states: 'State', types: 'Type', markets: 'Market', fys: 'Year', areas: 'Workstream', statuses: 'Status', priorities: 'Priority' };
 /* Hierarchical facets: a menu's options are limited by the filters chosen above it
    (State → Market → Year → Team → Status). Empty upstream = show everything. */
 const selStates = () => state.filters.states;
@@ -280,13 +280,13 @@ function updateMenuBadge(key) {
   if (btn) { const n = state.filters[key].size; btn.classList.toggle('on', !!n); let c = btn.querySelector('.fb-count'); if (n) { if (!c) { c = document.createElement('span'); c.className = 'fb-count'; btn.insertBefore(c, btn.querySelector('.fb-chev')); } c.textContent = n; } else if (c) c.remove(); }
   const cl = $('#clearFilters'); if (cl) cl.classList.toggle('hide', !activeCount());
 }
-function refreshBody() { const sec = $('#view-' + state.view); const b = sec ? sec.querySelector('#viewBody') : $('#viewBody'); if (!b) return rerender(); if (state.view === 'progress') b.innerHTML = progressBodyHtml(); else b.innerHTML = planBodyHtml(); }
+function refreshBody() { const sec = $('#view-' + state.view); const b = sec ? sec.querySelector('#viewBody') : $('#viewBody'); if (!b) return rerender(); if (state.view === 'progress') b.innerHTML = progressBodyHtml(); else if (state.view === 'timeline') b.innerHTML = ganttBodyHtml(); else b.innerHTML = planBodyHtml(); }
 function otCard(s) {
   const sm = schoolMs(s), r = ragReady(sm), n = sm.length;
   return `<article class="ot-card" data-drillschool="${esc(s.id)}" style="--mk:${mkColor(s.market)}" title="Open ${esc(s.display_label)} — ${esc(s.market)}">
       <div class="ot-card-h"><span class="state-badge sm" style="background:${stColor(s.state)}">${esc(s.state)}</span><b>${esc(s.display_label)}</b><span class="ot-type">${esc(s.school_type)}</span><span class="ot-rag" style="background:${r.color}" title="${esc(r.label)}"></span></div>
       <div class="ot-card-mkt"><i style="background:${mkColor(s.market)}"></i>${esc(s.market)}</div>
-      <div class="ot-card-f"><span>Opens August ${s.openingFY - 1}</span><span class="muted">${n} task${n === 1 ? '' : 's'}</span></div>
+      <div class="ot-card-f"><span>Opens August ${s.openingFY - 1}</span><span class="muted">${n} milestone${n === 1 ? '' : 's'}</span></div>
     </article>`;
 }
 function ganttBodyHtml() {
@@ -308,7 +308,7 @@ function ganttBodyHtml() {
     </section>`;
   }).join('');
   return `<div class="ot">${body}</div>
-    <div class="ot-legend"><span><i class="rag" style="background:${RAG.none}"></i>Not started</span><span><i class="rag" style="background:${RAG.blue}"></i>In progress</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind</span><span><i class="rag" style="background:${RAG.green}"></i>Cleared</span><span class="muted">· click a school to open its tasks</span></div>`;
+    <div class="ot-legend"><span><i class="rag" style="background:${RAG.none}"></i>Not started</span><span><i class="rag" style="background:${RAG.blue}"></i>In progress</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind</span><span><i class="rag" style="background:${RAG.green}"></i>Cleared</span><span class="muted">· click a school to open its milestones</span></div>`;
 }
 function renderTimeline() {
   const el = $('#view-timeline'); if (el) el.innerHTML = `
@@ -333,7 +333,7 @@ function reportsBodyHtml() {
     state._pmKeys = ['sec:prio', 'prio:all', 'sec:area', ...byArea.map(s => s.key), 'sec:nj', ...byNJ.map(s => s.key), 'sec:fl', ...byFL.map(s => s.key)];
     return `<div class="pm-urgency"><span class="muted" style="font-size:12.5px">Click any section to expand</span><span class="tb-spacer"></span><button class="btn btn-text btn-sm" id="pmExpandAll">Expand all</button><button class="btn btn-text btn-sm" id="pmCollapseAll">Collapse all</button></div>
       ${section('sec:prio', 'Key Milestones & Greenlights', [{ key: 'prio:all', name: 'Flagged milestones, greenlights & transitions', list: prio }], 'Decisions and gateways that unlock each opening')}
-      ${section('sec:area', 'By Team', byArea)}
+      ${section('sec:area', 'By Workstream', byArea)}
       ${section('sec:nj', 'By Market (New Jersey)', byNJ)}
       ${section('sec:fl', 'By Market (Florida)', byFL)}`;
   }
@@ -370,7 +370,7 @@ function pmItem(m) {
       <span class="pm-pct">${m.progress_percent || 0}%</span>
     </div>
     <div class="pm-body ${open ? '' : 'hide'}">
-      <div class="pm-meta"><b>Team:</b> ${esc(m.functional_area)} · <b>Market:</b> ${esc(m.market)} · <b>Detail:</b> ${esc(m.workstream)}</div>
+      <div class="pm-meta"><b>Workstream:</b> ${esc(m.functional_area)} · <b>Market:</b> ${esc(m.market)} · <b>Detail:</b> ${esc(m.workstream)}</div>
       ${m.dependency ? `<div class="pm-meta"><b>Depends on:</b> ${esc(m.dependency)}</div>` : ''}
       ${m.notes ? `<div class="pm-meta">${esc(m.notes)}</div>` : ''}
       <div style="margin-top:8px;display:flex;gap:8px"><button class="btn btn-tonal btn-sm" data-expand="${m.id}">Edit</button><button class="btn btn-text btn-sm" data-goplan="${m.id}">Open in Project Plan →</button></div>
@@ -426,7 +426,7 @@ function columnChart(list) {
   return `<div class="colchart">` + fys.map(fy => { const l = map[fy], c = effCounts(l); return `<div class="col drill" data-drilldim="year" data-drillval="${fy}" title="Click to see ${yrLbl(fy)} school-year items"><div class="col-n">${l.length}</div><div class="col-bar" style="height:${Math.max(6, 100 * l.length / max)}%">${STATUS_ORDER.filter(s => c[s]).map(s => `<span style="height:${100 * c[s] / l.length}%;background:${SM(s).color}" title="${SM(s).label}: ${c[s]}"></span>`).join('')}</div><div class="col-lbl">${yrLbl(fy)}</div></div>`; }).join('') + `</div>`;
 }
 function chartsHtml(list) {
-  const dims = [['team', 'Team'], ['year', 'Year'], ['school', 'School opening'], ['market', 'Market'], ['state', 'State']];
+  const dims = [['team', 'Workstream'], ['year', 'Year'], ['school', 'School opening'], ['market', 'Market'], ['state', 'State']];
   const dimSeg = dims.map(([v, l]) => `<button class="seg ${state.progressDim === v ? 'on' : ''}" data-progressdim="${v}"><span>${l}</span></button>`).join('');
   return `
     <div class="chart-grid">
@@ -463,7 +463,7 @@ function progressBodyHtml_legacyList() {
   }
   return kpis + `<div class="pm-urgency"><span class="muted" style="font-size:12.5px">Click any section to expand · click a callout above to drill in</span><span class="tb-spacer"></span><button class="btn btn-text btn-sm" id="pmExpandAll">Expand all</button><button class="btn btn-text btn-sm" id="pmCollapseAll">Collapse all</button></div>
     ${section('sec:prio', 'Key Milestones & Greenlights', [{ key: 'prio:all', name: 'Flagged milestones, greenlights & transitions', list: prio }], 'The decisions and gateways that unlock each opening')}
-    ${section('sec:area', 'By Team', byArea)}
+    ${section('sec:area', 'By Workstream', byArea)}
     ${section('sec:nj', 'By Market (New Jersey)', byNJ)}
     ${section('sec:fl', 'By Market (Florida)', byFL)}`;
 }
@@ -492,7 +492,7 @@ function planCard(m) {
 }
 function planFocusHtml() {
   const list = filtered().filter(m => ['overdue', 'this_month'].includes(timingLevel(m)) || ['behind', 'at_risk'].includes(effectiveStatus(m)));
-  if (!list.length) return '<div class="empty-state">Nothing needs attention right now — no overdue, due-soon, or off-track tasks in this filter.</div>';
+  if (!list.length) return '<div class="empty-state">Nothing needs attention right now — no overdue, due-soon, or off-track milestones in this filter.</div>';
   const rank = m => timingLevel(m) === 'overdue' ? 0 : effectiveStatus(m) === 'behind' ? 1 : timingLevel(m) === 'this_month' ? 2 : 3;
   list.sort((a, b) => rank(a) - rank(b) || (parseDate(a.due_date) || 9e15) - (parseDate(b.due_date) || 9e15));
   return `<div class="plan-focus-note">${list.length} task${list.length === 1 ? '' : 's'} overdue, due this month, or off-track — sorted by urgency.</div><div class="plan-cards">${list.map(planCard).join('')}</div>`;
@@ -518,7 +518,7 @@ function planListHtml() {
   };
   list.forEach(m => { const k = keyOf(m) || '—'; (g[k] = g[k] || []).push(m); });
   const keys = Object.keys(g).sort((a, b) => gb === 'year' ? (order[a] || 9999) - (order[b] || 9999) : a.localeCompare(b));
-  if (!keys.length) return '<div class="empty-state">No tasks match the filters.</div>';
+  if (!keys.length) return '<div class="empty-state">No milestones match the filters.</div>';
   state._planKeys = keys.map(k => 'pg:' + k);
   // groups default COLLAPSED so the page opens as a scannable outline, not 132 cards
   return keys.map(k => {
@@ -535,11 +535,13 @@ function planBodyHtml() {
 function renderPlan() {
   const list = filtered();
   const focusN = list.filter(m => ['overdue', 'this_month'].includes(timingLevel(m)) || ['behind', 'at_risk'].includes(effectiveStatus(m))).length;
-  const focusBtn = `<button class="btn btn-focus ${state.planFocus ? 'on' : ''}" id="planFocus" title="Show only overdue, due-soon, and off-track tasks">Needs attention${focusN ? ` <span class="focus-n">${focusN}</span>` : ''}</button>`;
-  const viewSel = `<label class="tb-group ${state.planFocus ? 'is-dim' : ''}">Group by
-    <select id="planGroupSel" ${state.planFocus ? 'disabled' : ''}>${[['team', 'Team'], ['school', 'School opening'], ['market', 'Market'], ['year', 'Year'], ['stage', 'Kanban (stages)']].map(([v, l]) => `<option value="${v}" ${state.planGroup === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`;
-  const expandBtns = (!state.planFocus && state.planGroup !== 'stage') ? `<button class="btn btn-ghost btn-sm" id="planExpandAll">Expand all</button><button class="btn btn-ghost btn-sm" id="planCollapseAll">Collapse all</button>` : '';
-  const right = `${focusBtn}${viewSel}${expandBtns}<button class="btn btn-filled" id="newItem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>New task</button>`;
+  const focusBtn = `<button class="btn btn-focus ${state.planFocus ? 'on' : ''}" id="planFocus" title="Show only overdue, due-soon, and off-track milestones">Needs attention${focusN ? ` <span class="focus-n">${focusN}</span>` : ''}</button>`;
+  const isBoard = state.planGroup === 'stage';
+  const viewToggle = `<div class="plan-view-toggle"><button class="pvt ${!isBoard ? 'on' : ''}" data-planview="list" title="List view"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M3 14h4v-4H3v4zm0 5h4v-4H3v4zM3 9h4V5H3v4zm5 5h13v-4H8v4zm0 5h13v-4H8v4zM8 5v4h13V5H8z"/></svg></button><button class="pvt ${isBoard ? 'on' : ''}" data-planview="board" title="Board view"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M4 5v13h17V5H4zm4 11H6v-9h2v9zm4 0h-2v-9h2v9zm4 0h-2v-9h2v9zm3 0h-1v-9h1v9z"/></svg></button></div>`;
+  const viewSel = isBoard ? '' : `<label class="tb-group ${state.planFocus ? 'is-dim' : ''}">Group by
+    <select id="planGroupSel" ${state.planFocus ? 'disabled' : ''}>${[['team', 'Workstream'], ['school', 'School opening'], ['market', 'Market'], ['year', 'Year']].map(([v, l]) => `<option value="${v}" ${state.planGroup === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`;
+  const expandBtns = (!state.planFocus && !isBoard) ? `<button class="btn btn-ghost btn-sm" id="planExpandAll">Expand all</button><button class="btn btn-ghost btn-sm" id="planCollapseAll">Collapse all</button>` : '';
+  const right = `${viewToggle}${focusBtn}${viewSel}${expandBtns}<button class="btn btn-filled" id="newItem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>New milestone</button>`;
   $('#view-plan').innerHTML = `
     <div class="view-head"><div><h2>Project Plan</h2></div></div>
     ${filterBar(['states', 'markets', 'fys', 'areas'], { search: true, school: true, right })}
@@ -549,7 +551,7 @@ function renderPlan() {
 /* ============================================================
    EDIT ENGINE + cross-tab
    ============================================================ */
-function rerender() { if (state.view === 'progress') renderProgress(); else renderPlan(); }
+function rerender() { if (state.view === 'progress') renderProgress(); else if (state.view === 'timeline') renderTimeline(); else renderPlan(); }
 
 /* ============================================================
    TAB 0 — EXECUTIVE SUMMARY (board / chiefs readout, print-ready)
@@ -564,14 +566,14 @@ function schoolsInView() {
     .sort((a, b) => (a.openingFY - b.openingFY) || a.market.localeCompare(b.market));
 }
 function fmtMoney(n) { return n >= 1e6 ? '$' + (n / 1e6).toFixed(n % 1e6 ? 1 : 0) + 'M' : n >= 1e3 ? '$' + Math.round(n / 1e3) + 'K' : '$' + (n || 0); }
-function ragDot(st, title) { const c = st === 'x' ? '#C9CDD6' : SM(st).color; return `<span class="rag" style="background:${c}" title="${esc(title || (st === 'x' ? 'no tasks' : SM(st).label))}"></span>`; }
+function ragDot(st, title) { const c = st === 'x' ? '#C9CDD6' : SM(st).color; return `<span class="rag" style="background:${c}" title="${esc(title || (st === 'x' ? 'no milestones' : SM(st).label))}"></span>`; }
 /* consistent R/Y/G by milestone completion: <50% red · ≥50% yellow · all complete green */
 /* greenlight/gating status per domain — deliberately distinct from market brand colors.
    grey = not started · blue = in progress · green = cleared (gate met) · amber/red = off-track */
 // status palette drawn from the KIPP brand: green=complete, sky=on track, orange=at risk, red=behind
 const RAG = { green: '#79A81E', blue: '#43B0E6', yellow: '#F6A11C', red: '#E63E2F', none: '#C7CCD6' };
 function ragProgress(list) {
-  if (!list.length) return { key: 'none', color: RAG.none, label: 'No tasks yet', pct: null };
+  if (!list.length) return { key: 'none', color: RAG.none, label: 'No milestones yet', pct: null };
   const done = list.filter(m => effectiveStatus(m) === 'complete').length, pctc = Math.round(100 * done / list.length);
   if (done === list.length) return { key: 'green', color: RAG.green, label: 'All complete', pct: 100 };
   if (done * 2 >= list.length) return { key: 'yellow', color: RAG.yellow, label: pctc + '% complete', pct: pctc };
@@ -714,7 +716,7 @@ function dashboardHtml(list) {
     return `<tr class="ex-band"><td colspan="${3 + tms.length}"><span class="state-badge" style="background:${stColor(st.code)}">${st.code}</span> ${esc(st.name)} <span class="muted">· ${rows.length} openings</span></td></tr>${body}`;
   }).join('');
   const rOpen = !state.expanded['dash:readiness'];
-  const readiness = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:readiness"><div class="ex-cardhead-l">${chev(rOpen)}<h3>Readiness by School &amp; Team</h3></div><span class="muted ex-hint">Each dot = how that team is tracking · click a school to open it</span><button class="card-more" data-showmore="school">See all →</button></div>
+  const readiness = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:readiness"><div class="ex-cardhead-l">${chev(rOpen)}<h3>Readiness by School &amp; Workstream</h3></div><span class="muted ex-hint">Each dot = how that workstream is tracking · click a school to open it</span><button class="card-more" data-showmore="school">See all →</button></div>
     <div class="ex-card-body ${rOpen ? '' : 'hide'}"><div class="ex-legend ex-legend-top"><span><i class="rag" style="background:${RAG.none}"></i>Not started</span><span><i class="rag" style="background:${RAG.blue}"></i>On track</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind</span><span><i class="rag" style="background:${RAG.green}"></i>Complete</span></div>
     <div class="ex-grid-wrap"><table class="ex-grid"><thead><tr><th>School</th><th>Opens</th><th>Overall</th>${tms.map(t => `<th class="ex-th-team"><span>${esc(t)}</span></th>`).join('')}</tr></thead><tbody>${grid}</tbody></table></div></div></section>`;
 
@@ -761,9 +763,9 @@ function applyDrill(dim, val) {
 function refreshResults() { refreshBody(); }
 
 function addItem() {
-  snapshotForUndo('Create new task');
-  const m = { id: uid(), state: 'NJ', market: 'Paterson', team: teams()[0], functional_area: teams()[0], workstream: 'General', activity: 'New task', schools: [], schoolIds: [], targetFY: currentFY(), targetQuarter: '', openingFY: null, due_date: null, status: 'not_started', stage: 'to_do', progress_percent: 0, priority: 'medium', owner: '', dependency: '', keyMilestone: false, greenlight: false, transition: false, notes: '', tags: [] };
-  logActivity('create', 'Created new task');
+  snapshotForUndo('Create new milestone');
+  const m = { id: uid(), state: 'NJ', market: 'Paterson', team: teams()[0], functional_area: teams()[0], workstream: 'General', activity: 'New milestone', schools: [], schoolIds: [], targetFY: currentFY(), targetQuarter: '', openingFY: null, due_date: null, status: 'not_started', stage: 'to_do', progress_percent: 0, priority: 'medium', owner: '', dependency: '', keyMilestone: false, greenlight: false, transition: false, notes: '', tags: [] };
+  logActivity('create', 'Created new milestone');
   M().push(m); autosave(); openModal(m.id);
 }
 
@@ -784,15 +786,15 @@ function openPopover(anchor, html) {
 let modalId = null, modalMode = 'task', schoolId = null;
 function openModal(id) {
   modalMode = 'task'; modalId = id; const m = findM(id); if (!m) return;
-  $('#modalTitle').textContent = 'Task details';
+  $('#modalTitle').textContent = 'Milestone details';
   const opt = (arr, val) => arr.map(x => Array.isArray(x) ? `<option value="${x[0]}" ${x[0] === val ? 'selected' : ''}>${esc(x[1])}</option>` : `<option ${x === val ? 'selected' : ''}>${esc(x)}</option>`).join('');
   const schoolChecks = state.data.schools.filter(s => s.market === m.market).map(s => `<label class="field-check"><input type="checkbox" class="m-school" value="${esc(s.id)}" ${(m.schoolIds || []).includes(s.id) ? 'checked' : ''}> ${esc(s.display_label)} <span class="muted">${esc(fyLabel(s.openingFY))}</span></label>`).join('') || '<span class="muted">No schools in this market.</span>';
   $('#modalBody').innerHTML = `
-    <div class="field"><label>Task</label><textarea id="mAct">${esc(m.activity)}</textarea></div>
+    <div class="field"><label>Milestone</label><textarea id="mAct">${esc(m.activity)}</textarea></div>
     <div class="field-row"><div class="field"><label>Owner</label><input id="mOwner" list="ownerRoster" value="${esc(m.owner)}" placeholder="Pick from the team or type a name"><datalist id="ownerRoster">${(meta().owners || []).map(o => `<option value="${esc(o.name)}">${esc(o.role || '')}</option>`).join('')}</datalist></div><div class="field"><label>Due date</label><input id="mDue" type="date" value="${esc(m.due_date || '')}"></div></div>
     <div class="field"><label>Status</label><select id="mStatus">${opt(meta().statuses.map(s => [s, SM(s).label]), m.status)}</select>
-      <div class="help-text">Overdue or due-this-month tasks flag automatically, even if marked “On track.”</div></div>
-    <div class="field-row"><div class="field"><label>Market / location</label><select id="mMarket">${opt(markets(), m.market)}</select></div><div class="field"><label>Team</label><select id="mTeam">${opt(teams(), m.functional_area)}</select></div></div>
+      <div class="help-text">Overdue or due-this-month milestones flag automatically, even if marked "On track."</div></div>
+    <div class="field-row"><div class="field"><label>Market / location</label><select id="mMarket">${opt(markets(), m.market)}</select></div><div class="field"><label>Workstream</label><select id="mTeam">${opt(teams(), m.functional_area)}</select></div></div>
     <div class="field"><label>School(s) this belongs to</label><div id="mSchools" class="check-box">${schoolChecks}</div></div>
     <div class="field"><label>Notes / next steps</label><textarea id="mNotes">${esc(m.notes)}</textarea></div>
     <details class="sm-details"><summary>More options</summary>
@@ -809,7 +811,7 @@ function openModal(id) {
 function saveModal() {
   if (modalMode === 'school') return saveSchool();
   const m = findM(modalId); if (!m) return;
-  snapshotForUndo('Edit task: ' + (m.activity || '').slice(0, 40));
+  snapshotForUndo('Edit milestone: ' + (m.activity || '').slice(0, 40));
   m.activity = $('#mAct').value.trim() || m.activity; m.market = $('#mMarket').value; m.state = stateOfMarket(m.market) || m.state;
   m.team = $('#mTeam').value; m.functional_area = m.team; m.workstream = $('#mWs').value.trim() || 'General';
   m.schoolIds = $$('#mSchools .m-school').filter(x => x.checked).map(x => x.value);
@@ -826,7 +828,7 @@ function saveModal() {
 function deleteModal() {
   if (modalMode === 'school') return deleteSchool();
   if (!modalId) return; const m = findM(modalId), id = modalId;
-  confirmDialog({ title: 'Delete this task?', message: `”${esc(m ? m.activity : 'this task')}” will be permanently removed.`, confirmLabel: 'Delete task', danger: true, onConfirm: () => { snapshotForUndo('Delete task: ' + (m ? m.activity : '')); logActivity('delete', 'Deleted: ' + (m ? m.activity : 'task')); state.data.milestones = M().filter(x => x.id !== id); autosave(); closeModal(); rerender(); toast('Task deleted', 'ok'); } });
+  confirmDialog({ title: 'Delete this task?', message: `"${esc(m ? m.activity : 'this task')}" will be permanently removed.`, confirmLabel: 'Delete task', danger: true, onConfirm: () => { snapshotForUndo('Delete task: ' + (m ? m.activity : '')); logActivity('delete', 'Deleted: ' + (m ? m.activity : 'task')); state.data.milestones = M().filter(x => x.id !== id); autosave(); closeModal(); rerender(); toast('Task deleted', 'ok'); } });
 }
 let taskReturnSchool = null;
 function closeModal() { $('#modalBackdrop').classList.remove('open'); modalId = null; const ret = taskReturnSchool; taskReturnSchool = null; if (ret) setTimeout(() => openSchoolModal(ret), 0); }
@@ -841,7 +843,7 @@ function confirmDialog(opts) {
     <div class="confirm-ic ${opts.danger ? 'danger' : ''}">${opts.danger ? '⚠' : '?'}</div>
     <h3>${esc(opts.title)}</h3>
     <div class="confirm-msg">${opts.message}</div>
-    ${opts.danger ? `<div class="confirm-shared">${shared ? 'This deletes it for <b>everyone</b> on the shared board' : 'This can’t be undone'} — please confirm.</div>` : ''}
+    ${opts.danger ? `<div class="confirm-shared">${shared ? 'This deletes it for <b>everyone</b> on the shared board' : 'This cannot be undone'} — please confirm.</div>` : ''}
     <div class="confirm-actions"><button class="btn btn-tonal" id="cfgCancel">Cancel</button><button class="btn ${opts.danger ? 'btn-danger-solid' : 'btn-filled'}" id="cfgOk">${esc(opts.confirmLabel || 'Confirm')}</button></div>
   </div>`;
   document.body.appendChild(w);
@@ -859,13 +861,13 @@ function openSchoolModal(id) {
   modalMode = 'school'; schoolId = id;
   const isNew = !id;
   const s = id ? schoolById(id) : { id: uid(), display_label: '', code: '', school_type: 'ES', pod_number: null, market: markets()[0], state: stateOfMarket(markets()[0]), openingFY: currentFY() + 1, openingQuarter: 'Q1', priority: false, confirmed: true, _new: true };
-  $('#modalTitle').textContent = isNew ? 'Add a school opening' : `${s.display_label} — tasks & milestones`;
+  $('#modalTitle').textContent = isNew ? 'Add a school opening' : `${s.display_label} — milestones`;
   const opt = (arr, val) => arr.map(x => Array.isArray(x) ? `<option value="${x[0]}" ${x[0] === val ? 'selected' : ''}>${esc(x[1])}</option>` : `<option ${x === val ? 'selected' : ''}>${esc(x)}</option>`).join('');
   const sm = isNew ? [] : schoolMs(s);
   const roll = sm.length ? rollupStatus(sm) : 'not_started';
-  const taskList = sm.length ? sm.slice().sort(bySortUrgency).map(m => `<div class="sm-task" data-expand="${m.id}">${statusDot(effectiveStatus(m))}<span class="sm-t-title">${esc(m.activity)}</span><span class="sm-t-team">${esc(m.functional_area || '')}</span><span class="sm-t-due">${dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : '—')}</span></div>`).join('') : '<div class="muted" style="font-size:12.5px">No tasks yet — add the first one below.</div>';
+  const taskList = sm.length ? sm.slice().sort(bySortUrgency).map(m => `<div class="sm-task" data-expand="${m.id}">${statusDot(effectiveStatus(m))}<span class="sm-t-title">${esc(m.activity)}</span><span class="sm-t-team">${esc(m.functional_area || '')}</span><span class="sm-t-due">${dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : '—')}</span></div>`).join('') : '<div class="muted" style="font-size:12.5px">No milestones yet — add the first one below.</div>';
   const summary = isNew ? '' : `<div class="sm-summary">
-    <span><b>${esc(s.market)}</b> · ${esc(s.school_type)}</span><span class="muted">Opens August ${s.openingFY - 1}</span><span class="muted">${sm.length} task${sm.length === 1 ? '' : 's'}</span></div>`;
+    <span><b>${esc(s.market)}</b> · ${esc(s.school_type)}</span><span class="muted">Opens August ${s.openingFY - 1}</span><span class="muted">${sm.length} milestone${sm.length === 1 ? '' : 's'}</span></div>`;
   // plain calendar year — a school with openingFY=2028 opens in August 2027, so we show "2027"
   const fyField = `<div class="field"><label>Opens in — August of…</label><select id="sFy">${fyList().map(fy => `<option value="${fy}" ${s.openingFY === fy ? 'selected' : ''}>${fy - 1}</option>`).join('')}</select></div>`;
   const qField = `<div class="field"><label>Opening quarter</label><select id="sQ">${opt(['Q1', 'Q2', 'Q3', 'Q4'], s.openingQuarter || 'Q1')}</select></div>`;
@@ -881,16 +883,16 @@ function openSchoolModal(id) {
     <details class="sm-details"><summary>More details</summary>
       <div class="field-row"><div class="field"><label>Pod #</label><input id="sPod" type="number" min="1" value="${s.pod_number || ''}" placeholder="4"></div>${qField}</div>
     </details>
-    <div class="help-text">Save the school first, then add its tasks, deadlines &amp; owners.</div>`
+    <div class="help-text">Save the school first, then add milestones, deadlines &amp; owners.</div>`
     : `
     ${summary}
     <div class="reschedule">
       <div class="rs-head">Reschedule opening <span class="muted">— push it back or pull it forward as plans change</span></div>
       <div class="field-row">${fyField}${qField}</div>
-      <label class="field-check"><input type="checkbox" id="sShift" checked> Also move this school’s ${sm.length} task deadline${sm.length === 1 ? '' : 's'} by the same shift</label>
+      <label class="field-check"><input type="checkbox" id="sShift" checked> Also move this school's ${sm.length} milestone deadline${sm.length === 1 ? '' : 's'} by the same shift</label>
     </div>
-    <div class="field"><label>Tasks &amp; milestones — click any task to open it</label><div class="sm-tasks">${taskList}</div>
-      <button class="btn btn-tonal btn-sm" id="addTaskForSchool" style="margin-top:8px">+ Add task for this school</button></div>
+    <div class="field"><label>Milestones — click any to open</label><div class="sm-tasks">${taskList}</div>
+      <button class="btn btn-tonal btn-sm" id="addTaskForSchool" style="margin-top:8px">+ Add milestone</button></div>
     <details class="sm-details"><summary>More school details</summary>
       ${labelField}
       ${marketField}
@@ -946,7 +948,7 @@ function deleteSchool() {
 }
 function addTaskForSchool() {
   const s = schoolById(schoolId); if (!s) return;
-  const m = { id: uid(), state: s.state, market: s.market, team: teams()[0], functional_area: teams()[0], workstream: 'General', activity: 'New task', schools: [s.code], schoolIds: [s.id], targetFY: s.openingFY, targetQuarter: '', openingFY: s.openingFY, due_date: null, status: 'not_started', stage: 'to_do', progress_percent: 0, priority: s.priority ? 'high' : 'medium', owner: '', dependency: '', keyMilestone: false, greenlight: false, transition: false, notes: '', tags: [s.state, s.code, 'FY' + String(s.openingFY).slice(-2)] };
+  const m = { id: uid(), state: s.state, market: s.market, team: teams()[0], functional_area: teams()[0], workstream: 'General', activity: 'New milestone', schools: [s.code], schoolIds: [s.id], targetFY: s.openingFY, targetQuarter: '', openingFY: s.openingFY, due_date: null, status: 'not_started', stage: 'to_do', progress_percent: 0, priority: s.priority ? 'high' : 'medium', owner: '', dependency: '', keyMilestone: false, greenlight: false, transition: false, notes: '', tags: [s.state, s.code, 'FY' + String(s.openingFY).slice(-2)] };
   M().push(m); autosave(); openModal(m.id);
 }
 
@@ -1051,13 +1053,13 @@ function renderDrawer() {
       <div class="field" style="margin-top:10px"><label>Change the admin password</label><input id="adminNew" type="text" autocomplete="off" placeholder="Leave blank to keep the current one"></div>
       <div class="dw-btns"><button class="btn btn-filled" id="adminSave">Save admin password</button></div>
       <div id="adminStatus"></div>
-      <p class="dw-help">This one is just for you — teammates use the board password above but can’t open Settings without this.</p>
+      <p class="dw-help">This one is just for you — teammates use the board password above but can't open Settings without this.</p>
     </section>
 
-    <details class="dw-sec dw-fold"><summary><span class="dw-num">3</span>Customize Markets, Teams &amp; Owners</summary>
-      <p class="dw-help">Rename or add your own; changes save everywhere. Anything in use can’t be deleted until its items are reassigned.</p>
+    <details class="dw-sec dw-fold"><summary><span class="dw-num">3</span>Customize Markets, Workstreams &amp; Owners</summary>
+      <p class="dw-help">Rename or add your own; changes save everywhere. Anything in use can't be deleted until its items are reassigned.</p>
       ${czSection('State', 'markets', statesMeta().flatMap(s => s.markets.map(mk => ({ mk, st: s.code }))))}
-      ${czSection('Team', 'teams', teams().map(t => ({ mk: t })))}
+      ${czSection('Workstream', 'teams', teams().map(t => ({ mk: t })))}
       ${czOwners()}
     </details>
 
@@ -1108,7 +1110,7 @@ function czRename(type, oldV, newV) {
 function czRemove(type, val) {
   const n = type === 'owner' ? 0 : czInUse(type, val);
   if (n) return toast(`${val} is used by ${n} item(s) — reassign them first`, 'err');
-  confirmDialog({ title: `Remove “${esc(val)}”?`, message: `This removes the ${type === 'markets' ? 'market' : type === 'teams' ? 'team' : 'person'} from your lists.`, confirmLabel: 'Remove', danger: true, onConfirm: () => {
+  confirmDialog({ title: `Remove "${esc(val)}"?`, message: `This removes the ${type === 'markets' ? 'market' : type === 'teams' ? 'team' : 'person'} from your lists.`, confirmLabel: 'Remove', danger: true, onConfirm: () => {
     if (type === 'owner') meta().owners = (meta().owners || []).filter(o => o.name !== val);
     else if (type === 'markets') { meta().markets = markets().filter(x => x !== val); statesMeta().forEach(s => s.markets = s.markets.filter(x => x !== val)); }
     else { meta().teams = teams().filter(x => x !== val); meta().functionalAreas = meta().teams; }
@@ -1141,10 +1143,10 @@ function importJson(file) { const r = new FileReader(); r.onload = () => { try {
 /* ---------- toast / theme / nav ---------- */
 function toast(msg, kind) { const w = $('#toastWrap'), t = document.createElement('div'); t.className = 'toast' + (kind ? ' ' + kind : ''); t.textContent = msg; w.appendChild(t); setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 300); }, 2400); }
 function applyTheme(mode) { document.documentElement.setAttribute('data-theme', mode); lsSet(LS.theme, mode); $('#themeIcon').innerHTML = mode === 'dark' ? '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>' : '<circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'; }
-const VIEWS = ['progress', 'plan'];
+const VIEWS = ['progress', 'timeline', 'plan'];
 function setView(v, fromPop) {
   if (!VIEWS.includes(v)) v = 'progress';
-  if (v === 'timeline' || v === 'reports') v = 'progress';
+  if (v === 'reports') v = 'progress';
   state.view = v;
   $$('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.view === v));
   const pg = $('#planGroup'); if (pg) pg.classList.toggle('expanded', v === 'plan');
@@ -1200,6 +1202,7 @@ function wireEvents() {
     if (e.target.closest('#clearFilters2')) { clearFilters(); return rerender(); }
     if (e.target.closest('#pmExpandAll')) { (state._pmKeys || []).forEach(k => state.expanded[k] = true); return refreshBody(); }
     if (e.target.closest('#pmCollapseAll')) { state.expanded = {}; return refreshBody(); }
+    const plv = e.target.closest('[data-planview]'); if (plv) { state.planGroup = plv.dataset.planview === 'board' ? 'stage' : (state._lastListGroup || 'team'); if (plv.dataset.planview !== 'board') state._lastListGroup = state.planGroup; return renderPlan(); }
     const pv = e.target.closest('[data-progressview]'); if (pv) { state.progressView = pv.dataset.progressview; return renderProgress(); }
     const pd = e.target.closest('[data-progressdim]'); if (pd) { state.progressDim = pd.dataset.progressdim; return refreshBody(); }
     const dr = e.target.closest('[data-drilldim]'); if (dr) return applyDrill(dr.dataset.drilldim, dr.dataset.drillval);
@@ -1219,7 +1222,7 @@ function wireEvents() {
     if (e.target.closest('#dashFilterToggle')) { state.dashFiltersOpen = !state.dashFiltersOpen; const df = $('#dashFilters'); if (df) df.classList.toggle('hide', !state.dashFiltersOpen); return; }
   });
   $('.container').addEventListener('change', e => {
-    if (e.target.id === 'planGroupSel') { state.planGroup = e.target.value; refreshBody(); }
+    if (e.target.id === 'planGroupSel') { state.planGroup = e.target.value; state._lastListGroup = state.planGroup; refreshBody(); }
     else if (e.target.id === 'dashSchool') { state.filters.schoolId = e.target.value; refreshBody(); const cl = $('#clearFilters'); if (cl) cl.classList.toggle('hide', !activeCount()); }
   });
   $('.container').addEventListener('input', e => { if (e.target.id === 'fSearch') { state.filters.search = e.target.value; refreshBody(); const cl = $('#clearFilters'); if (cl) cl.classList.toggle('hide', !activeCount()); } });
@@ -1261,7 +1264,7 @@ function showGate(err) {
       <p>Enter the password.</p>
       <form id="gateForm" autocomplete="off"><input id="gatePw" type="password" placeholder="Password" autofocus>
         <button type="submit" class="btn btn-filled">Unlock</button></form>
-      ${err ? '<div class="gate-err">That password didn’t match. Try again.</div>' : ''}
+      ${err ? '<div class="gate-err">Incorrect password. Try again.</div>' : ''}
     </div>`;
   const f = $('#gateForm'), inp = $('#gatePw');
   f.addEventListener('submit', e => { e.preventDefault(); const v = inp.value; if (pwHash(v) === String(meta().gateHash)) { lsSet(LS.gate, String(meta().gateHash)); g.remove(); bootApp(); } else { showGate(true); } });
@@ -1276,7 +1279,7 @@ function promptPassword(opts) {
   w.innerHTML = `<div class="confirm-box"><div class="confirm-ic">🔒</div><h3>${esc(opts.title)}</h3>
     ${opts.message ? `<div class="confirm-msg">${esc(opts.message)}</div>` : ''}
     <input id="pwPromptInput" type="password" class="pw-prompt" placeholder="${esc(opts.placeholder || 'Password')}" autocomplete="off">
-    <div class="pw-prompt-err hide" id="pwPromptErr">That password didn’t match.</div>
+    <div class="pw-prompt-err hide" id="pwPromptErr">That password didn't match.</div>
     <div class="confirm-actions"><button class="btn btn-tonal" id="cfgCancel">Cancel</button><button class="btn btn-filled" id="cfgOk">${esc(opts.confirmLabel || 'Unlock')}</button></div></div>`;
   document.body.appendChild(w);
   const input = $('#pwPromptInput');
@@ -1376,8 +1379,8 @@ function buildCmdkItems(q) {
   const items = [];
   items.push({ icon: '📊', name: 'Go to Dashboard', hint: '', kbd: '', action: () => setView('progress') });
   items.push({ icon: '📋', name: 'Go to Project Plan', hint: '', kbd: '', action: () => setView('plan') });
-  items.push({ icon: '📈', name: 'Go to Dashboard', hint: '', kbd: '', action: () => setView('progress') });
-  items.push({ icon: '➕', name: 'New task', hint: 'Create a milestone', kbd: 'N', action: () => addItem() });
+  items.push({ icon: '📈', name: 'Go to Timeline', hint: '', kbd: '', action: () => setView('timeline') });
+  items.push({ icon: '➕', name: 'New milestone', hint: '', kbd: 'N', action: () => addItem() });
   items.push({ icon: '🏫', name: 'Add school opening', hint: '', kbd: '', action: () => openSchoolModal(null) });
   items.push({ icon: '↩️', name: 'Undo last change', hint: undoStack.length ? undoStack[undoStack.length - 1].label : 'nothing to undo', kbd: '⌘Z', action: () => undo() });
   items.push({ icon: '📄', name: 'Print / PDF', hint: '', kbd: '', action: () => window.print() });
@@ -1423,8 +1426,8 @@ function wireKeyboard() {
     if (inInput) return;
     if (e.key === 'n' || e.key === 'N') { e.preventDefault(); addItem(); return; }
     if (e.key === '1') { setView('progress'); return; }
-    if (e.key === '2') { setView('plan'); return; }
-    if (e.key === '3') return;
+    if (e.key === '2') { setView('timeline'); return; }
+    if (e.key === '3') { setView('plan'); return; }
     if (e.key === '/') { e.preventDefault(); openCmdk(); return; }
     if (e.key === '?') { e.preventDefault(); openCmdk(); return; }
   });
