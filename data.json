@@ -34,7 +34,7 @@
       "Regulatory",
       "Real Estate",
       "Finance",
-      "Fundraising",
+      "Advancement",
       "Talent",
       "Marketing & Recruitment"
     ],
@@ -93,36 +93,36 @@
       }
     ],
     "updated": "2026-08-18",
-    "version": 12,
+    "version": 15,
     "statusMeta": {
       "not_started": {
         "label": "Not started",
-        "color": "#E0E0E0",
-        "text": "#5A5A5A"
+        "color": "#C7CCD6",
+        "text": "#4A4A4A"
       },
       "on_track": {
         "label": "On track",
-        "color": "#00A651",
-        "text": "#FFFFFF"
+        "color": "#43B0E6",
+        "text": "#08324A"
       },
       "at_risk": {
         "label": "At risk",
-        "color": "#FFA500",
+        "color": "#F6A11C",
         "text": "#3A2A00"
       },
       "behind": {
         "label": "Behind",
-        "color": "#D62828",
+        "color": "#E63E2F",
         "text": "#FFFFFF"
       },
       "complete": {
         "label": "Complete",
-        "color": "#6C757D",
+        "color": "#79A81E",
         "text": "#FFFFFF"
       },
       "blocked": {
         "label": "Blocked",
-        "color": "#6D28D9",
+        "color": "#B3261E",
         "text": "#FFFFFF"
       }
     },
@@ -178,7 +178,8 @@
       "display_label": "ES3",
       "location": "Broward",
       "fiscal_year": 2028,
-      "opening_date": "2027-08-01"
+      "opening_date": "2027-08-01",
+      "id": "s_ES3_Broward_2028"
     },
     {
       "market": "Broward",
@@ -195,7 +196,8 @@
       "display_label": "MS3",
       "location": "Broward",
       "fiscal_year": 2028,
-      "opening_date": "2027-08-01"
+      "opening_date": "2027-08-01",
+      "id": "s_MS3_Broward_2028"
     },
     {
       "market": "Broward",
@@ -212,7 +214,8 @@
       "display_label": "ES4",
       "location": "Broward",
       "fiscal_year": 2029,
-      "opening_date": "2028-08-01"
+      "opening_date": "2028-08-01",
+      "id": "s_ES4_Broward_2029"
     },
     {
       "market": "Broward",
@@ -229,7 +232,8 @@
       "display_label": "MS4",
       "location": "Broward",
       "fiscal_year": 2029,
-      "opening_date": "2028-08-01"
+      "opening_date": "2028-08-01",
+      "id": "s_MS4_Broward_2029"
     },
     {
       "market": "Broward",
@@ -246,7 +250,8 @@
       "display_label": "ES5",
       "location": "Broward",
       "fiscal_year": 2031,
-      "opening_date": "2030-08-01"
+      "opening_date": "2030-08-01",
+      "id": "s_ES5_Broward_2031"
     },
     {
       "market": "Broward",
@@ -263,41 +268,8 @@
       "display_label": "MS5",
       "location": "Broward",
       "fiscal_year": 2031,
-      "opening_date": "2030-08-01"
-    },
-    {
-      "market": "Broward",
-      "code": "ES6",
-      "name": "Broward ES6",
-      "band": "ES",
-      "openingFY": null,
-      "confirmed": false,
-      "state": "FL",
-      "openingQuarter": "Q1",
-      "priority": false,
-      "school_type": "ES",
-      "pod_number": 6,
-      "display_label": "ES6",
-      "location": "Broward",
-      "fiscal_year": null,
-      "opening_date": null
-    },
-    {
-      "market": "Broward",
-      "code": "MS6",
-      "name": "Broward MS6",
-      "band": "MS",
-      "openingFY": null,
-      "confirmed": false,
-      "state": "FL",
-      "openingQuarter": "Q1",
-      "priority": false,
-      "school_type": "MS",
-      "pod_number": 6,
-      "display_label": "MS6",
-      "location": "Broward",
-      "fiscal_year": null,
-      "opening_date": null
+      "opening_date": "2030-08-01",
+      "id": "s_MS5_Broward_2031"
     },
     {
       "market": "Broward",
@@ -314,7 +286,8 @@
       "display_label": "HS2",
       "location": "Broward",
       "fiscal_year": 2031,
-      "opening_date": "2030-08-01"
+      "opening_date": "2030-08-01",
+      "id": "s_HS2_Broward_2031"
     },
     {
       "market": "Paterson",
@@ -331,7 +304,8 @@
       "display_label": "ES2",
       "location": "Paterson",
       "fiscal_year": 2028,
-      "opening_date": "2027-08-01"
+      "opening_date": "2027-08-01",
+      "id": "s_ES2_Paterson_2028"
     },
     {
       "market": "Paterson",
@@ -348,7 +322,8 @@
       "display_label": "MS2",
       "location": "Paterson",
       "fiscal_year": 2028,
-      "opening_date": "2027-08-01"
+      "opening_date": "2027-08-01",
+      "id": "s_MS2_Paterson_2028"
     },
     {
       "market": "Paterson",
@@ -365,7 +340,8 @@
       "display_label": "HS1",
       "location": "Paterson",
       "fiscal_year": 2031,
-      "opening_date": "2030-08-01"
+      "opening_date": "2030-08-01",
+      "id": "s_HS1_Paterson_2031"
     },
     {
       "market": "Newark",
@@ -382,7 +358,8 @@
       "display_label": "ES6",
       "location": "Newark",
       "fiscal_year": 2029,
-      "opening_date": "2028-08-01"
+      "opening_date": "2028-08-01",
+      "id": "s_ES6_Newark_2029"
     },
     {
       "market": "Newark",
@@ -399,7 +376,8 @@
       "display_label": "MS6",
       "location": "Newark",
       "fiscal_year": 2029,
-      "opening_date": "2028-08-01"
+      "opening_date": "2028-08-01",
+      "id": "s_MS6_Newark_2029"
     },
     {
       "market": "Orange",
@@ -416,7 +394,8 @@
       "display_label": "ES1",
       "location": "Orange",
       "fiscal_year": 2030,
-      "opening_date": "2029-08-01"
+      "opening_date": "2029-08-01",
+      "id": "s_ES1_Orange_2030"
     },
     {
       "market": "Orange",
@@ -433,7 +412,8 @@
       "display_label": "MS1",
       "location": "Orange",
       "fiscal_year": 2030,
-      "opening_date": "2029-08-01"
+      "opening_date": "2029-08-01",
+      "id": "s_MS1_Orange_2030"
     },
     {
       "market": "Orange",
@@ -450,7 +430,8 @@
       "display_label": "ES2",
       "location": "Orange",
       "fiscal_year": 2031,
-      "opening_date": "2030-08-01"
+      "opening_date": "2030-08-01",
+      "id": "s_ES2_Orange_2031"
     },
     {
       "market": "Orange",
@@ -467,7 +448,8 @@
       "display_label": "MS2",
       "location": "Orange",
       "fiscal_year": 2031,
-      "opening_date": "2030-08-01"
+      "opening_date": "2030-08-01",
+      "id": "s_MS2_Orange_2031"
     },
     {
       "market": "Orange",
@@ -484,7 +466,8 @@
       "display_label": "HS1",
       "location": "Orange",
       "fiscal_year": 2032,
-      "opening_date": "2031-08-01"
+      "opening_date": "2031-08-01",
+      "id": "s_HS1_Orange_2032"
     },
     {
       "market": "Orange",
@@ -501,7 +484,8 @@
       "display_label": "ES3",
       "location": "Orange",
       "fiscal_year": 2033,
-      "opening_date": "2032-08-01"
+      "opening_date": "2032-08-01",
+      "id": "s_ES3_Orange_2033"
     },
     {
       "market": "Orange",
@@ -518,7 +502,8 @@
       "display_label": "MS3",
       "location": "Orange",
       "fiscal_year": 2033,
-      "opening_date": "2032-08-01"
+      "opening_date": "2032-08-01",
+      "id": "s_MS3_Orange_2033"
     }
   ],
   "campaigns": [
@@ -568,7 +553,8 @@
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "aad56755f8",
@@ -598,7 +584,8 @@
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "9a507eb025",
@@ -628,7 +615,8 @@
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "a947daffde",
@@ -658,7 +646,8 @@
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "9da9b48a0b",
@@ -688,7 +677,8 @@
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "cf79d31669",
@@ -718,7 +708,8 @@
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "6d1b9ce102",
@@ -748,7 +739,8 @@
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "3ce704bb0c",
@@ -778,7 +770,8 @@
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "40daae549a",
@@ -808,7 +801,8 @@
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "9f88b2606f",
@@ -838,7 +832,8 @@
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "28036ba4fa",
@@ -868,7 +863,8 @@
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "5866e65ff4",
@@ -898,7 +894,8 @@
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "e144ca3729",
@@ -928,7 +925,8 @@
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "9693237c9c",
@@ -958,7 +956,8 @@
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "c32adb598d",
@@ -988,7 +987,8 @@
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "c4828c048b",
@@ -1018,7 +1018,8 @@
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "320885231d",
@@ -1048,7 +1049,8 @@
         "NJ",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "4fb7d7b258",
@@ -1078,7 +1080,8 @@
         "NJ",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "226c52dfeb",
@@ -1108,7 +1111,8 @@
         "FL",
         "Growth",
         "FY27"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "3388597745",
@@ -1143,6 +1147,10 @@
         "ES3",
         "MS3",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES3_Broward_2028",
+        "s_MS3_Broward_2028"
       ]
     },
     {
@@ -1173,7 +1181,8 @@
         "FL",
         "Growth",
         "FY27"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "96fdc98abd",
@@ -1203,7 +1212,8 @@
         "FL",
         "Growth",
         "FY27"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "1718cece01",
@@ -1233,7 +1243,8 @@
         "FL",
         "Growth",
         "FY27"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "2607d9cdca",
@@ -1263,7 +1274,8 @@
         "FL",
         "Growth",
         "FY27"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "44135398e7",
@@ -1293,7 +1305,8 @@
         "NJ",
         "Growth",
         "FY27"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "4895ce812e",
@@ -1323,7 +1336,8 @@
         "NJ",
         "Growth",
         "FY27"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "244179e745",
@@ -1358,6 +1372,10 @@
         "ES2",
         "MS2",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES2_Paterson_2028",
+        "s_MS2_Paterson_2028"
       ]
     },
     {
@@ -1388,7 +1406,8 @@
         "NJ",
         "Growth",
         "FY27"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "5476ea835e",
@@ -1423,6 +1442,10 @@
         "ES4",
         "MS4",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES4_Broward_2029",
+        "s_MS4_Broward_2029"
       ]
     },
     {
@@ -1453,7 +1476,8 @@
         "FL",
         "Growth",
         "FY28"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "7917d382c2",
@@ -1483,7 +1507,8 @@
         "FL",
         "Growth",
         "FY28"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "3d58ae1726",
@@ -1518,6 +1543,10 @@
         "ES6",
         "MS6",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES6_Newark_2029",
+        "s_MS6_Newark_2029"
       ]
     },
     {
@@ -1548,7 +1577,8 @@
         "FL",
         "Growth",
         "FY28"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "346ffe54d0",
@@ -1578,7 +1608,8 @@
         "FL",
         "Growth",
         "FY29"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "87678a4f7b",
@@ -1608,7 +1639,8 @@
         "FL",
         "Growth",
         "FY29"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "cf3091af2b",
@@ -1643,6 +1675,10 @@
         "ES1",
         "MS1",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_ES1_Orange_2030",
+        "s_MS1_Orange_2030"
       ]
     },
     {
@@ -1673,7 +1709,8 @@
         "FL",
         "Growth",
         "FY29"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "21240d3b80",
@@ -1703,7 +1740,8 @@
         "FL",
         "Growth",
         "FY30"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "5a654ebade",
@@ -1736,6 +1774,9 @@
         "Growth",
         "HS2",
         "FY30"
+      ],
+      "schoolIds": [
+        "s_HS2_Broward_2031"
       ]
     },
     {
@@ -1769,6 +1810,9 @@
         "Growth",
         "HS1",
         "FY30"
+      ],
+      "schoolIds": [
+        "s_HS1_Paterson_2031"
       ]
     },
     {
@@ -1799,7 +1843,8 @@
         "FL",
         "Finance",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "8ed2bafe52",
@@ -1829,7 +1874,8 @@
         "NJ",
         "Finance",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "fa2ac92764",
@@ -1864,6 +1910,10 @@
         "ES2",
         "MS2",
         "FY26"
+      ],
+      "schoolIds": [
+        "s_ES2_Paterson_2028",
+        "s_MS2_Paterson_2028"
       ]
     },
     {
@@ -1894,7 +1944,8 @@
         "NJ",
         "Finance",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "375c8d9c2d",
@@ -1924,7 +1975,8 @@
         "FL",
         "Finance",
         "FY27"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "73381df0a6",
@@ -1959,6 +2011,10 @@
         "ES3",
         "MS3",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES3_Broward_2028",
+        "s_MS3_Broward_2028"
       ]
     },
     {
@@ -1994,6 +2050,10 @@
         "ES3",
         "MS3",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES3_Broward_2028",
+        "s_MS3_Broward_2028"
       ]
     },
     {
@@ -2029,6 +2089,10 @@
         "ES2",
         "MS2",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES2_Paterson_2028",
+        "s_MS2_Paterson_2028"
       ]
     },
     {
@@ -2064,6 +2128,10 @@
         "ES1",
         "MS1",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES1_Orange_2030",
+        "s_MS1_Orange_2030"
       ]
     },
     {
@@ -2099,6 +2167,10 @@
         "ES4",
         "MS4",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES4_Broward_2029",
+        "s_MS4_Broward_2029"
       ]
     },
     {
@@ -2134,6 +2206,10 @@
         "ES4",
         "MS4",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES4_Broward_2029",
+        "s_MS4_Broward_2029"
       ]
     },
     {
@@ -2167,6 +2243,9 @@
         "Finance",
         "HS1",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_HS1_Paterson_2031"
       ]
     },
     {
@@ -2200,6 +2279,9 @@
         "Finance",
         "HS2",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_HS2_Broward_2031"
       ]
     },
     {
@@ -2235,6 +2317,10 @@
         "ES3",
         "MS3",
         "FY26"
+      ],
+      "schoolIds": [
+        "s_ES3_Broward_2028",
+        "s_MS3_Broward_2028"
       ]
     },
     {
@@ -2265,7 +2351,8 @@
         "FL",
         "Talent",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "9395f0efe1",
@@ -2300,6 +2387,10 @@
         "ES2",
         "MS2",
         "FY26"
+      ],
+      "schoolIds": [
+        "s_ES2_Paterson_2028",
+        "s_MS2_Paterson_2028"
       ]
     },
     {
@@ -2330,7 +2421,8 @@
         "NJ",
         "Talent",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "1ad31ed128",
@@ -2365,6 +2457,10 @@
         "ES3",
         "MS3",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES3_Broward_2028",
+        "s_MS3_Broward_2028"
       ]
     },
     {
@@ -2400,6 +2496,10 @@
         "ES4",
         "MS4",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES4_Broward_2029",
+        "s_MS4_Broward_2029"
       ]
     },
     {
@@ -2430,7 +2530,8 @@
         "FL",
         "Talent",
         "FY27"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "9a2d205f33",
@@ -2465,6 +2566,10 @@
         "ES2",
         "MS2",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES2_Paterson_2028",
+        "s_MS2_Paterson_2028"
       ]
     },
     {
@@ -2495,7 +2600,8 @@
         "NJ",
         "Talent",
         "FY27"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "6a3de2341b",
@@ -2530,6 +2636,10 @@
         "ES4",
         "MS4",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES4_Broward_2029",
+        "s_MS4_Broward_2029"
       ]
     },
     {
@@ -2560,7 +2670,8 @@
         "FL",
         "Talent",
         "FY28"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "04cbc7f1ec",
@@ -2590,7 +2701,8 @@
         "FL",
         "Talent",
         "FY28"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "d6ee678223",
@@ -2625,6 +2737,10 @@
         "ES1",
         "MS1",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES1_Orange_2030",
+        "s_MS1_Orange_2030"
       ]
     },
     {
@@ -2660,6 +2776,10 @@
         "ES1",
         "MS1",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_ES1_Orange_2030",
+        "s_MS1_Orange_2030"
       ]
     },
     {
@@ -2693,6 +2813,9 @@
         "Talent",
         "HS2",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_HS2_Broward_2031"
       ]
     },
     {
@@ -2726,6 +2849,9 @@
         "Talent",
         "HS1",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_HS1_Paterson_2031"
       ]
     },
     {
@@ -2756,7 +2882,8 @@
         "FL",
         "Real",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "bd23fd35e2",
@@ -2786,7 +2913,8 @@
         "FL",
         "Real",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "29c0c4e3d9",
@@ -2816,7 +2944,8 @@
         "FL",
         "Real",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "d5672bae5c",
@@ -2846,7 +2975,8 @@
         "FL",
         "Real",
         "FY28"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "16c439f4aa",
@@ -2876,7 +3006,8 @@
         "FL",
         "Real",
         "FY28"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "3ebc325e16",
@@ -2906,7 +3037,8 @@
         "FL",
         "Real",
         "FY28"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "4cb3ba31c3",
@@ -2941,6 +3073,10 @@
         "ES3",
         "MS3",
         "FY26"
+      ],
+      "schoolIds": [
+        "s_ES3_Broward_2028",
+        "s_MS3_Broward_2028"
       ]
     },
     {
@@ -2976,6 +3112,10 @@
         "ES4",
         "MS4",
         "FY26"
+      ],
+      "schoolIds": [
+        "s_ES4_Broward_2029",
+        "s_MS4_Broward_2029"
       ]
     },
     {
@@ -3011,6 +3151,10 @@
         "ES3",
         "MS3",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES3_Broward_2028",
+        "s_MS3_Broward_2028"
       ]
     },
     {
@@ -3046,6 +3190,10 @@
         "ES3",
         "MS3",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES3_Broward_2028",
+        "s_MS3_Broward_2028"
       ]
     },
     {
@@ -3081,6 +3229,10 @@
         "ES4",
         "MS4",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES4_Broward_2029",
+        "s_MS4_Broward_2029"
       ]
     },
     {
@@ -3116,6 +3268,10 @@
         "ES4",
         "MS4",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES4_Broward_2029",
+        "s_MS4_Broward_2029"
       ]
     },
     {
@@ -3149,6 +3305,9 @@
         "Real",
         "ES5",
         "FY31"
+      ],
+      "schoolIds": [
+        "s_ES5_Broward_2031"
       ]
     },
     {
@@ -3182,6 +3341,9 @@
         "Real",
         "MS5",
         "FY31"
+      ],
+      "schoolIds": [
+        "s_MS5_Broward_2031"
       ]
     },
     {
@@ -3214,7 +3376,8 @@
         "FL",
         "Real",
         "ES6"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "b8b61d88d6",
@@ -3246,7 +3409,8 @@
         "FL",
         "Real",
         "MS6"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "58d73700b8",
@@ -3278,6 +3442,9 @@
         "FL",
         "Real",
         "HS2"
+      ],
+      "schoolIds": [
+        "s_HS2_Broward_2031"
       ]
     },
     {
@@ -3310,6 +3477,9 @@
         "FL",
         "Real",
         "ES5"
+      ],
+      "schoolIds": [
+        "s_ES5_Broward_2031"
       ]
     },
     {
@@ -3342,6 +3512,9 @@
         "FL",
         "Real",
         "MS5"
+      ],
+      "schoolIds": [
+        "s_MS5_Broward_2031"
       ]
     },
     {
@@ -3374,7 +3547,8 @@
         "FL",
         "Real",
         "ES6"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "dd1ef6fce1",
@@ -3406,7 +3580,8 @@
         "FL",
         "Real",
         "MS6"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "25bf8c7e03",
@@ -3441,6 +3616,10 @@
         "ES2",
         "MS2",
         "FY26"
+      ],
+      "schoolIds": [
+        "s_ES2_Paterson_2028",
+        "s_MS2_Paterson_2028"
       ]
     },
     {
@@ -3476,6 +3655,10 @@
         "ES2",
         "MS2",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES2_Paterson_2028",
+        "s_MS2_Paterson_2028"
       ]
     },
     {
@@ -3511,6 +3694,10 @@
         "ES6",
         "MS6",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES6_Newark_2029",
+        "s_MS6_Newark_2029"
       ]
     },
     {
@@ -3546,6 +3733,10 @@
         "ES6",
         "MS6",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES6_Newark_2029",
+        "s_MS6_Newark_2029"
       ]
     },
     {
@@ -3581,6 +3772,10 @@
         "ES1",
         "MS1",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES1_Orange_2030",
+        "s_MS1_Orange_2030"
       ]
     },
     {
@@ -3616,13 +3811,17 @@
         "ES1",
         "MS1",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES1_Orange_2030",
+        "s_MS1_Orange_2030"
       ]
     },
     {
       "id": "cap-sofla-ms",
       "state": "FL",
       "market": "Broward",
-      "team": "Fundraising",
+      "team": "Advancement",
       "workstream": "Growth Capital",
       "activity": "Secure $7M South Florida growth capital",
       "schools": [],
@@ -3639,20 +3838,21 @@
       "stage": "in_progress",
       "progress_percent": 50,
       "priority": "high",
-      "functional_area": "Fundraising",
+      "functional_area": "Advancement",
       "location": "Broward",
       "due_date": "2028-06-30",
       "tags": [
         "FL",
         "Advancement",
         "FY28"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "cap-pat-ms",
       "state": "NJ",
       "market": "Paterson",
-      "team": "Fundraising",
+      "team": "Advancement",
       "workstream": "Growth Capital",
       "activity": "Secure $1.5M Paterson growth capital",
       "schools": [],
@@ -3669,14 +3869,15 @@
       "stage": "in_progress",
       "progress_percent": 50,
       "priority": "high",
-      "functional_area": "Fundraising",
+      "functional_area": "Advancement",
       "location": "Paterson",
       "due_date": "2028-06-30",
       "tags": [
         "NJ",
         "Advancement",
         "FY28"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "zmozjosspr",
@@ -3709,6 +3910,9 @@
         "Marketing",
         "ES3",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES3_Broward_2028"
       ]
     },
     {
@@ -3742,6 +3946,9 @@
         "Marketing",
         "ES3",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES3_Broward_2028"
       ]
     },
     {
@@ -3775,6 +3982,9 @@
         "Marketing",
         "ES3",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES3_Broward_2028"
       ]
     },
     {
@@ -3808,6 +4018,9 @@
         "Marketing",
         "ES3",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES3_Broward_2028"
       ]
     },
     {
@@ -3841,6 +4054,9 @@
         "Marketing",
         "MS3",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_MS3_Broward_2028"
       ]
     },
     {
@@ -3874,6 +4090,9 @@
         "Marketing",
         "MS3",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_MS3_Broward_2028"
       ]
     },
     {
@@ -3907,6 +4126,9 @@
         "Marketing",
         "MS3",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_MS3_Broward_2028"
       ]
     },
     {
@@ -3940,6 +4162,9 @@
         "Marketing",
         "MS3",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_MS3_Broward_2028"
       ]
     },
     {
@@ -3973,6 +4198,9 @@
         "Marketing",
         "ES4",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_ES4_Broward_2029"
       ]
     },
     {
@@ -4006,6 +4234,9 @@
         "Marketing",
         "ES4",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_ES4_Broward_2029"
       ]
     },
     {
@@ -4039,6 +4270,9 @@
         "Marketing",
         "ES4",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_ES4_Broward_2029"
       ]
     },
     {
@@ -4072,6 +4306,9 @@
         "Marketing",
         "ES4",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_ES4_Broward_2029"
       ]
     },
     {
@@ -4105,6 +4342,9 @@
         "Marketing",
         "MS4",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_MS4_Broward_2029"
       ]
     },
     {
@@ -4138,6 +4378,9 @@
         "Marketing",
         "MS4",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_MS4_Broward_2029"
       ]
     },
     {
@@ -4171,6 +4414,9 @@
         "Marketing",
         "MS4",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_MS4_Broward_2029"
       ]
     },
     {
@@ -4204,6 +4450,9 @@
         "Marketing",
         "MS4",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_MS4_Broward_2029"
       ]
     },
     {
@@ -4237,6 +4486,9 @@
         "Marketing",
         "ES2",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES2_Paterson_2028"
       ]
     },
     {
@@ -4270,6 +4522,9 @@
         "Marketing",
         "ES2",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES2_Paterson_2028"
       ]
     },
     {
@@ -4303,6 +4558,9 @@
         "Marketing",
         "ES2",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES2_Paterson_2028"
       ]
     },
     {
@@ -4336,6 +4594,9 @@
         "Marketing",
         "ES2",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES2_Paterson_2028"
       ]
     },
     {
@@ -4369,6 +4630,9 @@
         "Marketing",
         "MS2",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_MS2_Paterson_2028"
       ]
     },
     {
@@ -4402,6 +4666,9 @@
         "Marketing",
         "MS2",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_MS2_Paterson_2028"
       ]
     },
     {
@@ -4435,6 +4702,9 @@
         "Marketing",
         "MS2",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_MS2_Paterson_2028"
       ]
     },
     {
@@ -4468,6 +4738,9 @@
         "Marketing",
         "MS2",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_MS2_Paterson_2028"
       ]
     },
     {
@@ -4501,6 +4774,9 @@
         "Marketing",
         "ES6",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_ES6_Newark_2029"
       ]
     },
     {
@@ -4534,6 +4810,9 @@
         "Marketing",
         "ES6",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_ES6_Newark_2029"
       ]
     },
     {
@@ -4567,6 +4846,9 @@
         "Marketing",
         "ES6",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_ES6_Newark_2029"
       ]
     },
     {
@@ -4600,6 +4882,9 @@
         "Marketing",
         "ES6",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_ES6_Newark_2029"
       ]
     },
     {
@@ -4633,6 +4918,9 @@
         "Marketing",
         "MS6",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_MS6_Newark_2029"
       ]
     },
     {
@@ -4666,6 +4954,9 @@
         "Marketing",
         "MS6",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_MS6_Newark_2029"
       ]
     },
     {
@@ -4699,6 +4990,9 @@
         "Marketing",
         "MS6",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_MS6_Newark_2029"
       ]
     },
     {
@@ -4732,6 +5026,9 @@
         "Marketing",
         "MS6",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_MS6_Newark_2029"
       ]
     },
     {
@@ -4762,7 +5059,8 @@
         "FL",
         "Marketing",
         "FY28"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "9urgytuidl",
@@ -4792,7 +5090,8 @@
         "FL",
         "Marketing",
         "FY28"
-      ]
+      ],
+      "schoolIds": []
     }
   ]
 }

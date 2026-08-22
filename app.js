@@ -8,9 +8,9 @@
 const LS = { theme: 'ngc_theme', data: 'ngc_data', gh: 'ngc_gh', supabase: 'ngc_supabase', ui: 'ngc_ui', gate: 'ngc_gate' };
 /* Safe storage — sandboxed iframes (e.g. the published artifact) throw on any localStorage access.
    Never let that break app init / event wiring. */
-function lsGet(k) { try { return lsGet(k); } catch (e) { return null; } }
-function lsSet(k, v) { try { lsSet(k, v); return true; } catch (e) { return false; } }
-function lsDel(k) { try { lsDel(k); } catch (e) {} }
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
 
 const state = {
   data: null,
@@ -27,7 +27,8 @@ const state = {
 
 /* ---------- palette (spec colors) ---------- */
 const STATE_COLOR = { NJ: '#16357F', FL: '#1B6EA5' };
-const MARKET_COLOR = { Paterson: '#E1523D', 'Miami-Dade': '#F5A623', Broward: '#D98C10', Newark: '#57C0E9', Orange: '#12357F', Orlando: '#12357F', Camden: '#A4CE4E' };
+// KIPP brand palette: navy #16357F · sky #43B0E6 · green #A6CE3A · orange #F6A11C · red #E63E2F
+const MARKET_COLOR = { Paterson: '#E63E2F', 'Miami-Dade': '#F6A11C', Broward: '#C9852A', Newark: '#43B0E6', Orange: '#16357F', Orlando: '#16357F', Camden: '#A6CE3A' };
 const TYPE_COLOR = { ES: '#1B6EA5', MS: '#C77400', HS: '#5F3DC4' };
 const mkColor = m => MARKET_COLOR[m] || '#5A6B8C';
 const stColor = s => STATE_COLOR[s] || '#5A6B8C';
@@ -142,7 +143,9 @@ const markets = () => meta().markets;
 const teams = () => meta().teams;
 const statesMeta = () => meta().states;
 const stateOfMarket = mk => { const s = statesMeta().find(s => s.markets.includes(mk)); return s ? s.code : ''; };
-const schoolMs = s => M().filter(m => (m.schools || []).includes(s.code) && m.openingFY === s.openingFY && m.market === s.market);
+// tasks belong to a school by its STABLE id; composite (code+market+openingFY) is a legacy fallback for any un-migrated task
+const taskInSchool = (m, s) => Array.isArray(m.schoolIds) ? m.schoolIds.includes(s.id) : ((m.schools || []).includes(s.code) && m.openingFY === s.openingFY && m.market === s.market);
+const schoolMs = s => M().filter(m => taskInSchool(m, s));
 
 function passFilters(m) {
   const f = state.filters;
@@ -154,7 +157,7 @@ function passFilters(m) {
   if (f.priorities.size && !f.priorities.has(m.priority)) return false;
   if (f.timing && timingLevel(m) !== f.timing) return false;
   if (f.openingFYs.size && m.openingFY && !f.openingFYs.has(m.openingFY)) return false;
-  if (f.schoolId) { const sc = state.data.schools.find(x => x.id === f.schoolId); if (!sc || !((m.schools || []).includes(sc.code) && m.market === sc.market && m.openingFY === sc.openingFY)) return false; }
+  if (f.schoolId) { const sc = state.data.schools.find(x => x.id === f.schoolId); if (!sc || !taskInSchool(m, sc)) return false; }
   if (f.search) { const q = f.search.toLowerCase(); if (!`${m.activity} ${m.workstream} ${m.functional_area} ${m.market} ${m.owner} ${(m.tags || []).join(' ')}`.toLowerCase().includes(q)) return false; }
   return true;
 }
@@ -368,7 +371,7 @@ function groupsByDim(dim, list) {
   else if (dim === 'market') markets().forEach(mk => { const l = list.filter(m => m.market === mk); if (l.length) g.push({ name: mk, val: mk, color: mkColor(mk), list: l }); });
   else if (dim === 'state') statesMeta().forEach(s => { const l = list.filter(m => m.state === s.code); if (l.length) g.push({ name: s.name, val: s.code, color: stColor(s.code), list: l }); });
   else if (dim === 'year') { const map = {}; list.forEach(m => { const k = m.targetFY || 'none'; (map[k] = map[k] || []).push(m); }); Object.keys(map).filter(k => k !== 'none').map(Number).sort((a, b) => a - b).forEach(fy => g.push({ name: 'FY ' + fyLabel(fy), val: fy, list: map[fy] })); if (map['none']) g.push({ name: 'No date', val: '', list: map['none'] }); }
-  else if (dim === 'school') { state.data.schools.forEach(s => { const l = list.filter(m => (m.schools || []).includes(s.code) && m.market === s.market && m.openingFY === s.openingFY); if (l.length) g.push({ name: s.display_label + ' · ' + s.market, val: s.id, color: mkColor(s.market), list: l, school: s }); }); g.sort((a, b) => ((a.school && a.school.openingFY) || 9999) - ((b.school && b.school.openingFY) || 9999)); }
+  else if (dim === 'school') { state.data.schools.forEach(s => { const l = list.filter(m => taskInSchool(m, s)); if (l.length) g.push({ name: s.display_label + ' · ' + s.market, val: s.id, color: mkColor(s.market), list: l, school: s }); }); g.sort((a, b) => ((a.school && a.school.openingFY) || 9999) - ((b.school && b.school.openingFY) || 9999)); }
   return g;
 }
 function statusBar(list) { const c = effCounts(list), t = list.length || 1; return `<div class="sbar">${STATUS_ORDER.map(s => c[s] ? `<span style="width:${100 * c[s] / t}%;background:${SM(s).color}" title="${SM(s).label}: ${c[s]}"></span>` : '').join('')}</div>`; }
@@ -386,7 +389,8 @@ function columnChart(list) {
   const map = {}; list.forEach(m => { if (m.targetFY) (map[m.targetFY] = map[m.targetFY] || []).push(m); });
   const fys = Object.keys(map).map(Number).sort((a, b) => a - b); if (!fys.length) return '<div class="placeholder-note">No dated items.</div>';
   const max = Math.max(...fys.map(fy => map[fy].length), 1);
-  return `<div class="colchart">` + fys.map(fy => { const l = map[fy], c = effCounts(l); return `<div class="col drill" data-drilldim="year" data-drillval="${fy}" title="Click to see FY ${fyLabel(fy)} items"><div class="col-n">${l.length}</div><div class="col-bar" style="height:${Math.max(6, 100 * l.length / max)}%">${STATUS_ORDER.filter(s => c[s]).map(s => `<span style="height:${100 * c[s] / l.length}%;background:${SM(s).color}" title="${SM(s).label}: ${c[s]}"></span>`).join('')}</div><div class="col-lbl">${fyLabel(fy)}</div></div>`; }).join('') + `</div>`;
+  const yrLbl = fy => fy ? `${fy - 1}–${String(fy).slice(2)}` : '—';   // school year, e.g. 2027–28 (no "FY" jargon)
+  return `<div class="colchart">` + fys.map(fy => { const l = map[fy], c = effCounts(l); return `<div class="col drill" data-drilldim="year" data-drillval="${fy}" title="Click to see ${yrLbl(fy)} school-year items"><div class="col-n">${l.length}</div><div class="col-bar" style="height:${Math.max(6, 100 * l.length / max)}%">${STATUS_ORDER.filter(s => c[s]).map(s => `<span style="height:${100 * c[s] / l.length}%;background:${SM(s).color}" title="${SM(s).label}: ${c[s]}"></span>`).join('')}</div><div class="col-lbl">${yrLbl(fy)}</div></div>`; }).join('') + `</div>`;
 }
 function chartsHtml(list) {
   const dims = [['team', 'Workstream'], ['year', 'Year'], ['school', 'School opening'], ['market', 'Market'], ['state', 'State']];
@@ -400,6 +404,9 @@ function chartsHtml(list) {
 }
 
 function progressBodyHtml() {
+  return dashboardHtml(filtered());   // Dashboard is the only status view; drill-downs jump to the Project Plan
+}
+function progressBodyHtml_legacyList() {
   const list = filtered();
   const byArea = teams().map(t => ({ key: 'a:' + t, name: t, list: list.filter(m => m.functional_area === t) }));
   const njMk = statesMeta().find(s => s.code === 'NJ').markets, flMk = statesMeta().find(s => s.code === 'FL').markets;
@@ -428,11 +435,9 @@ function progressBodyHtml() {
     ${section('sec:fl', 'By Market (Florida)', byFL)}`;
 }
 function renderProgress() {
-  const isCharts = state.progressView === 'charts';
-  const toggle = `<div class="segmented"><button class="seg ${isCharts ? 'on' : ''}" data-progressview="charts"><span>Dashboard</span></button><button class="seg ${!isCharts ? 'on' : ''}" data-progressview="list"><span>Detailed View</span></button></div>`;
-  const printBtn = isCharts ? `<button class="btn btn-tonal" id="dashPrint"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Print / PDF</button>` : '';
+  const printBtn = `<button class="btn btn-tonal" id="dashPrint"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Print / PDF</button>`;
   $('#view-progress').innerHTML = `
-    <div class="view-head"><div><h2>Dashboard</h2></div><div class="vh-actions">${toggle}${printBtn}</div></div>
+    <div class="view-head"><div><h2>Dashboard</h2></div><div class="vh-actions">${printBtn}</div></div>
     ${filterBar(['states', 'markets', 'areas', 'statuses'], { school: true })}
     ${openingYearBar()}
     <div id="viewBody">${progressBodyHtml()}</div>`;
@@ -473,7 +478,7 @@ function planListHtml() {
     if (gb === 'priority') return (PRIORITY[m.priority] || {}).label;
     if (gb === 'market') return m.market;
     if (gb === 'year') { order['FY ' + fyLabel(m.targetFY)] = m.targetFY || 9999; return m.targetFY ? 'FY ' + fyLabel(m.targetFY) : 'No date'; }
-    if (gb === 'school') { const s = state.data.schools.find(x => (m.schools || []).includes(x.code) && x.market === m.market && x.openingFY === m.openingFY); return s ? s.display_label + ' · ' + s.market : 'Not tied to a school'; }
+    if (gb === 'school') { const s = state.data.schools.find(x => taskInSchool(m, x)); return s ? s.display_label + ' · ' + s.market : 'Not tied to a school'; }
     return m.functional_area;
   };
   list.forEach(m => { const k = keyOf(m) || '—'; (g[k] = g[k] || []).push(m); });
@@ -528,7 +533,8 @@ function ragDot(st, title) { const c = st === 'x' ? '#C9CDD6' : SM(st).color; re
 /* consistent R/Y/G by milestone completion: <50% red · ≥50% yellow · all complete green */
 /* greenlight/gating status per domain — deliberately distinct from market brand colors.
    grey = not started · blue = in progress · green = cleared (gate met) · amber/red = off-track */
-const RAG = { green: '#16A34A', blue: '#2563EB', yellow: '#EAB308', red: '#DC2626', none: '#C7CCD6' };
+// status palette drawn from the KIPP brand: green=complete, sky=on track, orange=at risk, red=behind
+const RAG = { green: '#79A81E', blue: '#43B0E6', yellow: '#F6A11C', red: '#E63E2F', none: '#C7CCD6' };
 function ragProgress(list) {
   if (!list.length) return { key: 'none', color: RAG.none, label: 'No tasks yet', pct: null };
   const done = list.filter(m => effectiveStatus(m) === 'complete').length, pctc = Math.round(100 * done / list.length);
@@ -541,14 +547,35 @@ function ragDotP(list, prefix) { const r = ragProgress(list); return `<span clas
 function ragReady(list) {
   if (!list.length) return { key: 'none', color: RAG.none, label: 'Not started' };
   const eff = list.map(effectiveStatus), done = eff.filter(s => s === 'complete').length, pctc = Math.round(100 * done / list.length);
-  if (done === list.length) return { key: 'green', color: RAG.green, label: 'Cleared · gate met' };
-  if (eff.some(s => s === 'behind' || s === 'blocked')) return { key: 'red', color: RAG.red, label: 'Behind · ' + pctc + '% cleared' };
-  if (eff.some(s => s === 'at_risk')) return { key: 'yellow', color: RAG.yellow, label: 'At risk · ' + pctc + '% cleared' };
-  if (eff.some(s => s === 'on_track' || s === 'complete')) return { key: 'blue', color: RAG.blue, label: 'In progress · ' + pctc + '% cleared' };
+  if (done === list.length) return { key: 'green', color: RAG.green, label: 'Complete' };
+  if (eff.some(s => s === 'behind' || s === 'blocked')) return { key: 'red', color: RAG.red, label: 'Behind · ' + pctc + '% done' };
+  if (eff.some(s => s === 'at_risk')) return { key: 'yellow', color: RAG.yellow, label: 'At risk · ' + pctc + '% done' };
+  if (eff.some(s => s === 'on_track' || s === 'complete')) return { key: 'blue', color: RAG.blue, label: 'On track · ' + pctc + '% done' };
   return { key: 'none', color: RAG.none, label: 'Not started' };
 }
 function ragDotR(list, prefix) { const r = ragReady(list); return `<span class="rag" style="background:${r.color}" title="${esc((prefix ? prefix + ' — ' : '') + r.label)}"></span>`; }
 function exLi(m, flag) { return `<div class="ex-li nodot" data-expand="${m.id}"><span class="ex-li-t">${flag || ''}${esc(m.activity)}</span><span class="ex-li-m muted">${esc(m.market)} · ${esc(m.functional_area)}</span><span class="ex-li-d muted">${m.due_date ? fmtDate(m.due_date) : ''}</span></div>`; }
+// monthly trend snapshots (localStorage) → powers the KPI "vs last month" deltas
+function captureTrend() {
+  const ym = new Date().toISOString().slice(0, 7);
+  let t = []; try { t = JSON.parse(lsGet('ngc_trends') || '[]'); } catch (e) {}
+  if (t.length && t[t.length - 1].ym === ym) return;
+  const schools = state.data.schools, rags = schools.map(s => ragReady(schoolMs(s))), cnt = k => rags.filter(r => r.key === k).length;
+  const attention = cnt('red') + cnt('yellow'), onTrack = schools.length - attention, overdue = M().filter(m => timingLevel(m) === 'overdue').length;
+  t.push({ ym, onTrack, attention, overdue }); if (t.length > 24) t = t.slice(-24);
+  try { lsSet('ngc_trends', JSON.stringify(t)); } catch (e) {}
+}
+function trendPrev() { let t = []; try { t = JSON.parse(lsGet('ngc_trends') || '[]'); } catch (e) {} const ym = new Date().toISOString().slice(0, 7); return t.filter(x => x.ym < ym).slice(-1)[0] || null; }
+// Segmented status bar (Lintel-style): the whole milestone mix in one glance
+function statusPipeline(list) {
+  const order = ['not_started', 'on_track', 'at_risk', 'behind', 'blocked', 'complete'];
+  const c = {}; order.forEach(s => c[s] = 0);
+  list.forEach(m => { const es = effectiveStatus(m); if (c[es] == null) c[es] = 0; c[es]++; });
+  const seg = order.map(s => c[s] ? `<span class="pl-seg" style="flex:${c[s]};background:${SM(s).color}" title="${SM(s).label}: ${c[s]}"></span>` : '').join('') || '<span class="pl-seg" style="flex:1;background:var(--surface-container-high)"></span>';
+  const legend = order.filter(s => c[s]).map(s => `<span class="pl-leg"><i style="background:${SM(s).color}"></i>${SM(s).label}<b>${c[s]}</b></span>`).join('');
+  return `<section class="ex-card"><div class="ex-card-head"><div class="ex-cardhead-l"><h3>Milestones by Status</h3></div><span class="muted ex-hint">${list.length} milestone${list.length === 1 ? '' : 's'} in view</span></div>
+    <div class="pl-bar">${seg}</div><div class="pl-legend">${legend || '<span class="muted">No milestones in view.</span>'}</div></section>`;
+}
 // NORTH STAR — the charter's stakeholder answer, rendered ABOVE the filters so a busy exec
 // (often on a phone) sees "are we on track?" before any controls.
 function northStarHtml() {
@@ -620,12 +647,22 @@ function dashboardHtml(list) {
   // KPI SUMMARY — restrained, clearly-labeled cards; each number tied to a click-through
   const b = cnt('blue'), attention = r + y, onTrack = total - attention;
   const overdue = list.filter(m => timingLevel(m) === 'overdue').length;
-  const kpi = (num, den, lbl, sub, cls, drill) => `<${drill ? 'button' : 'div'} class="kcard2 ${cls || ''} ${drill ? 'drill' : ''}" ${drill || ''}><div class="k-num">${num}${den ? `<span class="k-den">${den}</span>` : ''}</div><div class="k-lbl">${lbl}</div><div class="k-sub">${sub}</div></${drill ? 'button' : 'div'}>`;
+  const KPI_IC = {
+    school: 'M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z',
+    warning: 'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z',
+    event: 'M20 3h-1V1h-2v2H7V1H5v2H4c-1.11 0-1.99.9-1.99 2L2 21c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z',
+    schedule: 'M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z'
+  };
+  // month-over-month trend (portfolio-wide; only shown when no filters are applied)
+  const unfiltered = !state.filters.states.size && !state.filters.markets.size && !state.filters.areas.size && !state.filters.statuses.size && !state.filters.openingFYs.size && !state.filters.schoolId && !state.filters.search && !state.filters.timing;
+  const tp = unfiltered ? trendPrev() : null;
+  const dChip = (cur, key, goodUp) => { if (!tp || typeof tp[key] !== 'number') return ''; const d = cur - tp[key]; if (!d) return ''; const up = d > 0; const good = up === goodUp; return `<span class="k-delta ${good ? 'good' : 'bad'}">${up ? '▲' : '▼'} ${Math.abs(d)}<span class="k-delta-lbl"> vs last month</span></span>`; };
+  const kpi = (icon, num, den, lbl, sub, cls, drill, delta) => `<${drill ? 'button' : 'div'} class="kcard2 ${cls || ''} ${drill ? 'drill' : ''}" ${drill || ''}><span class="k-ic"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="${KPI_IC[icon]}"/></svg></span><div class="k-num">${num}${den ? `<span class="k-den">${den}</span>` : ''}</div><div class="k-lbl">${lbl}</div><div class="k-sub">${sub}</div>${delta || ''}</${drill ? 'button' : 'div'}>`;
   const kpiStrip = `<section class="kpi-strip">
-    ${kpi(onTrack, `/ ${total}`, 'Schools on track', 'Not slipping on any milestone')}
-    ${kpi(attention, '', 'Need attention', attention ? 'Behind or at risk — view' : 'Nothing off-track', attention ? 'k-alert' : '', attention ? 'data-drilldim="riskbehind" data-drillval=""' : '')}
-    ${nextC ? kpi(nextC.mo <= 0 ? 'Now' : nextC.mo, nextC.mo <= 0 ? '' : ' mo', 'Next opening', `Fall ${nextC.fy - 1} · ${esc(nextC.mkts.join(' · '))}`, '', `data-drilldim="year" data-drillval="${nextC.fy}"`) : ''}
-    ${kpi(overdue, '', 'Milestones overdue', overdue ? 'Past due — view' : 'None past due', overdue ? 'k-alert' : '', overdue ? 'data-drilldim="timing" data-drillval="overdue"' : '')}
+    ${kpi('school', onTrack, `/ ${total}`, 'Schools on track', '', '', '', dChip(onTrack, 'onTrack', true))}
+    ${kpi('warning', attention, '', 'Need attention', '', attention ? 'k-alert' : '', attention ? 'data-drilldim="riskbehind" data-drillval=""' : '', dChip(attention, 'attention', false))}
+    ${nextC ? kpi('event', nextC.mo <= 0 ? 'Now' : nextC.mo, nextC.mo <= 0 ? '' : ' mo', 'Next opening', `Fall ${nextC.fy - 1} · ${esc(nextC.mkts.join(' · '))}`, '', `data-drilldim="year" data-drillval="${nextC.fy}"`) : ''}
+    ${kpi('schedule', overdue, '', 'Milestones overdue', '', overdue ? 'k-alert' : '', overdue ? 'data-drilldim="timing" data-drillval="overdue"' : '', dChip(overdue, 'overdue', false))}
   </section>`;
 
 
@@ -642,8 +679,8 @@ function dashboardHtml(list) {
     return `<tr class="ex-band"><td colspan="${3 + tms.length}"><span class="state-badge" style="background:${stColor(st.code)}">${st.code}</span> ${esc(st.name)} <span class="muted">· ${rows.length} openings</span></td></tr>${body}`;
   }).join('');
   const rOpen = !state.expanded['dash:readiness'];
-  const readiness = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:readiness"><div class="ex-cardhead-l">${chev(rOpen)}<h3>Greenlight Readiness</h3></div><span class="muted ex-hint">Gate status by domain · click a row to open</span></div>
-    <div class="ex-card-body ${rOpen ? '' : 'hide'}"><div class="ex-legend ex-legend-top"><span><i class="rag" style="background:${RAG.none}"></i>Not started</span><span><i class="rag" style="background:${RAG.blue}"></i>In progress</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind</span><span><i class="rag" style="background:${RAG.green}"></i>Cleared</span></div>
+  const readiness = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:readiness"><div class="ex-cardhead-l">${chev(rOpen)}<h3>Readiness by School &amp; Workstream</h3></div><span class="muted ex-hint">Each dot = how that workstream is tracking · click a school to open it</span><button class="card-more" data-showmore="school">See all →</button></div>
+    <div class="ex-card-body ${rOpen ? '' : 'hide'}"><div class="ex-legend ex-legend-top"><span><i class="rag" style="background:${RAG.none}"></i>Not started</span><span><i class="rag" style="background:${RAG.blue}"></i>On track</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind</span><span><i class="rag" style="background:${RAG.green}"></i>Complete</span></div>
     <div class="ex-grid-wrap"><table class="ex-grid"><thead><tr><th>School</th><th>Opens</th><th>Overall</th>${tms.map(t => `<th class="ex-th-team"><span>${esc(t)}</span></th>`).join('')}</tr></thead><tbody>${grid}</tbody></table></div></div></section>`;
 
   // PRIORITIES & RISKS
@@ -653,7 +690,7 @@ function dashboardHtml(list) {
   const stuck = list.filter(m => (m.status === 'blocked' || timingLevel(m) === 'overdue') && effectiveStatus(m) !== 'complete').sort(bySortUrgency);
   const risksOpen = !state.expanded.dashrisks_collapsed;
   const pOpen = !state.expanded['dash:priorities'];
-  const prCard = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:priorities"><div class="ex-cardhead-l">${chev(pOpen)}<h3>Priorities &amp; Risks</h3></div></div>
+  const prCard = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:priorities"><div class="ex-cardhead-l">${chev(pOpen)}<h3>Priorities &amp; Risks</h3></div><button class="card-more" data-showmore="focus">See all →</button></div>
     <div class="ex-card-body ${pOpen ? '' : 'hide'}"><div class="dash-block-h">Key milestones &amp; greenlights · next 90 days<span class="dash-count">${upcoming.length}</span></div>
     ${upcoming.length ? `<div class="ex-list">${upcoming.map(m => exLi(m, m.greenlight ? '◆ ' : m.transition ? '⇄ ' : '')).join('')}</div>` : '<div class="muted ex-empty">Nothing in the next 90 days.</div>'}
     <div class="dash-block-h toggle" data-toggle="dashrisks_collapsed">${chev(risksOpen)}Blocked or past due<span class="dash-count ${stuck.length ? 'bad' : ''}">${stuck.length}</span></div>
@@ -662,7 +699,7 @@ function dashboardHtml(list) {
   // GROWTH FUNDRAISING
   const camps = (state.data.campaigns || []).filter(c => !state.filters.states.size || state.filters.states.has(c.state));
   const fOpen = !state.expanded['dash:fund'];
-  const capital = camps.length ? `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:fund"><div class="ex-cardhead-l">${chev(fOpen)}<h3>Growth Fundraising</h3></div></div><div class="ex-card-body ${fOpen ? '' : 'hide'}"><div class="ex-caps">${camps.map(c => {
+  const capital = camps.length ? `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:fund"><div class="ex-cardhead-l">${chev(fOpen)}<h3>Advancement</h3></div></div><div class="ex-card-body ${fOpen ? '' : 'hide'}"><div class="ex-caps">${camps.map(c => {
     const p = c.target ? Math.min(100, Math.round(100 * c.raised / c.target)) : 0;
     return `<div class="ex-cap"><div class="ex-cap-top"><b>${esc(c.name)}</b><span>${fmtMoney(c.raised)} <span class="muted">/ ${fmtMoney(c.target)}</span></span></div>
       <div class="ex-cap-bar"><span style="width:${p}%"></span></div><div class="ex-cap-foot muted">${p}% raised</div></div>`;
@@ -670,9 +707,9 @@ function dashboardHtml(list) {
 
   // WORKLOAD — pacing across fiscal years
   const wOpen = !state.expanded['dash:workload'];
-  const workload = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:workload"><div class="ex-cardhead-l">${chev(wOpen)}<h3>Milestones Due by Fiscal Year</h3></div></div><div class="ex-card-body ${wOpen ? '' : 'hide'}">${columnChart(list)}</div></section>`;
+  const workload = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:workload"><div class="ex-cardhead-l">${chev(wOpen)}<h3>Milestones Due by School Year</h3></div></div><div class="ex-card-body ${wOpen ? '' : 'hide'}">${columnChart(list)}</div></section>`;
 
-  return `<div class="dash">${hero}${kpiStrip}${readiness}${prCard}<div class="ex-cols2 ex-cols-even">${capital}${workload}</div></div>`;
+  return `<div class="dash">${hero}${kpiStrip}${statusPipeline(list)}${readiness}<div class="dash-lower">${prCard}${capital}${workload}</div></div>`;
 }
 function applyDrill(dim, val) {
   if (dim === 'team') state.filters.areas = new Set([val]);
@@ -684,12 +721,12 @@ function applyDrill(dim, val) {
   else if (dim === 'timing') { state.filters.timing = val; state.filters.statuses.clear(); }
   else if (dim === 'riskbehind') { state.filters.statuses = new Set(['at_risk', 'behind']); state.filters.timing = ''; }
   else if (dim === 'all') { /* just show the detailed list */ }
-  state.progressView = 'list'; renderProgress(); window.scrollTo({ top: 0, behavior: 'smooth' });
+  setView('plan'); window.scrollTo({ top: 0, behavior: 'smooth' });   // dashboard = status; drilling opens the Project Plan, filtered
 }
 function refreshResults() { refreshBody(); }
 
 function addItem() {
-  const m = { id: uid(), state: 'NJ', market: 'Paterson', team: teams()[0], functional_area: teams()[0], workstream: 'General', activity: 'New task', schools: [], targetFY: currentFY(), targetQuarter: '', openingFY: null, due_date: null, status: 'not_started', stage: 'to_do', progress_percent: 0, priority: 'medium', owner: '', dependency: '', keyMilestone: false, greenlight: false, transition: false, notes: '', tags: [] };
+  const m = { id: uid(), state: 'NJ', market: 'Paterson', team: teams()[0], functional_area: teams()[0], workstream: 'General', activity: 'New task', schools: [], schoolIds: [], targetFY: currentFY(), targetQuarter: '', openingFY: null, due_date: null, status: 'not_started', stage: 'to_do', progress_percent: 0, priority: 'medium', owner: '', dependency: '', keyMilestone: false, greenlight: false, transition: false, notes: '', tags: [] };
   M().push(m); autosave(); openModal(m.id);
 }
 
@@ -712,10 +749,10 @@ function openModal(id) {
   modalMode = 'task'; modalId = id; const m = findM(id); if (!m) return;
   $('#modalTitle').textContent = 'Task details';
   const opt = (arr, val) => arr.map(x => Array.isArray(x) ? `<option value="${x[0]}" ${x[0] === val ? 'selected' : ''}>${esc(x[1])}</option>` : `<option ${x === val ? 'selected' : ''}>${esc(x)}</option>`).join('');
-  const schoolChecks = state.data.schools.filter(s => s.market === m.market).map(s => `<label class="field-check"><input type="checkbox" class="m-school" value="${esc(s.code)}" ${(m.schools || []).includes(s.code) ? 'checked' : ''}> ${esc(s.display_label)}</label>`).join('') || '<span class="muted">No schools in this market.</span>';
+  const schoolChecks = state.data.schools.filter(s => s.market === m.market).map(s => `<label class="field-check"><input type="checkbox" class="m-school" value="${esc(s.id)}" ${(m.schoolIds || []).includes(s.id) ? 'checked' : ''}> ${esc(s.display_label)} <span class="muted">${esc(fyLabel(s.openingFY))}</span></label>`).join('') || '<span class="muted">No schools in this market.</span>';
   $('#modalBody').innerHTML = `
     <div class="field"><label>Task</label><textarea id="mAct">${esc(m.activity)}</textarea></div>
-    <div class="field-row"><div class="field"><label>Owner</label><input id="mOwner" value="${esc(m.owner)}" placeholder="Who owns this"></div><div class="field"><label>Due date</label><input id="mDue" type="date" value="${esc(m.due_date || '')}"></div></div>
+    <div class="field-row"><div class="field"><label>Owner</label><input id="mOwner" list="ownerRoster" value="${esc(m.owner)}" placeholder="Pick from the team or type a name"><datalist id="ownerRoster">${(meta().owners || []).map(o => `<option value="${esc(o.name)}">${esc(o.role || '')}</option>`).join('')}</datalist></div><div class="field"><label>Due date</label><input id="mDue" type="date" value="${esc(m.due_date || '')}"></div></div>
     <div class="field"><label>Status</label><select id="mStatus">${opt(meta().statuses.map(s => [s, SM(s).label]), m.status)}</select>
       <div class="help-text">Overdue or due-this-month tasks flag automatically, even if marked “On track.”</div></div>
     <div class="field-row"><div class="field"><label>Market / location</label><select id="mMarket">${opt(markets(), m.market)}</select></div><div class="field"><label>Workstream</label><select id="mTeam">${opt(teams(), m.functional_area)}</select></div></div>
@@ -737,13 +774,14 @@ function saveModal() {
   const m = findM(modalId); if (!m) return;
   m.activity = $('#mAct').value.trim() || m.activity; m.market = $('#mMarket').value; m.state = stateOfMarket(m.market) || m.state;
   m.team = $('#mTeam').value; m.functional_area = m.team; m.workstream = $('#mWs').value.trim() || 'General';
-  m.schools = $$('#mSchools .m-school').filter(x => x.checked).map(x => x.value);
+  m.schoolIds = $$('#mSchools .m-school').filter(x => x.checked).map(x => x.value);
+  m.schools = m.schoolIds.map(id => { const sc = schoolById(id); return sc ? sc.code : null; }).filter(Boolean);
   m.targetFY = $('#mFy').value ? +$('#mFy').value : null; m.targetQuarter = $('#mQ').value;
   m.status = $('#mStatus').value; m.stage = $('#mStage').value; m.priority = $('#mPri').value;
   m.progress_percent = Math.max(0, Math.min(100, +$('#mProg').value || 0));
   m.owner = $('#mOwner').value.trim(); m.due_date = $('#mDue').value || null; m.dependency = $('#mDep').value.trim();
   m.notes = $('#mNotes').value.trim(); m.keyMilestone = $('#mKey').checked; m.transition = $('#mTrans').checked;
-  const os = state.data.schools.find(s => s.market === m.market && m.schools.includes(s.code)); if (os) m.openingFY = os.openingFY;
+  const os = m.schoolIds.length ? schoolById(m.schoolIds[0]) : null; if (os) m.openingFY = os.openingFY;
   autosave(); closeModal(); rerender(); toast('Saved', 'ok');
 }
 function deleteModal() {
@@ -837,16 +875,16 @@ function saveSchool() {
   const shiftEl = $('#sShift');
   const shift = (old.openingFY && s.openingFY && (!shiftEl || shiftEl.checked)) ? (s.openingFY - old.openingFY) : 0;
   if (isNew) { delete s._new; state.data.schools.push(s); }
-  else if (old.code && (old.code !== s.code || old.market !== s.market || old.openingFY !== s.openingFY)) {
-    // keep this school's tasks linked after code/market/opening changes; optionally slide their deadlines
+  else {
+    // tasks stay linked by stable id; keep their denormalized fields in sync + slide deadlines on reschedule
     M().forEach(m => {
-      if (m.market === old.market && m.openingFY === old.openingFY && (m.schools || []).includes(old.code)) {
-        m.schools = m.schools.map(c => c === old.code ? s.code : c); m.market = s.market; m.state = s.state; m.openingFY = s.openingFY;
-        if (shift) {
-          if (m.targetFY) m.targetFY += shift;
-          if (m.due_date) m.due_date = shiftDateYears(m.due_date, shift);
-          m.tags = (m.tags || []).map(t => /^FY\d\d$/.test(t) ? 'FY' + String(s.openingFY).slice(-2) : t);
-        }
+      if (!(m.schoolIds || []).includes(s.id)) return;
+      if (old.code && old.code !== s.code) m.schools = (m.schools || []).map(c => c === old.code ? s.code : c);
+      m.market = s.market; m.state = s.state; m.openingFY = s.openingFY;
+      if (shift) {
+        if (m.targetFY) m.targetFY += shift;
+        if (m.due_date) m.due_date = shiftDateYears(m.due_date, shift);
+        m.tags = (m.tags || []).map(t => /^FY\d\d$/.test(t) ? 'FY' + String(s.openingFY).slice(-2) : t);
       }
     });
   }
@@ -858,13 +896,18 @@ function deleteSchool() {
   const s = schoolById(schoolId); if (!s) return; const tasks = schoolMs(s), sid = s.id, mk = s.market, ofy = s.openingFY, cd = s.code;
   confirmDialog({ title: `Remove ${esc(s.display_label)}?`, message: `Remove <b>${esc(s.display_label)} (${esc(s.market)})</b> from the opening schedule.` + (tasks.length ? ` Its <b>${tasks.length} task(s)</b> will also be deleted.` : ''), confirmLabel: 'Remove school', danger: true, onConfirm: () => {
     state.data.schools = state.data.schools.filter(x => x.id !== sid);
-    state.data.milestones = M().filter(m => !(m.market === mk && m.openingFY === ofy && (m.schools || []).includes(cd)));
+    // unlink this school from its tasks; drop a task only if it belonged to no other school
+    state.data.milestones = M().filter(m => {
+      if (!(m.schoolIds || []).includes(sid)) return true;
+      m.schoolIds = m.schoolIds.filter(id => id !== sid); m.schools = (m.schools || []).filter(c => c !== cd);
+      return m.schoolIds.length > 0;
+    });
     autosave(); closeModal(); rerender(); toast('School removed', 'ok');
   } });
 }
 function addTaskForSchool() {
   const s = schoolById(schoolId); if (!s) return;
-  const m = { id: uid(), state: s.state, market: s.market, team: teams()[0], functional_area: teams()[0], workstream: 'General', activity: 'New task', schools: [s.code], targetFY: s.openingFY, targetQuarter: '', openingFY: s.openingFY, due_date: null, status: 'not_started', stage: 'to_do', progress_percent: 0, priority: s.priority ? 'high' : 'medium', owner: '', dependency: '', keyMilestone: false, greenlight: false, transition: false, notes: '', tags: [s.state, s.code, 'FY' + String(s.openingFY).slice(-2)] };
+  const m = { id: uid(), state: s.state, market: s.market, team: teams()[0], functional_area: teams()[0], workstream: 'General', activity: 'New task', schools: [s.code], schoolIds: [s.id], targetFY: s.openingFY, targetQuarter: '', openingFY: s.openingFY, due_date: null, status: 'not_started', stage: 'to_do', progress_percent: 0, priority: s.priority ? 'high' : 'medium', owner: '', dependency: '', keyMilestone: false, greenlight: false, transition: false, notes: '', tags: [s.state, s.code, 'FY' + String(s.openingFY).slice(-2)] };
   M().push(m); autosave(); openModal(m.id);
 }
 
@@ -1064,6 +1107,8 @@ function setView(v, fromPop) {
   if (!VIEWS.includes(v)) v = 'timeline';
   state.view = v;
   $$('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.view === v));
+  const pg = $('#planGroup'); if (pg) pg.classList.toggle('expanded', v === 'plan');
+  $$('.nav-subitem').forEach(x => x.classList.toggle('active', v === 'plan' && (x.dataset.plan === 'focus' ? state.planFocus : (!state.planFocus && state.planGroup === x.dataset.plan))));
   // Only the active section keeps content — otherwise all three sections coexist with
   // duplicate ids (#viewBody, #filterbar, #clearFilters…) and refreshBody() targets the wrong one.
   $$('.view').forEach(s => { const on = s.id === 'view-' + v; s.classList.toggle('active', on); if (!on) s.innerHTML = ''; });
@@ -1073,8 +1118,13 @@ function setView(v, fromPop) {
 }
 
 function wireEvents() {
-  $('#navTabs').addEventListener('click', e => { const t = e.target.closest('.nav-tab'); if (t) setView(t.dataset.view); });
-  $('#themeBtn').addEventListener('click', () => applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
+  $('#navTabs').addEventListener('click', e => {
+    const si = e.target.closest('.nav-subitem');
+    if (si) { const p = si.dataset.plan; if (p === 'focus') state.planFocus = true; else { state.planGroup = p; state.planFocus = false; } return setView('plan'); }
+    const t = e.target.closest('.nav-tab'); if (t) setView(t.dataset.view);
+  });
+  const nt = $('#navToggle'); if (nt) nt.addEventListener('click', () => { const on = document.body.classList.toggle('nav-collapsed'); lsSet('ngc_nav', on ? '1' : '0'); nt.title = on ? 'Expand menu' : 'Collapse menu'; });
+  const nsr = $('#navSearch'); if (nsr) nsr.addEventListener('input', () => { state.filters.search = nsr.value.trim(); if (state.view !== 'plan') setView('plan'); else refreshBody(); });
   const showDrawer = () => { renderDrawer(); $('#drawer').classList.add('open'); $('#drawerBackdrop').classList.add('open'); };
   const openDrawer = () => {
     if (adminOn() && !state.adminUnlocked) return promptPassword({ title: 'Admin settings', message: 'Enter the settings password.', verify: v => pwHash(v) === String(meta().adminHash), onOk: () => { state.adminUnlocked = true; showDrawer(); } });
@@ -1115,6 +1165,7 @@ function wireEvents() {
     const pv = e.target.closest('[data-progressview]'); if (pv) { state.progressView = pv.dataset.progressview; return renderProgress(); }
     const pd = e.target.closest('[data-progressdim]'); if (pd) { state.progressDim = pd.dataset.progressdim; return refreshBody(); }
     const dr = e.target.closest('[data-drilldim]'); if (dr) return applyDrill(dr.dataset.drilldim, dr.dataset.drillval);
+    const sm = e.target.closest('[data-showmore]'); if (sm) { const p = sm.dataset.showmore; if (p === 'focus') state.planFocus = true; else { state.planGroup = p; state.planFocus = false; } return setView('plan'); }
     const tg = e.target.closest('[data-toggle]'); if (tg) { const k = tg.dataset.toggle; state.expanded[k] = !state.expanded[k]; return refreshBody(); }
     const ex = e.target.closest('[data-expand]'); if (ex) return openModal(ex.dataset.expand);
     const es2 = e.target.closest('[data-editschool]'); if (es2) return openSchoolModal(es2.dataset.editschool);
@@ -1215,9 +1266,11 @@ function saveGateSettings() {
 }
 
 async function init() {
-  applyTheme(lsGet(LS.theme) || 'light');   // default to light on first load
+  document.documentElement.setAttribute('data-theme', 'light');   // tool is always light
+  if (lsGet('ngc_nav') === '1') { document.body.classList.add('nav-collapsed'); const nt = $('#navToggle'); if (nt) nt.title = 'Expand menu'; }
   const data = await loadData(); if (!data) return; state.data = data;
   state.data.schools.forEach(s => { if (!s.id) s.id = uid(); });   // stable ids for school management
+  try { captureTrend(); } catch (e) {}   // snapshot this month's metrics for the "vs last month" deltas
   gateStart();
 }
 function bootApp() {

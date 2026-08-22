@@ -75,7 +75,7 @@
   --r-xs: 4px; --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 28px; --r-full: 999px;
 
   /* ---------- Type ---------- */
-  --font: "Roboto Flex", "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, "Helvetica Neue", Arial, sans-serif;
 
   --maxw: 1360px;
   --appbar-h: 64px;
@@ -1398,25 +1398,24 @@ body.edit-on .edit-pill { display: inline-flex; }
 /* ============ desktop sidebar navigation ============ */
 @media (min-width: 1000px) {
   .app-header {
-    position: fixed; left: 0; top: 0; bottom: 0; width: 238px; height: 100vh;
+    position: fixed; left: 0; top: 0; bottom: 0; width: 252px; height: 100vh;
     flex-direction: column; align-items: stretch; gap: 0;
-    padding: 20px 14px 16px; overflow-y: auto;
+    padding: 26px 18px 20px; overflow-y: auto;
     background: var(--surface-container-low); box-shadow: none;
     border-right: 1px solid var(--outline-variant); z-index: 60;
   }
   .brand-lockup { padding: 2px 8px 0; }
-  .brand-lockup { padding: 2px 6px 0; }
   .brand-lockup .brand-logo { max-width: 100%; width: auto; height: auto; }
-  .brand-sub { display: block !important; border-left: 0; padding: 0 8px; margin: 12px 0 22px; }
+  .brand-sub { display: block !important; border-left: 0; padding: 0 8px; margin: 14px 0 30px; }
   .brand-sub b { font-size: 14px; }
-  .nav-tabs { flex-direction: column; align-items: stretch; height: auto; gap: 5px; }
-  .nav-tab { justify-content: flex-start; text-align: left; height: auto; padding: 12px 14px; border-radius: 10px; font-size: 14.5px; color: var(--on-surface-variant); }
+  .nav-tabs { flex-direction: column; align-items: stretch; height: auto; gap: 9px; }
+  .nav-tab { justify-content: flex-start; text-align: left; height: auto; padding: 13px 16px; border-radius: 10px; font-size: 14.5px; color: var(--on-surface-variant); }
   .nav-tab.active { background: var(--primary-container); color: var(--on-primary-container); font-weight: 700; }
   .nav-tab.active::after { display: none; }
   .header-spacer { flex: 1; }
-  .header-actions { flex-wrap: wrap; gap: 6px; padding-top: 14px; margin-top: 8px; border-top: 1px solid var(--outline-variant); }
+  .header-actions { flex-wrap: wrap; gap: 10px; padding-top: 20px; margin-top: 14px; border-top: 1px solid var(--outline-variant); }
   .header-actions .save-state { flex: 1 1 100%; text-align: center; }
-  .container { margin-left: 238px; max-width: 1160px; }
+  .container { margin-left: 252px; max-width: 1160px; }
 }
 
 /* ============ legibility pass ============ */
@@ -1563,16 +1562,19 @@ body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 .pchip-none { background: transparent; color: var(--on-surface-variant, #6b7280); border: 1.5px dashed var(--outline, #cfd4df); font-weight: 700; box-shadow: none; }
 .pm-item-head .pchip { margin: 0 4px; }
 
-/* ---------- navy sidebar (desktop): high contrast vs. white content, on-brand ---------- */
+/* ---------- KIPP-navy navigation rail (desktop): branded rail, crisp white active pill w/ soft shadow ---------- */
 @media (min-width: 1000px) {
-  .app-header { background: #16357F; border-right: 1px solid rgba(0,0,0,.18); box-shadow: 2px 0 14px rgba(16,24,64,.12); }
+  .app-header { background: #16357F; border-right: none; box-shadow: 2px 0 18px rgba(16,24,64,.10); }
   .app-header .brand-logo { filter: brightness(0) invert(1); }
   .app-header .brand-sub, .app-header .brand-sub b { color: #fff; }
-  .app-header .brand-sub { opacity: .82; }
-  .app-header .nav-tab { color: rgba(255,255,255,.74); }
+  .app-header .brand-sub { opacity: .78; }
+  .app-header .nav-tab { color: rgba(255,255,255,.80); border-radius: 12px; }
+  .app-header .nav-tab .nav-ic { opacity: .82; }
   .app-header .nav-tab:hover { background: rgba(255,255,255,.10); color: #fff; }
-  .app-header .nav-tab.active { background: #fff; color: #16357F; font-weight: 700; }
-  .app-header .header-actions { border-top-color: rgba(255,255,255,.18); }
+  .app-header .nav-tab:hover .nav-ic { opacity: 1; }
+  .app-header .nav-tab.active { background: #43B0E6; color: #0B2A57; font-weight: 700; box-shadow: 0 8px 20px rgba(67,176,230,.32); }
+  .app-header .nav-tab.active .nav-ic { opacity: 1; }
+  .app-header .header-actions { border-top-color: rgba(255,255,255,.16); }
   .app-header .icon-btn { color: rgba(255,255,255,.86); }
 }
 
@@ -1597,8 +1599,155 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
 .k-den { font-size: 15px; font-weight: 600; color: var(--on-surface-variant); margin-left: 3px; letter-spacing: 0; }
 .k-lbl { font-size: 12.5px; font-weight: 700; color: var(--on-surface); margin-top: 9px; }
 .k-sub { font-size: 11.5px; color: var(--on-surface-variant); margin-top: 2px; line-height: 1.35; }
-.kcard2.k-alert .k-num { color: #DC2626; }
+.kcard2.k-alert .k-num { color: #E63E2F; }
 @media (max-width: 820px) { .kpi-strip { grid-template-columns: repeat(2, 1fr); } }
+
+/* ---------- nav rail: centered items, Material icons, no persistent save chip ---------- */
+@media (min-width: 1000px) {
+  .app-header .nav-tabs { margin-top: 6px; }      /* top-aligned under the brand (reference-standard) */
+  .app-header .header-spacer { display: block; flex: 1 1 auto; }   /* pushes utility icons to the bottom */
+  .app-header .nav-tab { display: flex; align-items: center; gap: 13px; }
+  .app-header .nav-ic { flex: 0 0 auto; opacity: .92; }
+}
+.nav-tab { display: flex; align-items: center; gap: 9px; justify-content: center; }
+.nav-ic { flex: 0 0 auto; }
+@media (max-width: 999px) { .nav-ic { display: none; } }   /* keep the mobile top-tabs text-only (no crowding) */
+/* the persistent "All changes saved / Synced • live" chip — removed; toasts still confirm saves */
+.save-state { display: none !important; }
+
+/* ---------- dashboard: compact lower row (Priorities · Advancement · Workload) — less scrolling ---------- */
+.dash-lower { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 15px; align-items: start; }
+@media (max-width: 1040px) { .dash-lower { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 640px) { .dash-lower { grid-template-columns: 1fr; } }
+
+/* ---------- nav rail: align logo, sub-brand, nav items, and utility icons to one left edge ---------- */
+@media (min-width: 1000px) {
+  .app-header .brand-lockup { padding: 2px 16px 0; }
+  .app-header .brand-sub { padding: 0 16px; }
+  .app-header .header-actions { padding-left: 6px; }
+}
+
+/* ---------- Rubick-inspired polish: soft elevation, cleaner ground, KPI icons ---------- */
+/* clean near-white ground (light only) so white cards float on soft shadows; dark mode keeps its tone */
+:root[data-theme="light"] body { background: #F4F6FB; }
+:root:not([data-theme="dark"]) body { background: #F4F6FB; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) body { background: var(--surface-container-low); } }
+:root[data-theme="dark"] body { background: var(--surface-container-low); }
+
+/* cards: trade hard borders for soft, layered elevation + rounder corners + air */
+.ex-card, .kcard2, .dash-cohort, .filterbar { border: none !important; box-shadow: 0 1px 2px rgba(16,24,64,.05), 0 6px 18px rgba(16,24,64,.05); }
+.ex-card { border-radius: 18px; padding: 20px 22px; }
+.kcard2 { border-radius: 16px; padding: 17px 19px; }
+.dash-cohort { border-radius: 15px; }
+.filterbar { border-radius: 16px; }
+button.kcard2:hover { box-shadow: 0 2px 4px rgba(16,24,64,.07), 0 10px 26px rgba(16,24,64,.10); transform: translateY(-2px); }
+
+/* KPI cards: tinted Material icon chip (brand navy default, semantic red on alerts) */
+.k-ic { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; background: rgba(22,53,127,.10); color: #16357F; margin-bottom: 13px; }
+.kcard2.k-alert .k-ic { background: #FDECEA; color: #E63E2F; }
+
+/* dashboard framing subtitle — states the goal + defines "on track" for non-technical readers */
+.view-sub { margin: 5px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--on-surface-variant); max-width: 720px; }
+.view-sub b { color: var(--on-surface); font-weight: 700; }
+/* light-only tool: never expose theme controls */
+#themeBtn { display: none !important; }
+
+/* ---------- collapsible nav rail (desktop) ---------- */
+#navToggle svg { transition: transform .18s ease; }
+body.nav-collapsed #navToggle svg { transform: rotate(180deg); }
+@media (min-width: 1000px) {
+  .app-header { transition: width .18s ease, padding .18s ease; }
+  .container { transition: margin-left .18s ease; }
+  body.nav-collapsed .app-header { width: 74px !important; min-width: 74px; max-width: 74px; padding-left: 10px; padding-right: 10px; align-items: center; }
+  body.nav-collapsed .brand-lockup, body.nav-collapsed .brand-sub { display: none; }
+  body.nav-collapsed .nav-tabs { align-items: center; }
+  body.nav-collapsed .nav-tab { justify-content: center; gap: 0; padding: 12px; width: 44px; }
+  body.nav-collapsed .nav-tab span { display: none; }
+  body.nav-collapsed .container { margin-left: 74px; }
+  body.nav-collapsed .header-actions { justify-content: center; padding-left: 0; }
+}
+
+/* ---------- nav section label (reference-style structure) ---------- */
+.nav-section { display: none; }
+@media (min-width: 1000px) {
+  .app-header .nav-section { display: block; font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: rgba(255,255,255,.48); padding: 0 16px; margin: 4px 0 10px; }
+  body.nav-collapsed .app-header .nav-section { visibility: hidden; height: 8px; margin: 0; }
+}
+
+/* ---------- nav sub-menu spillover (Project Plan lenses) ---------- */
+.nav-chev { display: none; }
+.nav-sub { display: none; }
+@media (min-width: 1000px) {
+  .app-header .nav-chev { display: inline-block; margin-left: auto; opacity: .65; transition: transform .18s ease; flex: 0 0 auto; }
+  .app-header .nav-group.expanded .nav-chev { transform: rotate(180deg); opacity: .9; }
+  .app-header .nav-sub { display: flex; flex-direction: column; gap: 2px; max-height: 0; overflow: hidden; transition: max-height .22s ease; }
+  .app-header .nav-group.expanded .nav-sub { max-height: 220px; margin: 4px 0 2px; }
+  .app-header .nav-subitem { position: relative; text-align: left; background: transparent; border: none; color: rgba(255,255,255,.62); font-family: inherit; font-size: 13.5px; padding: 9px 14px 9px 48px; border-radius: 9px; cursor: pointer; }
+  .app-header .nav-subitem:hover { background: rgba(255,255,255,.08); color: #fff; }
+  .app-header .nav-subitem.active { color: #fff; font-weight: 600; }
+  .app-header .nav-subitem.active::before { content: ''; position: absolute; left: 28px; top: 50%; transform: translateY(-50%); width: 6px; height: 6px; border-radius: 50%; background: #43B0E6; }
+  body.nav-collapsed .nav-chev, body.nav-collapsed .nav-sub { display: none !important; }
+}
+
+/* ---------- "See all →" card links (drill to Project Plan) ---------- */
+.card-more { margin-left: 10px; flex: 0 0 auto; background: transparent; border: none; color: var(--primary, #16357F); font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; padding: 4px 6px; border-radius: 7px; white-space: nowrap; }
+.card-more:hover { background: color-mix(in srgb, var(--primary) 10%, transparent); }
+@media (max-width: 560px) { .ex-card-head .ex-hint { display: none; } }
+
+/* ---------- segmented status bar (Milestones by Status) ---------- */
+.pl-bar { display: flex; height: 16px; border-radius: 999px; overflow: hidden; background: var(--surface-container-high); }
+.pl-seg { display: block; }
+.pl-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 13px; }
+.pl-leg { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--on-surface-variant); }
+.pl-leg i { width: 11px; height: 11px; border-radius: 3px; flex: 0 0 auto; }
+.pl-leg b { color: var(--on-surface); font-weight: 700; margin-left: 1px; }
+
+/* ---------- KPI month-over-month delta chip ---------- */
+.k-delta { display: inline-flex; align-items: center; gap: 3px; margin-top: 9px; font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; }
+.k-delta.good { background: #E9F6ED; color: #1E7A3D; }
+.k-delta.bad { background: #FDECEA; color: #C0341F; }
+.k-delta-lbl { font-weight: 500; opacity: .8; }
+
+/* ---------- sidebar global search ---------- */
+.nav-search { display: none; }
+@media (min-width: 1000px) {
+  .app-header .nav-search { display: flex; align-items: center; gap: 8px; margin: 2px 6px 6px; padding: 9px 12px; background: rgba(255,255,255,.10); border-radius: 10px; }
+  .app-header .nav-search .ns-ic { color: rgba(255,255,255,.6); flex: 0 0 auto; }
+  .app-header .nav-search input { flex: 1 1 auto; min-width: 0; background: transparent; border: none; outline: none; color: #fff; font-family: inherit; font-size: 13.5px; }
+  .app-header .nav-search input::placeholder { color: rgba(255,255,255,.5); }
+  body.nav-collapsed .nav-search { display: none; }
+}
+
+/* ---------- mobile top-nav fixes ---------- */
+@media (max-width: 999px) {
+  .nav-group { display: contents; }   /* let Project Plan flow inline with the other top-tabs */
+  #navToggle { display: none; }        /* collapse toggle is meaningless without the desktop rail */
+}
+
+/* ---------- light, professional sidebar (Lintel / Pillio / Edgelabs aesthetic) ---------- */
+@media (min-width: 1000px) {
+  .app-header { background: #FFFFFF; border-right: 1px solid var(--outline-variant); box-shadow: none; }
+  .app-header .brand-logo { filter: none; }
+  .app-header .brand-sub, .app-header .brand-sub b { color: var(--on-surface); opacity: 1; }
+  .app-header .nav-section { color: var(--on-surface-variant); opacity: .85; }
+  .app-header .nav-tab { color: var(--on-surface-variant); border-radius: 11px; }
+  .app-header .nav-tab .nav-ic { opacity: .68; }
+  .app-header .nav-tab:hover { background: var(--surface-container); color: var(--on-surface); }
+  .app-header .nav-tab:hover .nav-ic { opacity: 1; }
+  .app-header .nav-tab.active { background: var(--primary-container); color: var(--on-primary-container); font-weight: 700; box-shadow: none; }
+  .app-header .nav-tab.active .nav-ic { opacity: 1; }
+  .app-header .nav-chev { opacity: .5; }
+  .app-header .nav-search { background: var(--surface-container); }
+  .app-header .nav-search .ns-ic { color: var(--on-surface-variant); }
+  .app-header .nav-search input { color: var(--on-surface); }
+  .app-header .nav-search input::placeholder { color: var(--on-surface-variant); }
+  .app-header .nav-subitem { color: var(--on-surface-variant); }
+  .app-header .nav-subitem:hover { background: var(--surface-container); color: var(--on-surface); }
+  .app-header .nav-subitem.active { color: var(--on-surface); }
+  .app-header .nav-subitem.active::before { background: var(--primary); }
+  .app-header .header-actions { border-top-color: var(--outline-variant); }
+  .app-header .icon-btn { color: var(--on-surface-variant); }
+}
 
 </style>
 <script>
@@ -1617,19 +1766,28 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
       <img class="brand-logo" alt="KIPP Team & Family" src="data:image/png;base64,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" />
     </div>
     <div class="brand-sub"><b>Network Growth Hub</b></div>
+    <div class="nav-search"><svg class="ns-ic" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input id="navSearch" type="search" placeholder="Search tasks…" autocomplete="off" aria-label="Search tasks"></div>
+    <div class="nav-section">Menu</div>
 
     <nav class="nav-tabs" id="navTabs" role="tablist">
-      <button class="nav-tab active" data-view="progress" role="tab"><span>Dashboard</span></button>
-      <button class="nav-tab" data-view="timeline" role="tab"><span>Openings Timeline</span></button>
-      <button class="nav-tab" data-view="plan" role="tab"><span>Project Plan</span></button>
+      <button class="nav-tab active" data-view="progress" role="tab" title="Dashboard"><svg class="nav-ic" viewBox="0 0 24 24" fill="currentColor" width="20" height="20" aria-hidden="true"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg><span>Dashboard</span></button>
+      <button class="nav-tab" data-view="timeline" role="tab" title="Openings Timeline"><svg class="nav-ic" viewBox="0 0 24 24" fill="currentColor" width="20" height="20" aria-hidden="true"><path d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.11 0-1.99.9-1.99 2L2 21c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/></svg><span>Openings Timeline</span></button>
+      <div class="nav-group" id="planGroup">
+        <button class="nav-tab has-sub" data-view="plan" role="tab" title="Project Plan"><svg class="nav-ic" viewBox="0 0 24 24" fill="currentColor" width="20" height="20" aria-hidden="true"><path d="M22 7h-9v2h9V7zm0 8h-9v2h9v-2zM5.54 11L2 7.46l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41L5.54 11zm0 8L2 15.46l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41L5.54 19z"/></svg><span>Project Plan</span><svg class="nav-chev" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+        <div class="nav-sub">
+          <button class="nav-subitem" data-plan="team">By workstream</button>
+          <button class="nav-subitem" data-plan="school">By school</button>
+          <button class="nav-subitem" data-plan="focus">Needs attention</button>
+        </div>
+      </div>
     </nav>
 
     <div class="header-spacer"></div>
 
     <div class="header-actions">
       <span class="save-state saved" id="saveState">All changes saved</span>
-      <button class="icon-btn" id="themeBtn" title="Toggle light/dark" aria-label="Toggle theme">
-        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      <button class="icon-btn" id="navToggle" title="Collapse menu" aria-label="Collapse menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
       <button class="icon-btn" id="settingsBtn" title="Sync &amp; settings" aria-label="Settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H1a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 7a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H23a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></svg>
@@ -1698,7 +1856,7 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
       "Regulatory",
       "Real Estate",
       "Finance",
-      "Fundraising",
+      "Advancement",
       "Talent",
       "Marketing & Recruitment"
     ],
@@ -1757,36 +1915,36 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
       }
     ],
     "updated": "2026-08-18",
-    "version": 12,
+    "version": 15,
     "statusMeta": {
       "not_started": {
         "label": "Not started",
-        "color": "#E0E0E0",
-        "text": "#5A5A5A"
+        "color": "#C7CCD6",
+        "text": "#4A4A4A"
       },
       "on_track": {
         "label": "On track",
-        "color": "#00A651",
-        "text": "#FFFFFF"
+        "color": "#43B0E6",
+        "text": "#08324A"
       },
       "at_risk": {
         "label": "At risk",
-        "color": "#FFA500",
+        "color": "#F6A11C",
         "text": "#3A2A00"
       },
       "behind": {
         "label": "Behind",
-        "color": "#D62828",
+        "color": "#E63E2F",
         "text": "#FFFFFF"
       },
       "complete": {
         "label": "Complete",
-        "color": "#6C757D",
+        "color": "#79A81E",
         "text": "#FFFFFF"
       },
       "blocked": {
         "label": "Blocked",
-        "color": "#6D28D9",
+        "color": "#B3261E",
         "text": "#FFFFFF"
       }
     },
@@ -1842,7 +2000,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
       "display_label": "ES3",
       "location": "Broward",
       "fiscal_year": 2028,
-      "opening_date": "2027-08-01"
+      "opening_date": "2027-08-01",
+      "id": "s_ES3_Broward_2028"
     },
     {
       "market": "Broward",
@@ -1859,7 +2018,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
       "display_label": "MS3",
       "location": "Broward",
       "fiscal_year": 2028,
-      "opening_date": "2027-08-01"
+      "opening_date": "2027-08-01",
+      "id": "s_MS3_Broward_2028"
     },
     {
       "market": "Broward",
@@ -1876,7 +2036,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
       "display_label": "ES4",
       "location": "Broward",
       "fiscal_year": 2029,
-      "opening_date": "2028-08-01"
+      "opening_date": "2028-08-01",
+      "id": "s_ES4_Broward_2029"
     },
     {
       "market": "Broward",
@@ -1893,7 +2054,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
       "display_label": "MS4",
       "location": "Broward",
       "fiscal_year": 2029,
-      "opening_date": "2028-08-01"
+      "opening_date": "2028-08-01",
+      "id": "s_MS4_Broward_2029"
     },
     {
       "market": "Broward",
@@ -1910,7 +2072,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
       "display_label": "ES5",
       "location": "Broward",
       "fiscal_year": 2031,
-      "opening_date": "2030-08-01"
+      "opening_date": "2030-08-01",
+      "id": "s_ES5_Broward_2031"
     },
     {
       "market": "Broward",
@@ -1927,41 +2090,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
       "display_label": "MS5",
       "location": "Broward",
       "fiscal_year": 2031,
-      "opening_date": "2030-08-01"
-    },
-    {
-      "market": "Broward",
-      "code": "ES6",
-      "name": "Broward ES6",
-      "band": "ES",
-      "openingFY": null,
-      "confirmed": false,
-      "state": "FL",
-      "openingQuarter": "Q1",
-      "priority": false,
-      "school_type": "ES",
-      "pod_number": 6,
-      "display_label": "ES6",
-      "location": "Broward",
-      "fiscal_year": null,
-      "opening_date": null
-    },
-    {
-      "market": "Broward",
-      "code": "MS6",
-      "name": "Broward MS6",
-      "band": "MS",
-      "openingFY": null,
-      "confirmed": false,
-      "state": "FL",
-      "openingQuarter": "Q1",
-      "priority": false,
-      "school_type": "MS",
-      "pod_number": 6,
-      "display_label": "MS6",
-      "location": "Broward",
-      "fiscal_year": null,
-      "opening_date": null
+      "opening_date": "2030-08-01",
+      "id": "s_MS5_Broward_2031"
     },
     {
       "market": "Broward",
@@ -1978,7 +2108,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
       "display_label": "HS2",
       "location": "Broward",
       "fiscal_year": 2031,
-      "opening_date": "2030-08-01"
+      "opening_date": "2030-08-01",
+      "id": "s_HS2_Broward_2031"
     },
     {
       "market": "Paterson",
@@ -1995,7 +2126,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
       "display_label": "ES2",
       "location": "Paterson",
       "fiscal_year": 2028,
-      "opening_date": "2027-08-01"
+      "opening_date": "2027-08-01",
+      "id": "s_ES2_Paterson_2028"
     },
     {
       "market": "Paterson",
@@ -2012,7 +2144,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
       "display_label": "MS2",
       "location": "Paterson",
       "fiscal_year": 2028,
-      "opening_date": "2027-08-01"
+      "opening_date": "2027-08-01",
+      "id": "s_MS2_Paterson_2028"
     },
     {
       "market": "Paterson",
@@ -2029,7 +2162,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
       "display_label": "HS1",
       "location": "Paterson",
       "fiscal_year": 2031,
-      "opening_date": "2030-08-01"
+      "opening_date": "2030-08-01",
+      "id": "s_HS1_Paterson_2031"
     },
     {
       "market": "Newark",
@@ -2046,7 +2180,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
       "display_label": "ES6",
       "location": "Newark",
       "fiscal_year": 2029,
-      "opening_date": "2028-08-01"
+      "opening_date": "2028-08-01",
+      "id": "s_ES6_Newark_2029"
     },
     {
       "market": "Newark",
@@ -2063,7 +2198,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
       "display_label": "MS6",
       "location": "Newark",
       "fiscal_year": 2029,
-      "opening_date": "2028-08-01"
+      "opening_date": "2028-08-01",
+      "id": "s_MS6_Newark_2029"
     },
     {
       "market": "Orange",
@@ -2080,7 +2216,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
       "display_label": "ES1",
       "location": "Orange",
       "fiscal_year": 2030,
-      "opening_date": "2029-08-01"
+      "opening_date": "2029-08-01",
+      "id": "s_ES1_Orange_2030"
     },
     {
       "market": "Orange",
@@ -2097,7 +2234,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
       "display_label": "MS1",
       "location": "Orange",
       "fiscal_year": 2030,
-      "opening_date": "2029-08-01"
+      "opening_date": "2029-08-01",
+      "id": "s_MS1_Orange_2030"
     },
     {
       "market": "Orange",
@@ -2114,7 +2252,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
       "display_label": "ES2",
       "location": "Orange",
       "fiscal_year": 2031,
-      "opening_date": "2030-08-01"
+      "opening_date": "2030-08-01",
+      "id": "s_ES2_Orange_2031"
     },
     {
       "market": "Orange",
@@ -2131,7 +2270,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
       "display_label": "MS2",
       "location": "Orange",
       "fiscal_year": 2031,
-      "opening_date": "2030-08-01"
+      "opening_date": "2030-08-01",
+      "id": "s_MS2_Orange_2031"
     },
     {
       "market": "Orange",
@@ -2148,7 +2288,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
       "display_label": "HS1",
       "location": "Orange",
       "fiscal_year": 2032,
-      "opening_date": "2031-08-01"
+      "opening_date": "2031-08-01",
+      "id": "s_HS1_Orange_2032"
     },
     {
       "market": "Orange",
@@ -2165,7 +2306,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
       "display_label": "ES3",
       "location": "Orange",
       "fiscal_year": 2033,
-      "opening_date": "2032-08-01"
+      "opening_date": "2032-08-01",
+      "id": "s_ES3_Orange_2033"
     },
     {
       "market": "Orange",
@@ -2182,7 +2324,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
       "display_label": "MS3",
       "location": "Orange",
       "fiscal_year": 2033,
-      "opening_date": "2032-08-01"
+      "opening_date": "2032-08-01",
+      "id": "s_MS3_Orange_2033"
     }
   ],
   "campaigns": [
@@ -2232,7 +2375,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "aad56755f8",
@@ -2262,7 +2406,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "9a507eb025",
@@ -2292,7 +2437,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "a947daffde",
@@ -2322,7 +2468,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "9da9b48a0b",
@@ -2352,7 +2499,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "cf79d31669",
@@ -2382,7 +2530,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "6d1b9ce102",
@@ -2412,7 +2561,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "3ce704bb0c",
@@ -2442,7 +2592,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "40daae549a",
@@ -2472,7 +2623,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "9f88b2606f",
@@ -2502,7 +2654,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "28036ba4fa",
@@ -2532,7 +2685,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "5866e65ff4",
@@ -2562,7 +2716,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "e144ca3729",
@@ -2592,7 +2747,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "9693237c9c",
@@ -2622,7 +2778,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "c32adb598d",
@@ -2652,7 +2809,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "c4828c048b",
@@ -2682,7 +2840,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "320885231d",
@@ -2712,7 +2871,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "NJ",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "4fb7d7b258",
@@ -2742,7 +2902,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "NJ",
         "Growth",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "226c52dfeb",
@@ -2772,7 +2933,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY27"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "3388597745",
@@ -2807,6 +2969,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES3",
         "MS3",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES3_Broward_2028",
+        "s_MS3_Broward_2028"
       ]
     },
     {
@@ -2837,7 +3003,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY27"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "96fdc98abd",
@@ -2867,7 +3034,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY27"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "1718cece01",
@@ -2897,7 +3065,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY27"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "2607d9cdca",
@@ -2927,7 +3096,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY27"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "44135398e7",
@@ -2957,7 +3127,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "NJ",
         "Growth",
         "FY27"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "4895ce812e",
@@ -2987,7 +3158,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "NJ",
         "Growth",
         "FY27"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "244179e745",
@@ -3022,6 +3194,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES2",
         "MS2",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES2_Paterson_2028",
+        "s_MS2_Paterson_2028"
       ]
     },
     {
@@ -3052,7 +3228,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "NJ",
         "Growth",
         "FY27"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "5476ea835e",
@@ -3087,6 +3264,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES4",
         "MS4",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES4_Broward_2029",
+        "s_MS4_Broward_2029"
       ]
     },
     {
@@ -3117,7 +3298,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY28"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "7917d382c2",
@@ -3147,7 +3329,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY28"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "3d58ae1726",
@@ -3182,6 +3365,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES6",
         "MS6",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES6_Newark_2029",
+        "s_MS6_Newark_2029"
       ]
     },
     {
@@ -3212,7 +3399,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY28"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "346ffe54d0",
@@ -3242,7 +3430,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY29"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "87678a4f7b",
@@ -3272,7 +3461,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY29"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "cf3091af2b",
@@ -3307,6 +3497,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES1",
         "MS1",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_ES1_Orange_2030",
+        "s_MS1_Orange_2030"
       ]
     },
     {
@@ -3337,7 +3531,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY29"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "21240d3b80",
@@ -3367,7 +3562,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Growth",
         "FY30"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "5a654ebade",
@@ -3400,6 +3596,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Growth",
         "HS2",
         "FY30"
+      ],
+      "schoolIds": [
+        "s_HS2_Broward_2031"
       ]
     },
     {
@@ -3433,6 +3632,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Growth",
         "HS1",
         "FY30"
+      ],
+      "schoolIds": [
+        "s_HS1_Paterson_2031"
       ]
     },
     {
@@ -3463,7 +3665,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Finance",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "8ed2bafe52",
@@ -3493,7 +3696,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "NJ",
         "Finance",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "fa2ac92764",
@@ -3528,6 +3732,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES2",
         "MS2",
         "FY26"
+      ],
+      "schoolIds": [
+        "s_ES2_Paterson_2028",
+        "s_MS2_Paterson_2028"
       ]
     },
     {
@@ -3558,7 +3766,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "NJ",
         "Finance",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "375c8d9c2d",
@@ -3588,7 +3797,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Finance",
         "FY27"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "73381df0a6",
@@ -3623,6 +3833,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES3",
         "MS3",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES3_Broward_2028",
+        "s_MS3_Broward_2028"
       ]
     },
     {
@@ -3658,6 +3872,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES3",
         "MS3",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES3_Broward_2028",
+        "s_MS3_Broward_2028"
       ]
     },
     {
@@ -3693,6 +3911,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES2",
         "MS2",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES2_Paterson_2028",
+        "s_MS2_Paterson_2028"
       ]
     },
     {
@@ -3728,6 +3950,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES1",
         "MS1",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES1_Orange_2030",
+        "s_MS1_Orange_2030"
       ]
     },
     {
@@ -3763,6 +3989,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES4",
         "MS4",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES4_Broward_2029",
+        "s_MS4_Broward_2029"
       ]
     },
     {
@@ -3798,6 +4028,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES4",
         "MS4",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES4_Broward_2029",
+        "s_MS4_Broward_2029"
       ]
     },
     {
@@ -3831,6 +4065,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Finance",
         "HS1",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_HS1_Paterson_2031"
       ]
     },
     {
@@ -3864,6 +4101,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Finance",
         "HS2",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_HS2_Broward_2031"
       ]
     },
     {
@@ -3899,6 +4139,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES3",
         "MS3",
         "FY26"
+      ],
+      "schoolIds": [
+        "s_ES3_Broward_2028",
+        "s_MS3_Broward_2028"
       ]
     },
     {
@@ -3929,7 +4173,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Talent",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "9395f0efe1",
@@ -3964,6 +4209,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES2",
         "MS2",
         "FY26"
+      ],
+      "schoolIds": [
+        "s_ES2_Paterson_2028",
+        "s_MS2_Paterson_2028"
       ]
     },
     {
@@ -3994,7 +4243,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "NJ",
         "Talent",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "1ad31ed128",
@@ -4029,6 +4279,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES3",
         "MS3",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES3_Broward_2028",
+        "s_MS3_Broward_2028"
       ]
     },
     {
@@ -4064,6 +4318,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES4",
         "MS4",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES4_Broward_2029",
+        "s_MS4_Broward_2029"
       ]
     },
     {
@@ -4094,7 +4352,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Talent",
         "FY27"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "9a2d205f33",
@@ -4129,6 +4388,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES2",
         "MS2",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES2_Paterson_2028",
+        "s_MS2_Paterson_2028"
       ]
     },
     {
@@ -4159,7 +4422,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "NJ",
         "Talent",
         "FY27"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "6a3de2341b",
@@ -4194,6 +4458,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES4",
         "MS4",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES4_Broward_2029",
+        "s_MS4_Broward_2029"
       ]
     },
     {
@@ -4224,7 +4492,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Talent",
         "FY28"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "04cbc7f1ec",
@@ -4254,7 +4523,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Talent",
         "FY28"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "d6ee678223",
@@ -4289,6 +4559,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES1",
         "MS1",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES1_Orange_2030",
+        "s_MS1_Orange_2030"
       ]
     },
     {
@@ -4324,6 +4598,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES1",
         "MS1",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_ES1_Orange_2030",
+        "s_MS1_Orange_2030"
       ]
     },
     {
@@ -4357,6 +4635,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Talent",
         "HS2",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_HS2_Broward_2031"
       ]
     },
     {
@@ -4390,6 +4671,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Talent",
         "HS1",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_HS1_Paterson_2031"
       ]
     },
     {
@@ -4420,7 +4704,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Real",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "bd23fd35e2",
@@ -4450,7 +4735,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Real",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "29c0c4e3d9",
@@ -4480,7 +4766,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Real",
         "FY26"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "d5672bae5c",
@@ -4510,7 +4797,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Real",
         "FY28"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "16c439f4aa",
@@ -4540,7 +4828,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Real",
         "FY28"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "3ebc325e16",
@@ -4570,7 +4859,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Real",
         "FY28"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "4cb3ba31c3",
@@ -4605,6 +4895,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES3",
         "MS3",
         "FY26"
+      ],
+      "schoolIds": [
+        "s_ES3_Broward_2028",
+        "s_MS3_Broward_2028"
       ]
     },
     {
@@ -4640,6 +4934,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES4",
         "MS4",
         "FY26"
+      ],
+      "schoolIds": [
+        "s_ES4_Broward_2029",
+        "s_MS4_Broward_2029"
       ]
     },
     {
@@ -4675,6 +4973,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES3",
         "MS3",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES3_Broward_2028",
+        "s_MS3_Broward_2028"
       ]
     },
     {
@@ -4710,6 +5012,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES3",
         "MS3",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES3_Broward_2028",
+        "s_MS3_Broward_2028"
       ]
     },
     {
@@ -4745,6 +5051,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES4",
         "MS4",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES4_Broward_2029",
+        "s_MS4_Broward_2029"
       ]
     },
     {
@@ -4780,6 +5090,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES4",
         "MS4",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES4_Broward_2029",
+        "s_MS4_Broward_2029"
       ]
     },
     {
@@ -4813,6 +5127,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Real",
         "ES5",
         "FY31"
+      ],
+      "schoolIds": [
+        "s_ES5_Broward_2031"
       ]
     },
     {
@@ -4846,6 +5163,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Real",
         "MS5",
         "FY31"
+      ],
+      "schoolIds": [
+        "s_MS5_Broward_2031"
       ]
     },
     {
@@ -4878,7 +5198,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Real",
         "ES6"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "b8b61d88d6",
@@ -4910,7 +5231,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Real",
         "MS6"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "58d73700b8",
@@ -4942,6 +5264,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Real",
         "HS2"
+      ],
+      "schoolIds": [
+        "s_HS2_Broward_2031"
       ]
     },
     {
@@ -4974,6 +5299,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Real",
         "ES5"
+      ],
+      "schoolIds": [
+        "s_ES5_Broward_2031"
       ]
     },
     {
@@ -5006,6 +5334,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Real",
         "MS5"
+      ],
+      "schoolIds": [
+        "s_MS5_Broward_2031"
       ]
     },
     {
@@ -5038,7 +5369,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Real",
         "ES6"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "dd1ef6fce1",
@@ -5070,7 +5402,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Real",
         "MS6"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "25bf8c7e03",
@@ -5105,6 +5438,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES2",
         "MS2",
         "FY26"
+      ],
+      "schoolIds": [
+        "s_ES2_Paterson_2028",
+        "s_MS2_Paterson_2028"
       ]
     },
     {
@@ -5140,6 +5477,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES2",
         "MS2",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES2_Paterson_2028",
+        "s_MS2_Paterson_2028"
       ]
     },
     {
@@ -5175,6 +5516,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES6",
         "MS6",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES6_Newark_2029",
+        "s_MS6_Newark_2029"
       ]
     },
     {
@@ -5210,6 +5555,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES6",
         "MS6",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES6_Newark_2029",
+        "s_MS6_Newark_2029"
       ]
     },
     {
@@ -5245,6 +5594,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES1",
         "MS1",
         "FY27"
+      ],
+      "schoolIds": [
+        "s_ES1_Orange_2030",
+        "s_MS1_Orange_2030"
       ]
     },
     {
@@ -5280,13 +5633,17 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "ES1",
         "MS1",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES1_Orange_2030",
+        "s_MS1_Orange_2030"
       ]
     },
     {
       "id": "cap-sofla-ms",
       "state": "FL",
       "market": "Broward",
-      "team": "Fundraising",
+      "team": "Advancement",
       "workstream": "Growth Capital",
       "activity": "Secure $7M South Florida growth capital",
       "schools": [],
@@ -5303,20 +5660,21 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
       "stage": "in_progress",
       "progress_percent": 50,
       "priority": "high",
-      "functional_area": "Fundraising",
+      "functional_area": "Advancement",
       "location": "Broward",
       "due_date": "2028-06-30",
       "tags": [
         "FL",
         "Advancement",
         "FY28"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "cap-pat-ms",
       "state": "NJ",
       "market": "Paterson",
-      "team": "Fundraising",
+      "team": "Advancement",
       "workstream": "Growth Capital",
       "activity": "Secure $1.5M Paterson growth capital",
       "schools": [],
@@ -5333,14 +5691,15 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
       "stage": "in_progress",
       "progress_percent": 50,
       "priority": "high",
-      "functional_area": "Fundraising",
+      "functional_area": "Advancement",
       "location": "Paterson",
       "due_date": "2028-06-30",
       "tags": [
         "NJ",
         "Advancement",
         "FY28"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "zmozjosspr",
@@ -5373,6 +5732,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "ES3",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES3_Broward_2028"
       ]
     },
     {
@@ -5406,6 +5768,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "ES3",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES3_Broward_2028"
       ]
     },
     {
@@ -5439,6 +5804,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "ES3",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES3_Broward_2028"
       ]
     },
     {
@@ -5472,6 +5840,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "ES3",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES3_Broward_2028"
       ]
     },
     {
@@ -5505,6 +5876,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "MS3",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_MS3_Broward_2028"
       ]
     },
     {
@@ -5538,6 +5912,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "MS3",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_MS3_Broward_2028"
       ]
     },
     {
@@ -5571,6 +5948,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "MS3",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_MS3_Broward_2028"
       ]
     },
     {
@@ -5604,6 +5984,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "MS3",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_MS3_Broward_2028"
       ]
     },
     {
@@ -5637,6 +6020,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "ES4",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_ES4_Broward_2029"
       ]
     },
     {
@@ -5670,6 +6056,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "ES4",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_ES4_Broward_2029"
       ]
     },
     {
@@ -5703,6 +6092,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "ES4",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_ES4_Broward_2029"
       ]
     },
     {
@@ -5736,6 +6128,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "ES4",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_ES4_Broward_2029"
       ]
     },
     {
@@ -5769,6 +6164,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "MS4",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_MS4_Broward_2029"
       ]
     },
     {
@@ -5802,6 +6200,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "MS4",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_MS4_Broward_2029"
       ]
     },
     {
@@ -5835,6 +6236,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "MS4",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_MS4_Broward_2029"
       ]
     },
     {
@@ -5868,6 +6272,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "MS4",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_MS4_Broward_2029"
       ]
     },
     {
@@ -5901,6 +6308,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "ES2",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES2_Paterson_2028"
       ]
     },
     {
@@ -5934,6 +6344,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "ES2",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES2_Paterson_2028"
       ]
     },
     {
@@ -5967,6 +6380,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "ES2",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES2_Paterson_2028"
       ]
     },
     {
@@ -6000,6 +6416,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "ES2",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_ES2_Paterson_2028"
       ]
     },
     {
@@ -6033,6 +6452,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "MS2",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_MS2_Paterson_2028"
       ]
     },
     {
@@ -6066,6 +6488,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "MS2",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_MS2_Paterson_2028"
       ]
     },
     {
@@ -6099,6 +6524,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "MS2",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_MS2_Paterson_2028"
       ]
     },
     {
@@ -6132,6 +6560,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "MS2",
         "FY28"
+      ],
+      "schoolIds": [
+        "s_MS2_Paterson_2028"
       ]
     },
     {
@@ -6165,6 +6596,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "ES6",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_ES6_Newark_2029"
       ]
     },
     {
@@ -6198,6 +6632,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "ES6",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_ES6_Newark_2029"
       ]
     },
     {
@@ -6231,6 +6668,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "ES6",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_ES6_Newark_2029"
       ]
     },
     {
@@ -6264,6 +6704,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "ES6",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_ES6_Newark_2029"
       ]
     },
     {
@@ -6297,6 +6740,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "MS6",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_MS6_Newark_2029"
       ]
     },
     {
@@ -6330,6 +6776,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "MS6",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_MS6_Newark_2029"
       ]
     },
     {
@@ -6363,6 +6812,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "MS6",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_MS6_Newark_2029"
       ]
     },
     {
@@ -6396,6 +6848,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "Marketing",
         "MS6",
         "FY29"
+      ],
+      "schoolIds": [
+        "s_MS6_Newark_2029"
       ]
     },
     {
@@ -6426,7 +6881,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Marketing",
         "FY28"
-      ]
+      ],
+      "schoolIds": []
     },
     {
       "id": "9urgytuidl",
@@ -6456,7 +6912,8 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
         "FL",
         "Marketing",
         "FY28"
-      ]
+      ],
+      "schoolIds": []
     }
   ]
 };</script>
@@ -6471,9 +6928,9 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
 const LS = { theme: 'ngc_theme', data: 'ngc_data', gh: 'ngc_gh', supabase: 'ngc_supabase', ui: 'ngc_ui', gate: 'ngc_gate' };
 /* Safe storage — sandboxed iframes (e.g. the published artifact) throw on any localStorage access.
    Never let that break app init / event wiring. */
-function lsGet(k) { try { return lsGet(k); } catch (e) { return null; } }
-function lsSet(k, v) { try { lsSet(k, v); return true; } catch (e) { return false; } }
-function lsDel(k) { try { lsDel(k); } catch (e) {} }
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
 
 const state = {
   data: null,
@@ -6490,7 +6947,8 @@ const state = {
 
 /* ---------- palette (spec colors) ---------- */
 const STATE_COLOR = { NJ: '#16357F', FL: '#1B6EA5' };
-const MARKET_COLOR = { Paterson: '#E1523D', 'Miami-Dade': '#F5A623', Broward: '#D98C10', Newark: '#57C0E9', Orange: '#12357F', Orlando: '#12357F', Camden: '#A4CE4E' };
+// KIPP brand palette: navy #16357F · sky #43B0E6 · green #A6CE3A · orange #F6A11C · red #E63E2F
+const MARKET_COLOR = { Paterson: '#E63E2F', 'Miami-Dade': '#F6A11C', Broward: '#C9852A', Newark: '#43B0E6', Orange: '#16357F', Orlando: '#16357F', Camden: '#A6CE3A' };
 const TYPE_COLOR = { ES: '#1B6EA5', MS: '#C77400', HS: '#5F3DC4' };
 const mkColor = m => MARKET_COLOR[m] || '#5A6B8C';
 const stColor = s => STATE_COLOR[s] || '#5A6B8C';
@@ -6605,7 +7063,9 @@ const markets = () => meta().markets;
 const teams = () => meta().teams;
 const statesMeta = () => meta().states;
 const stateOfMarket = mk => { const s = statesMeta().find(s => s.markets.includes(mk)); return s ? s.code : ''; };
-const schoolMs = s => M().filter(m => (m.schools || []).includes(s.code) && m.openingFY === s.openingFY && m.market === s.market);
+// tasks belong to a school by its STABLE id; composite (code+market+openingFY) is a legacy fallback for any un-migrated task
+const taskInSchool = (m, s) => Array.isArray(m.schoolIds) ? m.schoolIds.includes(s.id) : ((m.schools || []).includes(s.code) && m.openingFY === s.openingFY && m.market === s.market);
+const schoolMs = s => M().filter(m => taskInSchool(m, s));
 
 function passFilters(m) {
   const f = state.filters;
@@ -6617,7 +7077,7 @@ function passFilters(m) {
   if (f.priorities.size && !f.priorities.has(m.priority)) return false;
   if (f.timing && timingLevel(m) !== f.timing) return false;
   if (f.openingFYs.size && m.openingFY && !f.openingFYs.has(m.openingFY)) return false;
-  if (f.schoolId) { const sc = state.data.schools.find(x => x.id === f.schoolId); if (!sc || !((m.schools || []).includes(sc.code) && m.market === sc.market && m.openingFY === sc.openingFY)) return false; }
+  if (f.schoolId) { const sc = state.data.schools.find(x => x.id === f.schoolId); if (!sc || !taskInSchool(m, sc)) return false; }
   if (f.search) { const q = f.search.toLowerCase(); if (!`${m.activity} ${m.workstream} ${m.functional_area} ${m.market} ${m.owner} ${(m.tags || []).join(' ')}`.toLowerCase().includes(q)) return false; }
   return true;
 }
@@ -6831,7 +7291,7 @@ function groupsByDim(dim, list) {
   else if (dim === 'market') markets().forEach(mk => { const l = list.filter(m => m.market === mk); if (l.length) g.push({ name: mk, val: mk, color: mkColor(mk), list: l }); });
   else if (dim === 'state') statesMeta().forEach(s => { const l = list.filter(m => m.state === s.code); if (l.length) g.push({ name: s.name, val: s.code, color: stColor(s.code), list: l }); });
   else if (dim === 'year') { const map = {}; list.forEach(m => { const k = m.targetFY || 'none'; (map[k] = map[k] || []).push(m); }); Object.keys(map).filter(k => k !== 'none').map(Number).sort((a, b) => a - b).forEach(fy => g.push({ name: 'FY ' + fyLabel(fy), val: fy, list: map[fy] })); if (map['none']) g.push({ name: 'No date', val: '', list: map['none'] }); }
-  else if (dim === 'school') { state.data.schools.forEach(s => { const l = list.filter(m => (m.schools || []).includes(s.code) && m.market === s.market && m.openingFY === s.openingFY); if (l.length) g.push({ name: s.display_label + ' · ' + s.market, val: s.id, color: mkColor(s.market), list: l, school: s }); }); g.sort((a, b) => ((a.school && a.school.openingFY) || 9999) - ((b.school && b.school.openingFY) || 9999)); }
+  else if (dim === 'school') { state.data.schools.forEach(s => { const l = list.filter(m => taskInSchool(m, s)); if (l.length) g.push({ name: s.display_label + ' · ' + s.market, val: s.id, color: mkColor(s.market), list: l, school: s }); }); g.sort((a, b) => ((a.school && a.school.openingFY) || 9999) - ((b.school && b.school.openingFY) || 9999)); }
   return g;
 }
 function statusBar(list) { const c = effCounts(list), t = list.length || 1; return `<div class="sbar">${STATUS_ORDER.map(s => c[s] ? `<span style="width:${100 * c[s] / t}%;background:${SM(s).color}" title="${SM(s).label}: ${c[s]}"></span>` : '').join('')}</div>`; }
@@ -6849,7 +7309,8 @@ function columnChart(list) {
   const map = {}; list.forEach(m => { if (m.targetFY) (map[m.targetFY] = map[m.targetFY] || []).push(m); });
   const fys = Object.keys(map).map(Number).sort((a, b) => a - b); if (!fys.length) return '<div class="placeholder-note">No dated items.</div>';
   const max = Math.max(...fys.map(fy => map[fy].length), 1);
-  return `<div class="colchart">` + fys.map(fy => { const l = map[fy], c = effCounts(l); return `<div class="col drill" data-drilldim="year" data-drillval="${fy}" title="Click to see FY ${fyLabel(fy)} items"><div class="col-n">${l.length}</div><div class="col-bar" style="height:${Math.max(6, 100 * l.length / max)}%">${STATUS_ORDER.filter(s => c[s]).map(s => `<span style="height:${100 * c[s] / l.length}%;background:${SM(s).color}" title="${SM(s).label}: ${c[s]}"></span>`).join('')}</div><div class="col-lbl">${fyLabel(fy)}</div></div>`; }).join('') + `</div>`;
+  const yrLbl = fy => fy ? `${fy - 1}–${String(fy).slice(2)}` : '—';   // school year, e.g. 2027–28 (no "FY" jargon)
+  return `<div class="colchart">` + fys.map(fy => { const l = map[fy], c = effCounts(l); return `<div class="col drill" data-drilldim="year" data-drillval="${fy}" title="Click to see ${yrLbl(fy)} school-year items"><div class="col-n">${l.length}</div><div class="col-bar" style="height:${Math.max(6, 100 * l.length / max)}%">${STATUS_ORDER.filter(s => c[s]).map(s => `<span style="height:${100 * c[s] / l.length}%;background:${SM(s).color}" title="${SM(s).label}: ${c[s]}"></span>`).join('')}</div><div class="col-lbl">${yrLbl(fy)}</div></div>`; }).join('') + `</div>`;
 }
 function chartsHtml(list) {
   const dims = [['team', 'Workstream'], ['year', 'Year'], ['school', 'School opening'], ['market', 'Market'], ['state', 'State']];
@@ -6863,6 +7324,9 @@ function chartsHtml(list) {
 }
 
 function progressBodyHtml() {
+  return dashboardHtml(filtered());   // Dashboard is the only status view; drill-downs jump to the Project Plan
+}
+function progressBodyHtml_legacyList() {
   const list = filtered();
   const byArea = teams().map(t => ({ key: 'a:' + t, name: t, list: list.filter(m => m.functional_area === t) }));
   const njMk = statesMeta().find(s => s.code === 'NJ').markets, flMk = statesMeta().find(s => s.code === 'FL').markets;
@@ -6891,11 +7355,9 @@ function progressBodyHtml() {
     ${section('sec:fl', 'By Market (Florida)', byFL)}`;
 }
 function renderProgress() {
-  const isCharts = state.progressView === 'charts';
-  const toggle = `<div class="segmented"><button class="seg ${isCharts ? 'on' : ''}" data-progressview="charts"><span>Dashboard</span></button><button class="seg ${!isCharts ? 'on' : ''}" data-progressview="list"><span>Detailed View</span></button></div>`;
-  const printBtn = isCharts ? `<button class="btn btn-tonal" id="dashPrint"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Print / PDF</button>` : '';
+  const printBtn = `<button class="btn btn-tonal" id="dashPrint"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Print / PDF</button>`;
   $('#view-progress').innerHTML = `
-    <div class="view-head"><div><h2>Dashboard</h2></div><div class="vh-actions">${toggle}${printBtn}</div></div>
+    <div class="view-head"><div><h2>Dashboard</h2><p class="view-sub">Are we on pace to open every school on time? A school is <b>on track</b> when none of its pre-opening milestones are overdue or at risk across the six launch teams.</p></div><div class="vh-actions">${printBtn}</div></div>
     ${filterBar(['states', 'markets', 'areas', 'statuses'], { school: true })}
     ${openingYearBar()}
     <div id="viewBody">${progressBodyHtml()}</div>`;
@@ -6936,7 +7398,7 @@ function planListHtml() {
     if (gb === 'priority') return (PRIORITY[m.priority] || {}).label;
     if (gb === 'market') return m.market;
     if (gb === 'year') { order['FY ' + fyLabel(m.targetFY)] = m.targetFY || 9999; return m.targetFY ? 'FY ' + fyLabel(m.targetFY) : 'No date'; }
-    if (gb === 'school') { const s = state.data.schools.find(x => (m.schools || []).includes(x.code) && x.market === m.market && x.openingFY === m.openingFY); return s ? s.display_label + ' · ' + s.market : 'Not tied to a school'; }
+    if (gb === 'school') { const s = state.data.schools.find(x => taskInSchool(m, x)); return s ? s.display_label + ' · ' + s.market : 'Not tied to a school'; }
     return m.functional_area;
   };
   list.forEach(m => { const k = keyOf(m) || '—'; (g[k] = g[k] || []).push(m); });
@@ -6991,7 +7453,8 @@ function ragDot(st, title) { const c = st === 'x' ? '#C9CDD6' : SM(st).color; re
 /* consistent R/Y/G by milestone completion: <50% red · ≥50% yellow · all complete green */
 /* greenlight/gating status per domain — deliberately distinct from market brand colors.
    grey = not started · blue = in progress · green = cleared (gate met) · amber/red = off-track */
-const RAG = { green: '#16A34A', blue: '#2563EB', yellow: '#EAB308', red: '#DC2626', none: '#C7CCD6' };
+// status palette drawn from the KIPP brand: green=complete, sky=on track, orange=at risk, red=behind
+const RAG = { green: '#79A81E', blue: '#43B0E6', yellow: '#F6A11C', red: '#E63E2F', none: '#C7CCD6' };
 function ragProgress(list) {
   if (!list.length) return { key: 'none', color: RAG.none, label: 'No tasks yet', pct: null };
   const done = list.filter(m => effectiveStatus(m) === 'complete').length, pctc = Math.round(100 * done / list.length);
@@ -7004,14 +7467,35 @@ function ragDotP(list, prefix) { const r = ragProgress(list); return `<span clas
 function ragReady(list) {
   if (!list.length) return { key: 'none', color: RAG.none, label: 'Not started' };
   const eff = list.map(effectiveStatus), done = eff.filter(s => s === 'complete').length, pctc = Math.round(100 * done / list.length);
-  if (done === list.length) return { key: 'green', color: RAG.green, label: 'Cleared · gate met' };
-  if (eff.some(s => s === 'behind' || s === 'blocked')) return { key: 'red', color: RAG.red, label: 'Behind · ' + pctc + '% cleared' };
-  if (eff.some(s => s === 'at_risk')) return { key: 'yellow', color: RAG.yellow, label: 'At risk · ' + pctc + '% cleared' };
-  if (eff.some(s => s === 'on_track' || s === 'complete')) return { key: 'blue', color: RAG.blue, label: 'In progress · ' + pctc + '% cleared' };
+  if (done === list.length) return { key: 'green', color: RAG.green, label: 'Complete' };
+  if (eff.some(s => s === 'behind' || s === 'blocked')) return { key: 'red', color: RAG.red, label: 'Behind · ' + pctc + '% done' };
+  if (eff.some(s => s === 'at_risk')) return { key: 'yellow', color: RAG.yellow, label: 'At risk · ' + pctc + '% done' };
+  if (eff.some(s => s === 'on_track' || s === 'complete')) return { key: 'blue', color: RAG.blue, label: 'On track · ' + pctc + '% done' };
   return { key: 'none', color: RAG.none, label: 'Not started' };
 }
 function ragDotR(list, prefix) { const r = ragReady(list); return `<span class="rag" style="background:${r.color}" title="${esc((prefix ? prefix + ' — ' : '') + r.label)}"></span>`; }
 function exLi(m, flag) { return `<div class="ex-li nodot" data-expand="${m.id}"><span class="ex-li-t">${flag || ''}${esc(m.activity)}</span><span class="ex-li-m muted">${esc(m.market)} · ${esc(m.functional_area)}</span><span class="ex-li-d muted">${m.due_date ? fmtDate(m.due_date) : ''}</span></div>`; }
+// monthly trend snapshots (localStorage) → powers the KPI "vs last month" deltas
+function captureTrend() {
+  const ym = new Date().toISOString().slice(0, 7);
+  let t = []; try { t = JSON.parse(lsGet('ngc_trends') || '[]'); } catch (e) {}
+  if (t.length && t[t.length - 1].ym === ym) return;
+  const schools = state.data.schools, rags = schools.map(s => ragReady(schoolMs(s))), cnt = k => rags.filter(r => r.key === k).length;
+  const attention = cnt('red') + cnt('yellow'), onTrack = schools.length - attention, overdue = M().filter(m => timingLevel(m) === 'overdue').length;
+  t.push({ ym, onTrack, attention, overdue }); if (t.length > 24) t = t.slice(-24);
+  try { lsSet('ngc_trends', JSON.stringify(t)); } catch (e) {}
+}
+function trendPrev() { let t = []; try { t = JSON.parse(lsGet('ngc_trends') || '[]'); } catch (e) {} const ym = new Date().toISOString().slice(0, 7); return t.filter(x => x.ym < ym).slice(-1)[0] || null; }
+// Segmented status bar (Lintel-style): the whole milestone mix in one glance
+function statusPipeline(list) {
+  const order = ['not_started', 'on_track', 'at_risk', 'behind', 'blocked', 'complete'];
+  const c = {}; order.forEach(s => c[s] = 0);
+  list.forEach(m => { const es = effectiveStatus(m); if (c[es] == null) c[es] = 0; c[es]++; });
+  const seg = order.map(s => c[s] ? `<span class="pl-seg" style="flex:${c[s]};background:${SM(s).color}" title="${SM(s).label}: ${c[s]}"></span>` : '').join('') || '<span class="pl-seg" style="flex:1;background:var(--surface-container-high)"></span>';
+  const legend = order.filter(s => c[s]).map(s => `<span class="pl-leg"><i style="background:${SM(s).color}"></i>${SM(s).label}<b>${c[s]}</b></span>`).join('');
+  return `<section class="ex-card"><div class="ex-card-head"><div class="ex-cardhead-l"><h3>Milestones by Status</h3></div><span class="muted ex-hint">${list.length} milestone${list.length === 1 ? '' : 's'} in view</span></div>
+    <div class="pl-bar">${seg}</div><div class="pl-legend">${legend || '<span class="muted">No milestones in view.</span>'}</div></section>`;
+}
 // NORTH STAR — the charter's stakeholder answer, rendered ABOVE the filters so a busy exec
 // (often on a phone) sees "are we on track?" before any controls.
 function northStarHtml() {
@@ -7083,12 +7567,22 @@ function dashboardHtml(list) {
   // KPI SUMMARY — restrained, clearly-labeled cards; each number tied to a click-through
   const b = cnt('blue'), attention = r + y, onTrack = total - attention;
   const overdue = list.filter(m => timingLevel(m) === 'overdue').length;
-  const kpi = (num, den, lbl, sub, cls, drill) => `<${drill ? 'button' : 'div'} class="kcard2 ${cls || ''} ${drill ? 'drill' : ''}" ${drill || ''}><div class="k-num">${num}${den ? `<span class="k-den">${den}</span>` : ''}</div><div class="k-lbl">${lbl}</div><div class="k-sub">${sub}</div></${drill ? 'button' : 'div'}>`;
+  const KPI_IC = {
+    school: 'M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z',
+    warning: 'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z',
+    event: 'M20 3h-1V1h-2v2H7V1H5v2H4c-1.11 0-1.99.9-1.99 2L2 21c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z',
+    schedule: 'M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z'
+  };
+  // month-over-month trend (portfolio-wide; only shown when no filters are applied)
+  const unfiltered = !state.filters.states.size && !state.filters.markets.size && !state.filters.areas.size && !state.filters.statuses.size && !state.filters.openingFYs.size && !state.filters.schoolId && !state.filters.search && !state.filters.timing;
+  const tp = unfiltered ? trendPrev() : null;
+  const dChip = (cur, key, goodUp) => { if (!tp || typeof tp[key] !== 'number') return ''; const d = cur - tp[key]; if (!d) return ''; const up = d > 0; const good = up === goodUp; return `<span class="k-delta ${good ? 'good' : 'bad'}">${up ? '▲' : '▼'} ${Math.abs(d)}<span class="k-delta-lbl"> vs last month</span></span>`; };
+  const kpi = (icon, num, den, lbl, sub, cls, drill, delta) => `<${drill ? 'button' : 'div'} class="kcard2 ${cls || ''} ${drill ? 'drill' : ''}" ${drill || ''}><span class="k-ic"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="${KPI_IC[icon]}"/></svg></span><div class="k-num">${num}${den ? `<span class="k-den">${den}</span>` : ''}</div><div class="k-lbl">${lbl}</div><div class="k-sub">${sub}</div>${delta || ''}</${drill ? 'button' : 'div'}>`;
   const kpiStrip = `<section class="kpi-strip">
-    ${kpi(onTrack, `/ ${total}`, 'Schools on track', 'Not slipping on any milestone')}
-    ${kpi(attention, '', 'Need attention', attention ? 'Behind or at risk — view' : 'Nothing off-track', attention ? 'k-alert' : '', attention ? 'data-drilldim="riskbehind" data-drillval=""' : '')}
-    ${nextC ? kpi(nextC.mo <= 0 ? 'Now' : nextC.mo, nextC.mo <= 0 ? '' : ' mo', 'Next opening', `Fall ${nextC.fy - 1} · ${esc(nextC.mkts.join(' · '))}`, '', `data-drilldim="year" data-drillval="${nextC.fy}"`) : ''}
-    ${kpi(overdue, '', 'Milestones overdue', overdue ? 'Past due — view' : 'None past due', overdue ? 'k-alert' : '', overdue ? 'data-drilldim="timing" data-drillval="overdue"' : '')}
+    ${kpi('school', onTrack, `/ ${total}`, 'Schools on track', 'Not slipping on any milestone', '', '', dChip(onTrack, 'onTrack', true))}
+    ${kpi('warning', attention, '', 'Need attention', attention ? 'Behind or at risk — view' : 'Nothing off-track', attention ? 'k-alert' : '', attention ? 'data-drilldim="riskbehind" data-drillval=""' : '', dChip(attention, 'attention', false))}
+    ${nextC ? kpi('event', nextC.mo <= 0 ? 'Now' : nextC.mo, nextC.mo <= 0 ? '' : ' mo', 'Next opening', `Fall ${nextC.fy - 1} · ${esc(nextC.mkts.join(' · '))}`, '', `data-drilldim="year" data-drillval="${nextC.fy}"`) : ''}
+    ${kpi('schedule', overdue, '', 'Milestones overdue', overdue ? 'Past due — view' : 'None past due', overdue ? 'k-alert' : '', overdue ? 'data-drilldim="timing" data-drillval="overdue"' : '', dChip(overdue, 'overdue', false))}
   </section>`;
 
 
@@ -7105,8 +7599,8 @@ function dashboardHtml(list) {
     return `<tr class="ex-band"><td colspan="${3 + tms.length}"><span class="state-badge" style="background:${stColor(st.code)}">${st.code}</span> ${esc(st.name)} <span class="muted">· ${rows.length} openings</span></td></tr>${body}`;
   }).join('');
   const rOpen = !state.expanded['dash:readiness'];
-  const readiness = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:readiness"><div class="ex-cardhead-l">${chev(rOpen)}<h3>Greenlight Readiness</h3></div><span class="muted ex-hint">Gate status by domain · click a row to open</span></div>
-    <div class="ex-card-body ${rOpen ? '' : 'hide'}"><div class="ex-legend ex-legend-top"><span><i class="rag" style="background:${RAG.none}"></i>Not started</span><span><i class="rag" style="background:${RAG.blue}"></i>In progress</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind</span><span><i class="rag" style="background:${RAG.green}"></i>Cleared</span></div>
+  const readiness = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:readiness"><div class="ex-cardhead-l">${chev(rOpen)}<h3>Readiness by School &amp; Workstream</h3></div><span class="muted ex-hint">Each dot = how that workstream is tracking · click a school to open it</span><button class="card-more" data-showmore="school">See all →</button></div>
+    <div class="ex-card-body ${rOpen ? '' : 'hide'}"><div class="ex-legend ex-legend-top"><span><i class="rag" style="background:${RAG.none}"></i>Not started</span><span><i class="rag" style="background:${RAG.blue}"></i>On track</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind</span><span><i class="rag" style="background:${RAG.green}"></i>Complete</span></div>
     <div class="ex-grid-wrap"><table class="ex-grid"><thead><tr><th>School</th><th>Opens</th><th>Overall</th>${tms.map(t => `<th class="ex-th-team"><span>${esc(t)}</span></th>`).join('')}</tr></thead><tbody>${grid}</tbody></table></div></div></section>`;
 
   // PRIORITIES & RISKS
@@ -7116,7 +7610,7 @@ function dashboardHtml(list) {
   const stuck = list.filter(m => (m.status === 'blocked' || timingLevel(m) === 'overdue') && effectiveStatus(m) !== 'complete').sort(bySortUrgency);
   const risksOpen = !state.expanded.dashrisks_collapsed;
   const pOpen = !state.expanded['dash:priorities'];
-  const prCard = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:priorities"><div class="ex-cardhead-l">${chev(pOpen)}<h3>Priorities &amp; Risks</h3></div></div>
+  const prCard = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:priorities"><div class="ex-cardhead-l">${chev(pOpen)}<h3>Priorities &amp; Risks</h3></div><button class="card-more" data-showmore="focus">See all →</button></div>
     <div class="ex-card-body ${pOpen ? '' : 'hide'}"><div class="dash-block-h">Key milestones &amp; greenlights · next 90 days<span class="dash-count">${upcoming.length}</span></div>
     ${upcoming.length ? `<div class="ex-list">${upcoming.map(m => exLi(m, m.greenlight ? '◆ ' : m.transition ? '⇄ ' : '')).join('')}</div>` : '<div class="muted ex-empty">Nothing in the next 90 days.</div>'}
     <div class="dash-block-h toggle" data-toggle="dashrisks_collapsed">${chev(risksOpen)}Blocked or past due<span class="dash-count ${stuck.length ? 'bad' : ''}">${stuck.length}</span></div>
@@ -7125,7 +7619,7 @@ function dashboardHtml(list) {
   // GROWTH FUNDRAISING
   const camps = (state.data.campaigns || []).filter(c => !state.filters.states.size || state.filters.states.has(c.state));
   const fOpen = !state.expanded['dash:fund'];
-  const capital = camps.length ? `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:fund"><div class="ex-cardhead-l">${chev(fOpen)}<h3>Growth Fundraising</h3></div></div><div class="ex-card-body ${fOpen ? '' : 'hide'}"><div class="ex-caps">${camps.map(c => {
+  const capital = camps.length ? `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:fund"><div class="ex-cardhead-l">${chev(fOpen)}<h3>Advancement</h3></div></div><div class="ex-card-body ${fOpen ? '' : 'hide'}"><div class="ex-caps">${camps.map(c => {
     const p = c.target ? Math.min(100, Math.round(100 * c.raised / c.target)) : 0;
     return `<div class="ex-cap"><div class="ex-cap-top"><b>${esc(c.name)}</b><span>${fmtMoney(c.raised)} <span class="muted">/ ${fmtMoney(c.target)}</span></span></div>
       <div class="ex-cap-bar"><span style="width:${p}%"></span></div><div class="ex-cap-foot muted">${p}% raised</div></div>`;
@@ -7133,9 +7627,9 @@ function dashboardHtml(list) {
 
   // WORKLOAD — pacing across fiscal years
   const wOpen = !state.expanded['dash:workload'];
-  const workload = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:workload"><div class="ex-cardhead-l">${chev(wOpen)}<h3>Milestones Due by Fiscal Year</h3></div></div><div class="ex-card-body ${wOpen ? '' : 'hide'}">${columnChart(list)}</div></section>`;
+  const workload = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:workload"><div class="ex-cardhead-l">${chev(wOpen)}<h3>Milestones Due by School Year</h3></div></div><div class="ex-card-body ${wOpen ? '' : 'hide'}">${columnChart(list)}</div></section>`;
 
-  return `<div class="dash">${hero}${kpiStrip}${readiness}${prCard}<div class="ex-cols2 ex-cols-even">${capital}${workload}</div></div>`;
+  return `<div class="dash">${hero}${kpiStrip}${statusPipeline(list)}${readiness}<div class="dash-lower">${prCard}${capital}${workload}</div></div>`;
 }
 function applyDrill(dim, val) {
   if (dim === 'team') state.filters.areas = new Set([val]);
@@ -7147,12 +7641,12 @@ function applyDrill(dim, val) {
   else if (dim === 'timing') { state.filters.timing = val; state.filters.statuses.clear(); }
   else if (dim === 'riskbehind') { state.filters.statuses = new Set(['at_risk', 'behind']); state.filters.timing = ''; }
   else if (dim === 'all') { /* just show the detailed list */ }
-  state.progressView = 'list'; renderProgress(); window.scrollTo({ top: 0, behavior: 'smooth' });
+  setView('plan'); window.scrollTo({ top: 0, behavior: 'smooth' });   // dashboard = status; drilling opens the Project Plan, filtered
 }
 function refreshResults() { refreshBody(); }
 
 function addItem() {
-  const m = { id: uid(), state: 'NJ', market: 'Paterson', team: teams()[0], functional_area: teams()[0], workstream: 'General', activity: 'New task', schools: [], targetFY: currentFY(), targetQuarter: '', openingFY: null, due_date: null, status: 'not_started', stage: 'to_do', progress_percent: 0, priority: 'medium', owner: '', dependency: '', keyMilestone: false, greenlight: false, transition: false, notes: '', tags: [] };
+  const m = { id: uid(), state: 'NJ', market: 'Paterson', team: teams()[0], functional_area: teams()[0], workstream: 'General', activity: 'New task', schools: [], schoolIds: [], targetFY: currentFY(), targetQuarter: '', openingFY: null, due_date: null, status: 'not_started', stage: 'to_do', progress_percent: 0, priority: 'medium', owner: '', dependency: '', keyMilestone: false, greenlight: false, transition: false, notes: '', tags: [] };
   M().push(m); autosave(); openModal(m.id);
 }
 
@@ -7175,10 +7669,10 @@ function openModal(id) {
   modalMode = 'task'; modalId = id; const m = findM(id); if (!m) return;
   $('#modalTitle').textContent = 'Task details';
   const opt = (arr, val) => arr.map(x => Array.isArray(x) ? `<option value="${x[0]}" ${x[0] === val ? 'selected' : ''}>${esc(x[1])}</option>` : `<option ${x === val ? 'selected' : ''}>${esc(x)}</option>`).join('');
-  const schoolChecks = state.data.schools.filter(s => s.market === m.market).map(s => `<label class="field-check"><input type="checkbox" class="m-school" value="${esc(s.code)}" ${(m.schools || []).includes(s.code) ? 'checked' : ''}> ${esc(s.display_label)}</label>`).join('') || '<span class="muted">No schools in this market.</span>';
+  const schoolChecks = state.data.schools.filter(s => s.market === m.market).map(s => `<label class="field-check"><input type="checkbox" class="m-school" value="${esc(s.id)}" ${(m.schoolIds || []).includes(s.id) ? 'checked' : ''}> ${esc(s.display_label)} <span class="muted">${esc(fyLabel(s.openingFY))}</span></label>`).join('') || '<span class="muted">No schools in this market.</span>';
   $('#modalBody').innerHTML = `
     <div class="field"><label>Task</label><textarea id="mAct">${esc(m.activity)}</textarea></div>
-    <div class="field-row"><div class="field"><label>Owner</label><input id="mOwner" value="${esc(m.owner)}" placeholder="Who owns this"></div><div class="field"><label>Due date</label><input id="mDue" type="date" value="${esc(m.due_date || '')}"></div></div>
+    <div class="field-row"><div class="field"><label>Owner</label><input id="mOwner" list="ownerRoster" value="${esc(m.owner)}" placeholder="Pick from the team or type a name"><datalist id="ownerRoster">${(meta().owners || []).map(o => `<option value="${esc(o.name)}">${esc(o.role || '')}</option>`).join('')}</datalist></div><div class="field"><label>Due date</label><input id="mDue" type="date" value="${esc(m.due_date || '')}"></div></div>
     <div class="field"><label>Status</label><select id="mStatus">${opt(meta().statuses.map(s => [s, SM(s).label]), m.status)}</select>
       <div class="help-text">Overdue or due-this-month tasks flag automatically, even if marked “On track.”</div></div>
     <div class="field-row"><div class="field"><label>Market / location</label><select id="mMarket">${opt(markets(), m.market)}</select></div><div class="field"><label>Workstream</label><select id="mTeam">${opt(teams(), m.functional_area)}</select></div></div>
@@ -7200,13 +7694,14 @@ function saveModal() {
   const m = findM(modalId); if (!m) return;
   m.activity = $('#mAct').value.trim() || m.activity; m.market = $('#mMarket').value; m.state = stateOfMarket(m.market) || m.state;
   m.team = $('#mTeam').value; m.functional_area = m.team; m.workstream = $('#mWs').value.trim() || 'General';
-  m.schools = $$('#mSchools .m-school').filter(x => x.checked).map(x => x.value);
+  m.schoolIds = $$('#mSchools .m-school').filter(x => x.checked).map(x => x.value);
+  m.schools = m.schoolIds.map(id => { const sc = schoolById(id); return sc ? sc.code : null; }).filter(Boolean);
   m.targetFY = $('#mFy').value ? +$('#mFy').value : null; m.targetQuarter = $('#mQ').value;
   m.status = $('#mStatus').value; m.stage = $('#mStage').value; m.priority = $('#mPri').value;
   m.progress_percent = Math.max(0, Math.min(100, +$('#mProg').value || 0));
   m.owner = $('#mOwner').value.trim(); m.due_date = $('#mDue').value || null; m.dependency = $('#mDep').value.trim();
   m.notes = $('#mNotes').value.trim(); m.keyMilestone = $('#mKey').checked; m.transition = $('#mTrans').checked;
-  const os = state.data.schools.find(s => s.market === m.market && m.schools.includes(s.code)); if (os) m.openingFY = os.openingFY;
+  const os = m.schoolIds.length ? schoolById(m.schoolIds[0]) : null; if (os) m.openingFY = os.openingFY;
   autosave(); closeModal(); rerender(); toast('Saved', 'ok');
 }
 function deleteModal() {
@@ -7300,16 +7795,16 @@ function saveSchool() {
   const shiftEl = $('#sShift');
   const shift = (old.openingFY && s.openingFY && (!shiftEl || shiftEl.checked)) ? (s.openingFY - old.openingFY) : 0;
   if (isNew) { delete s._new; state.data.schools.push(s); }
-  else if (old.code && (old.code !== s.code || old.market !== s.market || old.openingFY !== s.openingFY)) {
-    // keep this school's tasks linked after code/market/opening changes; optionally slide their deadlines
+  else {
+    // tasks stay linked by stable id; keep their denormalized fields in sync + slide deadlines on reschedule
     M().forEach(m => {
-      if (m.market === old.market && m.openingFY === old.openingFY && (m.schools || []).includes(old.code)) {
-        m.schools = m.schools.map(c => c === old.code ? s.code : c); m.market = s.market; m.state = s.state; m.openingFY = s.openingFY;
-        if (shift) {
-          if (m.targetFY) m.targetFY += shift;
-          if (m.due_date) m.due_date = shiftDateYears(m.due_date, shift);
-          m.tags = (m.tags || []).map(t => /^FY\d\d$/.test(t) ? 'FY' + String(s.openingFY).slice(-2) : t);
-        }
+      if (!(m.schoolIds || []).includes(s.id)) return;
+      if (old.code && old.code !== s.code) m.schools = (m.schools || []).map(c => c === old.code ? s.code : c);
+      m.market = s.market; m.state = s.state; m.openingFY = s.openingFY;
+      if (shift) {
+        if (m.targetFY) m.targetFY += shift;
+        if (m.due_date) m.due_date = shiftDateYears(m.due_date, shift);
+        m.tags = (m.tags || []).map(t => /^FY\d\d$/.test(t) ? 'FY' + String(s.openingFY).slice(-2) : t);
       }
     });
   }
@@ -7321,13 +7816,18 @@ function deleteSchool() {
   const s = schoolById(schoolId); if (!s) return; const tasks = schoolMs(s), sid = s.id, mk = s.market, ofy = s.openingFY, cd = s.code;
   confirmDialog({ title: `Remove ${esc(s.display_label)}?`, message: `Remove <b>${esc(s.display_label)} (${esc(s.market)})</b> from the opening schedule.` + (tasks.length ? ` Its <b>${tasks.length} task(s)</b> will also be deleted.` : ''), confirmLabel: 'Remove school', danger: true, onConfirm: () => {
     state.data.schools = state.data.schools.filter(x => x.id !== sid);
-    state.data.milestones = M().filter(m => !(m.market === mk && m.openingFY === ofy && (m.schools || []).includes(cd)));
+    // unlink this school from its tasks; drop a task only if it belonged to no other school
+    state.data.milestones = M().filter(m => {
+      if (!(m.schoolIds || []).includes(sid)) return true;
+      m.schoolIds = m.schoolIds.filter(id => id !== sid); m.schools = (m.schools || []).filter(c => c !== cd);
+      return m.schoolIds.length > 0;
+    });
     autosave(); closeModal(); rerender(); toast('School removed', 'ok');
   } });
 }
 function addTaskForSchool() {
   const s = schoolById(schoolId); if (!s) return;
-  const m = { id: uid(), state: s.state, market: s.market, team: teams()[0], functional_area: teams()[0], workstream: 'General', activity: 'New task', schools: [s.code], targetFY: s.openingFY, targetQuarter: '', openingFY: s.openingFY, due_date: null, status: 'not_started', stage: 'to_do', progress_percent: 0, priority: s.priority ? 'high' : 'medium', owner: '', dependency: '', keyMilestone: false, greenlight: false, transition: false, notes: '', tags: [s.state, s.code, 'FY' + String(s.openingFY).slice(-2)] };
+  const m = { id: uid(), state: s.state, market: s.market, team: teams()[0], functional_area: teams()[0], workstream: 'General', activity: 'New task', schools: [s.code], schoolIds: [s.id], targetFY: s.openingFY, targetQuarter: '', openingFY: s.openingFY, due_date: null, status: 'not_started', stage: 'to_do', progress_percent: 0, priority: s.priority ? 'high' : 'medium', owner: '', dependency: '', keyMilestone: false, greenlight: false, transition: false, notes: '', tags: [s.state, s.code, 'FY' + String(s.openingFY).slice(-2)] };
   M().push(m); autosave(); openModal(m.id);
 }
 
@@ -7527,6 +8027,8 @@ function setView(v, fromPop) {
   if (!VIEWS.includes(v)) v = 'timeline';
   state.view = v;
   $$('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.view === v));
+  const pg = $('#planGroup'); if (pg) pg.classList.toggle('expanded', v === 'plan');
+  $$('.nav-subitem').forEach(x => x.classList.toggle('active', v === 'plan' && (x.dataset.plan === 'focus' ? state.planFocus : (!state.planFocus && state.planGroup === x.dataset.plan))));
   // Only the active section keeps content — otherwise all three sections coexist with
   // duplicate ids (#viewBody, #filterbar, #clearFilters…) and refreshBody() targets the wrong one.
   $$('.view').forEach(s => { const on = s.id === 'view-' + v; s.classList.toggle('active', on); if (!on) s.innerHTML = ''; });
@@ -7536,8 +8038,13 @@ function setView(v, fromPop) {
 }
 
 function wireEvents() {
-  $('#navTabs').addEventListener('click', e => { const t = e.target.closest('.nav-tab'); if (t) setView(t.dataset.view); });
-  $('#themeBtn').addEventListener('click', () => applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
+  $('#navTabs').addEventListener('click', e => {
+    const si = e.target.closest('.nav-subitem');
+    if (si) { const p = si.dataset.plan; if (p === 'focus') state.planFocus = true; else { state.planGroup = p; state.planFocus = false; } return setView('plan'); }
+    const t = e.target.closest('.nav-tab'); if (t) setView(t.dataset.view);
+  });
+  const nt = $('#navToggle'); if (nt) nt.addEventListener('click', () => { const on = document.body.classList.toggle('nav-collapsed'); lsSet('ngc_nav', on ? '1' : '0'); nt.title = on ? 'Expand menu' : 'Collapse menu'; });
+  const nsr = $('#navSearch'); if (nsr) nsr.addEventListener('input', () => { state.filters.search = nsr.value.trim(); if (state.view !== 'plan') setView('plan'); else refreshBody(); });
   const showDrawer = () => { renderDrawer(); $('#drawer').classList.add('open'); $('#drawerBackdrop').classList.add('open'); };
   const openDrawer = () => {
     if (adminOn() && !state.adminUnlocked) return promptPassword({ title: 'Admin settings', message: 'Enter the settings password.', verify: v => pwHash(v) === String(meta().adminHash), onOk: () => { state.adminUnlocked = true; showDrawer(); } });
@@ -7578,6 +8085,7 @@ function wireEvents() {
     const pv = e.target.closest('[data-progressview]'); if (pv) { state.progressView = pv.dataset.progressview; return renderProgress(); }
     const pd = e.target.closest('[data-progressdim]'); if (pd) { state.progressDim = pd.dataset.progressdim; return refreshBody(); }
     const dr = e.target.closest('[data-drilldim]'); if (dr) return applyDrill(dr.dataset.drilldim, dr.dataset.drillval);
+    const sm = e.target.closest('[data-showmore]'); if (sm) { const p = sm.dataset.showmore; if (p === 'focus') state.planFocus = true; else { state.planGroup = p; state.planFocus = false; } return setView('plan'); }
     const tg = e.target.closest('[data-toggle]'); if (tg) { const k = tg.dataset.toggle; state.expanded[k] = !state.expanded[k]; return refreshBody(); }
     const ex = e.target.closest('[data-expand]'); if (ex) return openModal(ex.dataset.expand);
     const es2 = e.target.closest('[data-editschool]'); if (es2) return openSchoolModal(es2.dataset.editschool);
@@ -7678,9 +8186,11 @@ function saveGateSettings() {
 }
 
 async function init() {
-  applyTheme(lsGet(LS.theme) || 'light');   // default to light on first load
+  document.documentElement.setAttribute('data-theme', 'light');   // tool is always light
+  if (lsGet('ngc_nav') === '1') { document.body.classList.add('nav-collapsed'); const nt = $('#navToggle'); if (nt) nt.title = 'Expand menu'; }
   const data = await loadData(); if (!data) return; state.data = data;
   state.data.schools.forEach(s => { if (!s.id) s.id = uid(); });   // stable ids for school management
+  try { captureTrend(); } catch (e) {}   // snapshot this month's metrics for the "vs last month" deltas
   gateStart();
 }
 function bootApp() {

@@ -74,7 +74,7 @@
   --r-xs: 4px; --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 28px; --r-full: 999px;
 
   /* ---------- Type ---------- */
-  --font: "Roboto Flex", "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, "Helvetica Neue", Arial, sans-serif;
 
   --maxw: 1360px;
   --appbar-h: 64px;
@@ -1397,25 +1397,24 @@ body.edit-on .edit-pill { display: inline-flex; }
 /* ============ desktop sidebar navigation ============ */
 @media (min-width: 1000px) {
   .app-header {
-    position: fixed; left: 0; top: 0; bottom: 0; width: 238px; height: 100vh;
+    position: fixed; left: 0; top: 0; bottom: 0; width: 252px; height: 100vh;
     flex-direction: column; align-items: stretch; gap: 0;
-    padding: 20px 14px 16px; overflow-y: auto;
+    padding: 26px 18px 20px; overflow-y: auto;
     background: var(--surface-container-low); box-shadow: none;
     border-right: 1px solid var(--outline-variant); z-index: 60;
   }
   .brand-lockup { padding: 2px 8px 0; }
-  .brand-lockup { padding: 2px 6px 0; }
   .brand-lockup .brand-logo { max-width: 100%; width: auto; height: auto; }
-  .brand-sub { display: block !important; border-left: 0; padding: 0 8px; margin: 12px 0 22px; }
+  .brand-sub { display: block !important; border-left: 0; padding: 0 8px; margin: 14px 0 30px; }
   .brand-sub b { font-size: 14px; }
-  .nav-tabs { flex-direction: column; align-items: stretch; height: auto; gap: 5px; }
-  .nav-tab { justify-content: flex-start; text-align: left; height: auto; padding: 12px 14px; border-radius: 10px; font-size: 14.5px; color: var(--on-surface-variant); }
+  .nav-tabs { flex-direction: column; align-items: stretch; height: auto; gap: 9px; }
+  .nav-tab { justify-content: flex-start; text-align: left; height: auto; padding: 13px 16px; border-radius: 10px; font-size: 14.5px; color: var(--on-surface-variant); }
   .nav-tab.active { background: var(--primary-container); color: var(--on-primary-container); font-weight: 700; }
   .nav-tab.active::after { display: none; }
   .header-spacer { flex: 1; }
-  .header-actions { flex-wrap: wrap; gap: 6px; padding-top: 14px; margin-top: 8px; border-top: 1px solid var(--outline-variant); }
+  .header-actions { flex-wrap: wrap; gap: 10px; padding-top: 20px; margin-top: 14px; border-top: 1px solid var(--outline-variant); }
   .header-actions .save-state { flex: 1 1 100%; text-align: center; }
-  .container { margin-left: 238px; max-width: 1160px; }
+  .container { margin-left: 252px; max-width: 1160px; }
 }
 
 /* ============ legibility pass ============ */
@@ -1562,16 +1561,19 @@ body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 .pchip-none { background: transparent; color: var(--on-surface-variant, #6b7280); border: 1.5px dashed var(--outline, #cfd4df); font-weight: 700; box-shadow: none; }
 .pm-item-head .pchip { margin: 0 4px; }
 
-/* ---------- navy sidebar (desktop): high contrast vs. white content, on-brand ---------- */
+/* ---------- KIPP-navy navigation rail (desktop): branded rail, crisp white active pill w/ soft shadow ---------- */
 @media (min-width: 1000px) {
-  .app-header { background: #16357F; border-right: 1px solid rgba(0,0,0,.18); box-shadow: 2px 0 14px rgba(16,24,64,.12); }
+  .app-header { background: #16357F; border-right: none; box-shadow: 2px 0 18px rgba(16,24,64,.10); }
   .app-header .brand-logo { filter: brightness(0) invert(1); }
   .app-header .brand-sub, .app-header .brand-sub b { color: #fff; }
-  .app-header .brand-sub { opacity: .82; }
-  .app-header .nav-tab { color: rgba(255,255,255,.74); }
+  .app-header .brand-sub { opacity: .78; }
+  .app-header .nav-tab { color: rgba(255,255,255,.80); border-radius: 12px; }
+  .app-header .nav-tab .nav-ic { opacity: .82; }
   .app-header .nav-tab:hover { background: rgba(255,255,255,.10); color: #fff; }
-  .app-header .nav-tab.active { background: #fff; color: #16357F; font-weight: 700; }
-  .app-header .header-actions { border-top-color: rgba(255,255,255,.18); }
+  .app-header .nav-tab:hover .nav-ic { opacity: 1; }
+  .app-header .nav-tab.active { background: #43B0E6; color: #0B2A57; font-weight: 700; box-shadow: 0 8px 20px rgba(67,176,230,.32); }
+  .app-header .nav-tab.active .nav-ic { opacity: 1; }
+  .app-header .header-actions { border-top-color: rgba(255,255,255,.16); }
   .app-header .icon-btn { color: rgba(255,255,255,.86); }
 }
 
@@ -1596,5 +1598,152 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
 .k-den { font-size: 15px; font-weight: 600; color: var(--on-surface-variant); margin-left: 3px; letter-spacing: 0; }
 .k-lbl { font-size: 12.5px; font-weight: 700; color: var(--on-surface); margin-top: 9px; }
 .k-sub { font-size: 11.5px; color: var(--on-surface-variant); margin-top: 2px; line-height: 1.35; }
-.kcard2.k-alert .k-num { color: #DC2626; }
+.kcard2.k-alert .k-num { color: #E63E2F; }
 @media (max-width: 820px) { .kpi-strip { grid-template-columns: repeat(2, 1fr); } }
+
+/* ---------- nav rail: centered items, Material icons, no persistent save chip ---------- */
+@media (min-width: 1000px) {
+  .app-header .nav-tabs { margin-top: 6px; }      /* top-aligned under the brand (reference-standard) */
+  .app-header .header-spacer { display: block; flex: 1 1 auto; }   /* pushes utility icons to the bottom */
+  .app-header .nav-tab { display: flex; align-items: center; gap: 13px; }
+  .app-header .nav-ic { flex: 0 0 auto; opacity: .92; }
+}
+.nav-tab { display: flex; align-items: center; gap: 9px; justify-content: center; }
+.nav-ic { flex: 0 0 auto; }
+@media (max-width: 999px) { .nav-ic { display: none; } }   /* keep the mobile top-tabs text-only (no crowding) */
+/* the persistent "All changes saved / Synced • live" chip — removed; toasts still confirm saves */
+.save-state { display: none !important; }
+
+/* ---------- dashboard: compact lower row (Priorities · Advancement · Workload) — less scrolling ---------- */
+.dash-lower { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 15px; align-items: start; }
+@media (max-width: 1040px) { .dash-lower { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 640px) { .dash-lower { grid-template-columns: 1fr; } }
+
+/* ---------- nav rail: align logo, sub-brand, nav items, and utility icons to one left edge ---------- */
+@media (min-width: 1000px) {
+  .app-header .brand-lockup { padding: 2px 16px 0; }
+  .app-header .brand-sub { padding: 0 16px; }
+  .app-header .header-actions { padding-left: 6px; }
+}
+
+/* ---------- Rubick-inspired polish: soft elevation, cleaner ground, KPI icons ---------- */
+/* clean near-white ground (light only) so white cards float on soft shadows; dark mode keeps its tone */
+:root[data-theme="light"] body { background: #F4F6FB; }
+:root:not([data-theme="dark"]) body { background: #F4F6FB; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) body { background: var(--surface-container-low); } }
+:root[data-theme="dark"] body { background: var(--surface-container-low); }
+
+/* cards: trade hard borders for soft, layered elevation + rounder corners + air */
+.ex-card, .kcard2, .dash-cohort, .filterbar { border: none !important; box-shadow: 0 1px 2px rgba(16,24,64,.05), 0 6px 18px rgba(16,24,64,.05); }
+.ex-card { border-radius: 18px; padding: 20px 22px; }
+.kcard2 { border-radius: 16px; padding: 17px 19px; }
+.dash-cohort { border-radius: 15px; }
+.filterbar { border-radius: 16px; }
+button.kcard2:hover { box-shadow: 0 2px 4px rgba(16,24,64,.07), 0 10px 26px rgba(16,24,64,.10); transform: translateY(-2px); }
+
+/* KPI cards: tinted Material icon chip (brand navy default, semantic red on alerts) */
+.k-ic { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; background: rgba(22,53,127,.10); color: #16357F; margin-bottom: 13px; }
+.kcard2.k-alert .k-ic { background: #FDECEA; color: #E63E2F; }
+
+/* dashboard framing subtitle — states the goal + defines "on track" for non-technical readers */
+.view-sub { margin: 5px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--on-surface-variant); max-width: 720px; }
+.view-sub b { color: var(--on-surface); font-weight: 700; }
+/* light-only tool: never expose theme controls */
+#themeBtn { display: none !important; }
+
+/* ---------- collapsible nav rail (desktop) ---------- */
+#navToggle svg { transition: transform .18s ease; }
+body.nav-collapsed #navToggle svg { transform: rotate(180deg); }
+@media (min-width: 1000px) {
+  .app-header { transition: width .18s ease, padding .18s ease; }
+  .container { transition: margin-left .18s ease; }
+  body.nav-collapsed .app-header { width: 74px !important; min-width: 74px; max-width: 74px; padding-left: 10px; padding-right: 10px; align-items: center; }
+  body.nav-collapsed .brand-lockup, body.nav-collapsed .brand-sub { display: none; }
+  body.nav-collapsed .nav-tabs { align-items: center; }
+  body.nav-collapsed .nav-tab { justify-content: center; gap: 0; padding: 12px; width: 44px; }
+  body.nav-collapsed .nav-tab span { display: none; }
+  body.nav-collapsed .container { margin-left: 74px; }
+  body.nav-collapsed .header-actions { justify-content: center; padding-left: 0; }
+}
+
+/* ---------- nav section label (reference-style structure) ---------- */
+.nav-section { display: none; }
+@media (min-width: 1000px) {
+  .app-header .nav-section { display: block; font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: rgba(255,255,255,.48); padding: 0 16px; margin: 4px 0 10px; }
+  body.nav-collapsed .app-header .nav-section { visibility: hidden; height: 8px; margin: 0; }
+}
+
+/* ---------- nav sub-menu spillover (Project Plan lenses) ---------- */
+.nav-chev { display: none; }
+.nav-sub { display: none; }
+@media (min-width: 1000px) {
+  .app-header .nav-chev { display: inline-block; margin-left: auto; opacity: .65; transition: transform .18s ease; flex: 0 0 auto; }
+  .app-header .nav-group.expanded .nav-chev { transform: rotate(180deg); opacity: .9; }
+  .app-header .nav-sub { display: flex; flex-direction: column; gap: 2px; max-height: 0; overflow: hidden; transition: max-height .22s ease; }
+  .app-header .nav-group.expanded .nav-sub { max-height: 220px; margin: 4px 0 2px; }
+  .app-header .nav-subitem { position: relative; text-align: left; background: transparent; border: none; color: rgba(255,255,255,.62); font-family: inherit; font-size: 13.5px; padding: 9px 14px 9px 48px; border-radius: 9px; cursor: pointer; }
+  .app-header .nav-subitem:hover { background: rgba(255,255,255,.08); color: #fff; }
+  .app-header .nav-subitem.active { color: #fff; font-weight: 600; }
+  .app-header .nav-subitem.active::before { content: ''; position: absolute; left: 28px; top: 50%; transform: translateY(-50%); width: 6px; height: 6px; border-radius: 50%; background: #43B0E6; }
+  body.nav-collapsed .nav-chev, body.nav-collapsed .nav-sub { display: none !important; }
+}
+
+/* ---------- "See all →" card links (drill to Project Plan) ---------- */
+.card-more { margin-left: 10px; flex: 0 0 auto; background: transparent; border: none; color: var(--primary, #16357F); font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; padding: 4px 6px; border-radius: 7px; white-space: nowrap; }
+.card-more:hover { background: color-mix(in srgb, var(--primary) 10%, transparent); }
+@media (max-width: 560px) { .ex-card-head .ex-hint { display: none; } }
+
+/* ---------- segmented status bar (Milestones by Status) ---------- */
+.pl-bar { display: flex; height: 16px; border-radius: 999px; overflow: hidden; background: var(--surface-container-high); }
+.pl-seg { display: block; }
+.pl-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 13px; }
+.pl-leg { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--on-surface-variant); }
+.pl-leg i { width: 11px; height: 11px; border-radius: 3px; flex: 0 0 auto; }
+.pl-leg b { color: var(--on-surface); font-weight: 700; margin-left: 1px; }
+
+/* ---------- KPI month-over-month delta chip ---------- */
+.k-delta { display: inline-flex; align-items: center; gap: 3px; margin-top: 9px; font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; }
+.k-delta.good { background: #E9F6ED; color: #1E7A3D; }
+.k-delta.bad { background: #FDECEA; color: #C0341F; }
+.k-delta-lbl { font-weight: 500; opacity: .8; }
+
+/* ---------- sidebar global search ---------- */
+.nav-search { display: none; }
+@media (min-width: 1000px) {
+  .app-header .nav-search { display: flex; align-items: center; gap: 8px; margin: 2px 6px 6px; padding: 9px 12px; background: rgba(255,255,255,.10); border-radius: 10px; }
+  .app-header .nav-search .ns-ic { color: rgba(255,255,255,.6); flex: 0 0 auto; }
+  .app-header .nav-search input { flex: 1 1 auto; min-width: 0; background: transparent; border: none; outline: none; color: #fff; font-family: inherit; font-size: 13.5px; }
+  .app-header .nav-search input::placeholder { color: rgba(255,255,255,.5); }
+  body.nav-collapsed .nav-search { display: none; }
+}
+
+/* ---------- mobile top-nav fixes ---------- */
+@media (max-width: 999px) {
+  .nav-group { display: contents; }   /* let Project Plan flow inline with the other top-tabs */
+  #navToggle { display: none; }        /* collapse toggle is meaningless without the desktop rail */
+}
+
+/* ---------- light, professional sidebar (Lintel / Pillio / Edgelabs aesthetic) ---------- */
+@media (min-width: 1000px) {
+  .app-header { background: #FFFFFF; border-right: 1px solid var(--outline-variant); box-shadow: none; }
+  .app-header .brand-logo { filter: none; }
+  .app-header .brand-sub, .app-header .brand-sub b { color: var(--on-surface); opacity: 1; }
+  .app-header .nav-section { color: var(--on-surface-variant); opacity: .85; }
+  .app-header .nav-tab { color: var(--on-surface-variant); border-radius: 11px; }
+  .app-header .nav-tab .nav-ic { opacity: .68; }
+  .app-header .nav-tab:hover { background: var(--surface-container); color: var(--on-surface); }
+  .app-header .nav-tab:hover .nav-ic { opacity: 1; }
+  .app-header .nav-tab.active { background: var(--primary-container); color: var(--on-primary-container); font-weight: 700; box-shadow: none; }
+  .app-header .nav-tab.active .nav-ic { opacity: 1; }
+  .app-header .nav-chev { opacity: .5; }
+  .app-header .nav-search { background: var(--surface-container); }
+  .app-header .nav-search .ns-ic { color: var(--on-surface-variant); }
+  .app-header .nav-search input { color: var(--on-surface); }
+  .app-header .nav-search input::placeholder { color: var(--on-surface-variant); }
+  .app-header .nav-subitem { color: var(--on-surface-variant); }
+  .app-header .nav-subitem:hover { background: var(--surface-container); color: var(--on-surface); }
+  .app-header .nav-subitem.active { color: var(--on-surface); }
+  .app-header .nav-subitem.active::before { background: var(--primary); }
+  .app-header .header-actions { border-top-color: var(--outline-variant); }
+  .app-header .icon-btn { color: var(--on-surface-variant); }
+}
