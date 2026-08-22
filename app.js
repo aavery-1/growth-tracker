@@ -280,7 +280,7 @@ function updateMenuBadge(key) {
   if (btn) { const n = state.filters[key].size; btn.classList.toggle('on', !!n); let c = btn.querySelector('.fb-count'); if (n) { if (!c) { c = document.createElement('span'); c.className = 'fb-count'; btn.insertBefore(c, btn.querySelector('.fb-chev')); } c.textContent = n; } else if (c) c.remove(); }
   const cl = $('#clearFilters'); if (cl) cl.classList.toggle('hide', !activeCount());
 }
-function refreshBody() { const sec = $('#view-' + state.view); const b = sec ? sec.querySelector('#viewBody') : $('#viewBody'); if (!b) return rerender(); if (state.view === 'reports') b.innerHTML = reportsBodyHtml(); else if (state.view === 'progress') b.innerHTML = progressBodyHtml(); else b.innerHTML = planBodyHtml(); }
+function refreshBody() { const sec = $('#view-' + state.view); const b = sec ? sec.querySelector('#viewBody') : $('#viewBody'); if (!b) return rerender(); if (state.view === 'progress') b.innerHTML = progressBodyHtml(); else b.innerHTML = planBodyHtml(); }
 function otCard(s) {
   const sm = schoolMs(s), r = ragReady(sm), n = sm.length;
   return `<article class="ot-card" data-drillschool="${esc(s.id)}" style="--mk:${mkColor(s.market)}" title="Open ${esc(s.display_label)} — ${esc(s.market)}">
@@ -549,7 +549,7 @@ function renderPlan() {
 /* ============================================================
    EDIT ENGINE + cross-tab
    ============================================================ */
-function rerender() { if (state.view === 'reports') renderReports(); else if (state.view === 'progress') renderProgress(); else renderPlan(); }
+function rerender() { if (state.view === 'progress') renderProgress(); else renderPlan(); }
 
 /* ============================================================
    TAB 0 — EXECUTIVE SUMMARY (board / chiefs readout, print-ready)
@@ -1141,10 +1141,10 @@ function importJson(file) { const r = new FileReader(); r.onload = () => { try {
 /* ---------- toast / theme / nav ---------- */
 function toast(msg, kind) { const w = $('#toastWrap'), t = document.createElement('div'); t.className = 'toast' + (kind ? ' ' + kind : ''); t.textContent = msg; w.appendChild(t); setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 300); }, 2400); }
 function applyTheme(mode) { document.documentElement.setAttribute('data-theme', mode); lsSet(LS.theme, mode); $('#themeIcon').innerHTML = mode === 'dark' ? '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>' : '<circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'; }
-const VIEWS = ['progress', 'plan', 'reports'];
+const VIEWS = ['progress', 'plan'];
 function setView(v, fromPop) {
   if (!VIEWS.includes(v)) v = 'progress';
-  if (v === 'timeline') v = 'reports';
+  if (v === 'timeline' || v === 'reports') v = 'progress';
   state.view = v;
   $$('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.view === v));
   const pg = $('#planGroup'); if (pg) pg.classList.toggle('expanded', v === 'plan');
@@ -1201,7 +1201,6 @@ function wireEvents() {
     if (e.target.closest('#pmExpandAll')) { (state._pmKeys || []).forEach(k => state.expanded[k] = true); return refreshBody(); }
     if (e.target.closest('#pmCollapseAll')) { state.expanded = {}; return refreshBody(); }
     const pv = e.target.closest('[data-progressview]'); if (pv) { state.progressView = pv.dataset.progressview; return renderProgress(); }
-    const rt = e.target.closest('[data-reportstab]'); if (rt) { state.reportsTab = rt.dataset.reportstab; return renderReports(); }
     const pd = e.target.closest('[data-progressdim]'); if (pd) { state.progressDim = pd.dataset.progressdim; return refreshBody(); }
     const dr = e.target.closest('[data-drilldim]'); if (dr) return applyDrill(dr.dataset.drilldim, dr.dataset.drillval);
     const sm = e.target.closest('[data-showmore]'); if (sm) { const p = sm.dataset.showmore; if (p === 'focus') state.planFocus = true; else { state.planGroup = p; state.planFocus = false; } return setView('plan'); }
@@ -1377,7 +1376,7 @@ function buildCmdkItems(q) {
   const items = [];
   items.push({ icon: '📊', name: 'Go to Dashboard', hint: '', kbd: '', action: () => setView('progress') });
   items.push({ icon: '📋', name: 'Go to Project Plan', hint: '', kbd: '', action: () => setView('plan') });
-  items.push({ icon: '📈', name: 'Go to Reports', hint: '', kbd: '', action: () => setView('reports') });
+  items.push({ icon: '📈', name: 'Go to Dashboard', hint: '', kbd: '', action: () => setView('progress') });
   items.push({ icon: '➕', name: 'New task', hint: 'Create a milestone', kbd: 'N', action: () => addItem() });
   items.push({ icon: '🏫', name: 'Add school opening', hint: '', kbd: '', action: () => openSchoolModal(null) });
   items.push({ icon: '↩️', name: 'Undo last change', hint: undoStack.length ? undoStack[undoStack.length - 1].label : 'nothing to undo', kbd: '⌘Z', action: () => undo() });
@@ -1425,7 +1424,7 @@ function wireKeyboard() {
     if (e.key === 'n' || e.key === 'N') { e.preventDefault(); addItem(); return; }
     if (e.key === '1') { setView('progress'); return; }
     if (e.key === '2') { setView('plan'); return; }
-    if (e.key === '3') { setView('reports'); return; }
+    if (e.key === '3') return;
     if (e.key === '/') { e.preventDefault(); openCmdk(); return; }
     if (e.key === '?') { e.preventDefault(); openCmdk(); return; }
   });
