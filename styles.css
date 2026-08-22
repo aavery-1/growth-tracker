@@ -1055,6 +1055,10 @@ body.edit-on .edit-pill { display: inline-flex; }
 .fb-chev { opacity: .6; }
 .fb-select { height: 36px; border-radius: var(--r-full); border: 1px solid var(--outline-variant); background: var(--surface); padding: 0 30px 0 12px; font-size: 13px; font-weight: 600; max-width: 240px; }
 .fb-clear { appearance: none; border: 0; background: transparent; color: var(--primary); font-size: 13px; font-weight: 600; cursor: pointer; padding: 0 8px; }
+.fb-toggle { display: inline-flex; align-items: center; gap: 6px; }
+.fb-toggle.on { color: var(--primary); }
+.fb-toggle .fb-count { background: var(--primary); color: var(--on-primary); font-size: 11px; min-width: 18px; height: 18px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; padding: 0 5px; }
+.dash-filters { margin-bottom: 4px; }
 .fb-spacer { flex: 1; }
 .filterbar .tb-group { font-size: 13px; }
 .filterbar .btn { height: 36px; }

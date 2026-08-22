@@ -212,7 +212,7 @@ function fchip(key, val, label, color) {
 }
 
 /* ---------- unified filter bar (dropdown menus, live counts) ---------- */
-const FILTER_LABEL = { states: 'State', types: 'Type', markets: 'Market', fys: 'Year', areas: 'Workstream', statuses: 'Status', priorities: 'Priority' };
+const FILTER_LABEL = { states: 'State', types: 'Type', markets: 'Market', fys: 'Year', areas: 'Team', statuses: 'Status', priorities: 'Priority' };
 /* Hierarchical facets: a menu's options are limited by the filters chosen above it
    (State → Market → Year → Team → Status). Empty upstream = show everything. */
 const selStates = () => state.filters.states;
@@ -333,7 +333,7 @@ function reportsBodyHtml() {
     state._pmKeys = ['sec:prio', 'prio:all', 'sec:area', ...byArea.map(s => s.key), 'sec:nj', ...byNJ.map(s => s.key), 'sec:fl', ...byFL.map(s => s.key)];
     return `<div class="pm-urgency"><span class="muted" style="font-size:12.5px">Click any section to expand</span><span class="tb-spacer"></span><button class="btn btn-text btn-sm" id="pmExpandAll">Expand all</button><button class="btn btn-text btn-sm" id="pmCollapseAll">Collapse all</button></div>
       ${section('sec:prio', 'Key Milestones & Greenlights', [{ key: 'prio:all', name: 'Flagged milestones, greenlights & transitions', list: prio }], 'Decisions and gateways that unlock each opening')}
-      ${section('sec:area', 'By Workstream', byArea)}
+      ${section('sec:area', 'By Team', byArea)}
       ${section('sec:nj', 'By Market (New Jersey)', byNJ)}
       ${section('sec:fl', 'By Market (Florida)', byFL)}`;
   }
@@ -370,7 +370,7 @@ function pmItem(m) {
       <span class="pm-pct">${m.progress_percent || 0}%</span>
     </div>
     <div class="pm-body ${open ? '' : 'hide'}">
-      <div class="pm-meta"><b>Workstream:</b> ${esc(m.functional_area)} · <b>Market:</b> ${esc(m.market)} · <b>Detail:</b> ${esc(m.workstream)}</div>
+      <div class="pm-meta"><b>Team:</b> ${esc(m.functional_area)} · <b>Market:</b> ${esc(m.market)} · <b>Detail:</b> ${esc(m.workstream)}</div>
       ${m.dependency ? `<div class="pm-meta"><b>Depends on:</b> ${esc(m.dependency)}</div>` : ''}
       ${m.notes ? `<div class="pm-meta">${esc(m.notes)}</div>` : ''}
       <div style="margin-top:8px;display:flex;gap:8px"><button class="btn btn-tonal btn-sm" data-expand="${m.id}">Edit</button><button class="btn btn-text btn-sm" data-goplan="${m.id}">Open in Project Plan →</button></div>
@@ -426,7 +426,7 @@ function columnChart(list) {
   return `<div class="colchart">` + fys.map(fy => { const l = map[fy], c = effCounts(l); return `<div class="col drill" data-drilldim="year" data-drillval="${fy}" title="Click to see ${yrLbl(fy)} school-year items"><div class="col-n">${l.length}</div><div class="col-bar" style="height:${Math.max(6, 100 * l.length / max)}%">${STATUS_ORDER.filter(s => c[s]).map(s => `<span style="height:${100 * c[s] / l.length}%;background:${SM(s).color}" title="${SM(s).label}: ${c[s]}"></span>`).join('')}</div><div class="col-lbl">${yrLbl(fy)}</div></div>`; }).join('') + `</div>`;
 }
 function chartsHtml(list) {
-  const dims = [['team', 'Workstream'], ['year', 'Year'], ['school', 'School opening'], ['market', 'Market'], ['state', 'State']];
+  const dims = [['team', 'Team'], ['year', 'Year'], ['school', 'School opening'], ['market', 'Market'], ['state', 'State']];
   const dimSeg = dims.map(([v, l]) => `<button class="seg ${state.progressDim === v ? 'on' : ''}" data-progressdim="${v}"><span>${l}</span></button>`).join('');
   return `
     <div class="chart-grid">
@@ -463,16 +463,18 @@ function progressBodyHtml_legacyList() {
   }
   return kpis + `<div class="pm-urgency"><span class="muted" style="font-size:12.5px">Click any section to expand · click a callout above to drill in</span><span class="tb-spacer"></span><button class="btn btn-text btn-sm" id="pmExpandAll">Expand all</button><button class="btn btn-text btn-sm" id="pmCollapseAll">Collapse all</button></div>
     ${section('sec:prio', 'Key Milestones & Greenlights', [{ key: 'prio:all', name: 'Flagged milestones, greenlights & transitions', list: prio }], 'The decisions and gateways that unlock each opening')}
-    ${section('sec:area', 'By Workstream', byArea)}
+    ${section('sec:area', 'By Team', byArea)}
     ${section('sec:nj', 'By Market (New Jersey)', byNJ)}
     ${section('sec:fl', 'By Market (Florida)', byFL)}`;
 }
 function renderProgress() {
   const printBtn = `<button class="btn btn-tonal" id="dashPrint"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Print / PDF</button>`;
+  const ac = activeCount();
+  const filterToggle = `<button class="btn btn-ghost btn-sm fb-toggle ${ac ? 'on' : ''}" id="dashFilterToggle"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>Filters${ac ? ` <span class="fb-count">${ac}</span>` : ''}</button>`;
+  const filtersOpen = state.dashFiltersOpen;
   $('#view-progress').innerHTML = `
-    <div class="view-head"><div><h2>Dashboard</h2></div><div class="vh-actions">${printBtn}</div></div>
-    ${filterBar(['states', 'markets', 'areas', 'statuses'], { school: true })}
-    ${openingYearBar()}
+    <div class="view-head"><div><h2>Dashboard</h2></div><div class="vh-actions">${filterToggle}${printBtn}</div></div>
+    <div class="dash-filters ${filtersOpen ? '' : 'hide'}" id="dashFilters">${filterBar(['states', 'markets', 'areas', 'statuses'], { school: true })}${openingYearBar()}</div>
     <div id="viewBody">${progressBodyHtml()}</div>`;
 }
 
@@ -535,7 +537,7 @@ function renderPlan() {
   const focusN = list.filter(m => ['overdue', 'this_month'].includes(timingLevel(m)) || ['behind', 'at_risk'].includes(effectiveStatus(m))).length;
   const focusBtn = `<button class="btn btn-focus ${state.planFocus ? 'on' : ''}" id="planFocus" title="Show only overdue, due-soon, and off-track tasks">Needs attention${focusN ? ` <span class="focus-n">${focusN}</span>` : ''}</button>`;
   const viewSel = `<label class="tb-group ${state.planFocus ? 'is-dim' : ''}">Group by
-    <select id="planGroupSel" ${state.planFocus ? 'disabled' : ''}>${[['team', 'Workstream'], ['school', 'School opening'], ['market', 'Market'], ['year', 'Year'], ['stage', 'Kanban (stages)']].map(([v, l]) => `<option value="${v}" ${state.planGroup === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`;
+    <select id="planGroupSel" ${state.planFocus ? 'disabled' : ''}>${[['team', 'Team'], ['school', 'School opening'], ['market', 'Market'], ['year', 'Year'], ['stage', 'Kanban (stages)']].map(([v, l]) => `<option value="${v}" ${state.planGroup === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`;
   const expandBtns = (!state.planFocus && state.planGroup !== 'stage') ? `<button class="btn btn-ghost btn-sm" id="planExpandAll">Expand all</button><button class="btn btn-ghost btn-sm" id="planCollapseAll">Collapse all</button>` : '';
   const right = `${focusBtn}${viewSel}${expandBtns}<button class="btn btn-filled" id="newItem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>New task</button>`;
   $('#view-plan').innerHTML = `
@@ -712,7 +714,7 @@ function dashboardHtml(list) {
     return `<tr class="ex-band"><td colspan="${3 + tms.length}"><span class="state-badge" style="background:${stColor(st.code)}">${st.code}</span> ${esc(st.name)} <span class="muted">· ${rows.length} openings</span></td></tr>${body}`;
   }).join('');
   const rOpen = !state.expanded['dash:readiness'];
-  const readiness = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:readiness"><div class="ex-cardhead-l">${chev(rOpen)}<h3>Readiness by School &amp; Workstream</h3></div><span class="muted ex-hint">Each dot = how that workstream is tracking · click a school to open it</span><button class="card-more" data-showmore="school">See all →</button></div>
+  const readiness = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:readiness"><div class="ex-cardhead-l">${chev(rOpen)}<h3>Readiness by School &amp; Team</h3></div><span class="muted ex-hint">Each dot = how that team is tracking · click a school to open it</span><button class="card-more" data-showmore="school">See all →</button></div>
     <div class="ex-card-body ${rOpen ? '' : 'hide'}"><div class="ex-legend ex-legend-top"><span><i class="rag" style="background:${RAG.none}"></i>Not started</span><span><i class="rag" style="background:${RAG.blue}"></i>On track</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind</span><span><i class="rag" style="background:${RAG.green}"></i>Complete</span></div>
     <div class="ex-grid-wrap"><table class="ex-grid"><thead><tr><th>School</th><th>Opens</th><th>Overall</th>${tms.map(t => `<th class="ex-th-team"><span>${esc(t)}</span></th>`).join('')}</tr></thead><tbody>${grid}</tbody></table></div></div></section>`;
 
@@ -790,7 +792,7 @@ function openModal(id) {
     <div class="field-row"><div class="field"><label>Owner</label><input id="mOwner" list="ownerRoster" value="${esc(m.owner)}" placeholder="Pick from the team or type a name"><datalist id="ownerRoster">${(meta().owners || []).map(o => `<option value="${esc(o.name)}">${esc(o.role || '')}</option>`).join('')}</datalist></div><div class="field"><label>Due date</label><input id="mDue" type="date" value="${esc(m.due_date || '')}"></div></div>
     <div class="field"><label>Status</label><select id="mStatus">${opt(meta().statuses.map(s => [s, SM(s).label]), m.status)}</select>
       <div class="help-text">Overdue or due-this-month tasks flag automatically, even if marked “On track.”</div></div>
-    <div class="field-row"><div class="field"><label>Market / location</label><select id="mMarket">${opt(markets(), m.market)}</select></div><div class="field"><label>Workstream</label><select id="mTeam">${opt(teams(), m.functional_area)}</select></div></div>
+    <div class="field-row"><div class="field"><label>Market / location</label><select id="mMarket">${opt(markets(), m.market)}</select></div><div class="field"><label>Team</label><select id="mTeam">${opt(teams(), m.functional_area)}</select></div></div>
     <div class="field"><label>School(s) this belongs to</label><div id="mSchools" class="check-box">${schoolChecks}</div></div>
     <div class="field"><label>Notes / next steps</label><textarea id="mNotes">${esc(m.notes)}</textarea></div>
     <details class="sm-details"><summary>More options</summary>
@@ -1052,10 +1054,10 @@ function renderDrawer() {
       <p class="dw-help">This one is just for you — teammates use the board password above but can’t open Settings without this.</p>
     </section>
 
-    <details class="dw-sec dw-fold"><summary><span class="dw-num">3</span>Customize Markets, Workstreams &amp; Owners</summary>
+    <details class="dw-sec dw-fold"><summary><span class="dw-num">3</span>Customize Markets, Teams &amp; Owners</summary>
       <p class="dw-help">Rename or add your own; changes save everywhere. Anything in use can’t be deleted until its items are reassigned.</p>
       ${czSection('State', 'markets', statesMeta().flatMap(s => s.markets.map(mk => ({ mk, st: s.code }))))}
-      ${czSection('Workstream', 'teams', teams().map(t => ({ mk: t })))}
+      ${czSection('Team', 'teams', teams().map(t => ({ mk: t })))}
       ${czOwners()}
     </details>
 
@@ -1215,6 +1217,7 @@ function wireEvents() {
     if (e.target.closest('#addTaskForSchool')) return addTaskForSchool();
     if (e.target.closest('#newItem')) return addItem();
     if (e.target.closest('#dashPrint')) return window.print();
+    if (e.target.closest('#dashFilterToggle')) { state.dashFiltersOpen = !state.dashFiltersOpen; const df = $('#dashFilters'); if (df) df.classList.toggle('hide', !state.dashFiltersOpen); return; }
   });
   $('.container').addEventListener('change', e => {
     if (e.target.id === 'planGroupSel') { state.planGroup = e.target.value; refreshBody(); }
