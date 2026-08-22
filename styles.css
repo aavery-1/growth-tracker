@@ -1826,3 +1826,26 @@ body.nav-collapsed #navToggle svg { transform: rotate(180deg); }
    ============================================================ */
 .reports-tabs { padding: 0 0 12px; }
 .reports-tabs .segmented { display: inline-flex; }
+
+/* ============================================================
+   CONTENT BAR — breadcrumb + search + user (Rubick-style)
+   ============================================================ */
+.content-bar { display: none; }
+@media (min-width: 1000px) {
+  .content-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 0 18px; margin-bottom: 4px;
+    border-bottom: 1px solid var(--outline-variant);
+  }
+  .cb-crumb { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--on-surface-variant); }
+  .cb-app { font-weight: 500; }
+  .cb-sep { opacity: .45; flex-shrink: 0; }
+  .cb-page { font-weight: 600; color: var(--on-surface); }
+  .cb-right { display: flex; align-items: center; gap: 12px; }
+  .cb-search { display: flex; align-items: center; gap: 8px; background: var(--surface-container); border: 1px solid var(--outline-variant); border-radius: 8px; padding: 7px 14px; min-width: 220px; }
+  .cb-search svg { color: var(--on-surface-variant); flex-shrink: 0; opacity: .6; }
+  .cb-search input { border: 0; background: transparent; outline: none; font: inherit; font-size: 13.5px; color: var(--on-surface); width: 100%; }
+  .cb-search input::placeholder { color: var(--on-surface-variant); }
+  .cb-user { width: 36px; height: 36px; border-radius: 50%; border: none; background: var(--primary); color: var(--on-primary); font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; letter-spacing: .02em; }
+  .cb-user:hover { opacity: .88; }
+}

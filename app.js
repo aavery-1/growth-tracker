@@ -716,7 +716,7 @@ function dashboardHtml(list) {
     return `<tr class="ex-band"><td colspan="${3 + tms.length}"><span class="state-badge" style="background:${stColor(st.code)}">${st.code}</span> ${esc(st.name)} <span class="muted">· ${rows.length} openings</span></td></tr>${body}`;
   }).join('');
   const rOpen = !state.expanded['dash:readiness'];
-  const readiness = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:readiness"><div class="ex-cardhead-l">${chev(rOpen)}<h3>Readiness by School &amp; Workstream</h3></div><span class="muted ex-hint">Each dot = how that workstream is tracking · click a school to open it</span><button class="card-more" data-showmore="school">See all →</button></div>
+  const readiness = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:readiness"><div class="ex-cardhead-l">${chev(rOpen)}<h3>Readiness by School &amp; Workstream</h3></div><button class="card-more" data-showmore="school">See all →</button></div>
     <div class="ex-card-body ${rOpen ? '' : 'hide'}"><div class="ex-legend ex-legend-top"><span><i class="rag" style="background:${RAG.none}"></i>Not started</span><span><i class="rag" style="background:${RAG.blue}"></i>On track</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind</span><span><i class="rag" style="background:${RAG.green}"></i>Complete</span></div>
     <div class="ex-grid-wrap"><table class="ex-grid"><thead><tr><th>School</th><th>Opens</th><th>Overall</th>${tms.map(t => `<th class="ex-th-team"><span>${esc(t)}</span></th>`).join('')}</tr></thead><tbody>${grid}</tbody></table></div></div></section>`;
 
@@ -1152,6 +1152,7 @@ function setView(v, fromPop) {
   const pg = $('#planGroup'); if (pg) pg.classList.toggle('expanded', v === 'plan');
   $$('.nav-subitem').forEach(x => x.classList.toggle('active', v === 'plan' && (x.dataset.plan === 'focus' ? state.planFocus : (!state.planFocus && state.planGroup === x.dataset.plan))));
   $$('.view').forEach(s => { const on = s.id === 'view-' + v; s.classList.toggle('active', on); if (!on) s.innerHTML = ''; });
+  const cbPage = $('#cbPage'); if (cbPage) cbPage.textContent = v === 'progress' ? 'Dashboard' : v === 'timeline' ? 'Timeline' : 'Project Plan';
   rerender();
   if (!fromPop) { try { if (location.hash !== '#' + v) history.pushState({ v }, '', '#' + v); } catch (e) {} }
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1451,10 +1452,26 @@ async function init() {
   try { captureTrend(); } catch (e) {}
   gateStart();
 }
+function initContentBar() {
+  const author = lsGet('ngc_author') || '';
+  const btn = $('#cbUser');
+  if (btn) {
+    const initials = author ? author.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : '?';
+    btn.textContent = initials;
+    btn.title = author || 'Set your name';
+    btn.addEventListener('click', () => {
+      const name = prompt('Your name (shown on edits):', lsGet('ngc_author') || '');
+      if (name !== null) { lsSet('ngc_author', name.trim()); initContentBar(); }
+    });
+  }
+  const cbSearch = $('#cbSearch');
+  if (cbSearch) cbSearch.addEventListener('input', e => { state.filters.search = e.target.value; refreshBody(); });
+}
 function bootApp() {
   wireEvents();
   wireCmdk();
   wireKeyboard();
+  initContentBar();
   const ab = $('#activityBtn'); if (ab) ab.addEventListener('click', toggleActivity);
   const ac = $('#activityClose'); if (ac) ac.addEventListener('click', toggleActivity);
   renderActivityPanel();
