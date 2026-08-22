@@ -14,11 +14,12 @@ function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
 
 const state = {
   data: null,
-  view: 'progress',              // progress(dashboard) | timeline | plan
+  view: 'progress',              // progress(dashboard) | plan | reports
   planGroup: 'team',             // team | stage | market | year | school  (default: Workstream)
   planFocus: false,              // "Needs attention" quick filter (overdue/due-soon/behind)
   progressView: 'charts',        // charts | list
   progressDim: 'team',           // team | year | market | school | state
+  reportsTab: 'overview',       // overview | timeline | list
   expanded: {},                  // progress section/item expand map
   filters: { states: new Set(), fys: new Set(), types: new Set(), areas: new Set(), markets: new Set(), statuses: new Set(), priorities: new Set(), openingFYs: new Set(), schoolId: '', search: '', timing: '' },
   sb: { connected: false, client: null },
@@ -279,7 +280,7 @@ function updateMenuBadge(key) {
   if (btn) { const n = state.filters[key].size; btn.classList.toggle('on', !!n); let c = btn.querySelector('.fb-count'); if (n) { if (!c) { c = document.createElement('span'); c.className = 'fb-count'; btn.insertBefore(c, btn.querySelector('.fb-chev')); } c.textContent = n; } else if (c) c.remove(); }
   const cl = $('#clearFilters'); if (cl) cl.classList.toggle('hide', !activeCount());
 }
-function refreshBody() { const sec = $('#view-' + state.view); const b = sec ? sec.querySelector('#viewBody') : $('#viewBody'); if (!b) return rerender(); if (state.view === 'timeline') b.innerHTML = ganttBodyHtml(); else if (state.view === 'progress') b.innerHTML = progressBodyHtml(); else b.innerHTML = planBodyHtml(); }
+function refreshBody() { const sec = $('#view-' + state.view); const b = sec ? sec.querySelector('#viewBody') : $('#viewBody'); if (!b) return rerender(); if (state.view === 'reports') b.innerHTML = reportsBodyHtml(); else if (state.view === 'progress') b.innerHTML = progressBodyHtml(); else b.innerHTML = planBodyHtml(); }
 function otCard(s) {
   const sm = schoolMs(s), r = ragReady(sm), n = sm.length;
   return `<article class="ot-card" data-drillschool="${esc(s.id)}" style="--mk:${mkColor(s.market)}" title="Open ${esc(s.display_label)} — ${esc(s.market)}">
@@ -310,13 +311,45 @@ function ganttBodyHtml() {
     <div class="ot-legend"><span><i class="rag" style="background:${RAG.none}"></i>Not started</span><span><i class="rag" style="background:${RAG.blue}"></i>In progress</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind</span><span><i class="rag" style="background:${RAG.green}"></i>Cleared</span><span class="muted">· click a school to open its tasks</span></div>`;
 }
 function renderTimeline() {
-  $('#view-timeline').innerHTML = `
+  const el = $('#view-timeline'); if (el) el.innerHTML = `
     <div class="view-head"><div><h2>Openings Timeline</h2></div>
       <button class="btn btn-filled" id="addSchool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>Add school opening</button>
     </div>
     ${filterBar(['states', 'markets', 'types'])}
     ${openingYearBar()}
     <div id="viewBody">${ganttBodyHtml()}</div>`;
+}
+function reportsBodyHtml() {
+  const list = filtered();
+  const rTab = state.reportsTab || 'overview';
+  if (rTab === 'timeline') return `${openingYearBar()}${ganttBodyHtml()}`;
+  if (rTab === 'list') {
+    const items = list.slice().sort(bySortUrgency);
+    const byArea = teams().map(t => ({ key: 'a:' + t, name: t, list: list.filter(m => m.functional_area === t) }));
+    const njMk = statesMeta().find(s => s.code === 'NJ').markets, flMk = statesMeta().find(s => s.code === 'FL').markets;
+    const byNJ = njMk.map(mk => ({ key: 'nj:' + mk, name: mk, color: mkColor(mk), list: list.filter(m => m.market === mk) }));
+    const byFL = flMk.map(mk => ({ key: 'fl:' + mk, name: mk, color: mkColor(mk), list: list.filter(m => m.market === mk) }));
+    const prio = list.filter(m => m.keyMilestone || m.greenlight || m.transition).slice().sort(bySortUrgency);
+    state._pmKeys = ['sec:prio', 'prio:all', 'sec:area', ...byArea.map(s => s.key), 'sec:nj', ...byNJ.map(s => s.key), 'sec:fl', ...byFL.map(s => s.key)];
+    return `<div class="pm-urgency"><span class="muted" style="font-size:12.5px">Click any section to expand</span><span class="tb-spacer"></span><button class="btn btn-text btn-sm" id="pmExpandAll">Expand all</button><button class="btn btn-text btn-sm" id="pmCollapseAll">Collapse all</button></div>
+      ${section('sec:prio', 'Key Milestones & Greenlights', [{ key: 'prio:all', name: 'Flagged milestones, greenlights & transitions', list: prio }], 'Decisions and gateways that unlock each opening')}
+      ${section('sec:area', 'By Workstream', byArea)}
+      ${section('sec:nj', 'By Market (New Jersey)', byNJ)}
+      ${section('sec:fl', 'By Market (Florida)', byFL)}`;
+  }
+  return chartsHtml(list);
+}
+function renderReports() {
+  const rTab = state.reportsTab || 'overview';
+  const tabs = [['overview', 'Charts'], ['timeline', 'Openings Timeline'], ['list', 'Detailed List']];
+  const tabsHtml = tabs.map(([v, l]) => `<button class="seg ${rTab === v ? 'on' : ''}" data-reportstab="${v}"><span>${l}</span></button>`).join('');
+  const addSchool = rTab === 'timeline' ? `<button class="btn btn-filled" id="addSchool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>Add school opening</button>` : '';
+  const printBtn = `<button class="btn btn-tonal" id="dashPrint"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Print / PDF</button>`;
+  $('#view-reports').innerHTML = `
+    <div class="view-head"><div><h2>Reports</h2></div><div class="vh-actions">${addSchool}${printBtn}</div></div>
+    <div class="reports-tabs"><div class="segmented">${tabsHtml}</div></div>
+    ${filterBar(['states', 'markets', 'areas', 'statuses'], { school: true })}
+    <div id="viewBody">${reportsBodyHtml()}</div>`;
 }
 
 /* ============================================================
@@ -514,7 +547,7 @@ function renderPlan() {
 /* ============================================================
    EDIT ENGINE + cross-tab
    ============================================================ */
-function rerender() { if (state.view === 'timeline') renderTimeline(); else if (state.view === 'progress') renderProgress(); else renderPlan(); }
+function rerender() { if (state.view === 'reports') renderReports(); else if (state.view === 'progress') renderProgress(); else renderPlan(); }
 
 /* ============================================================
    TAB 0 — EXECUTIVE SUMMARY (board / chiefs readout, print-ready)
@@ -726,7 +759,9 @@ function applyDrill(dim, val) {
 function refreshResults() { refreshBody(); }
 
 function addItem() {
+  snapshotForUndo('Create new task');
   const m = { id: uid(), state: 'NJ', market: 'Paterson', team: teams()[0], functional_area: teams()[0], workstream: 'General', activity: 'New task', schools: [], schoolIds: [], targetFY: currentFY(), targetQuarter: '', openingFY: null, due_date: null, status: 'not_started', stage: 'to_do', progress_percent: 0, priority: 'medium', owner: '', dependency: '', keyMilestone: false, greenlight: false, transition: false, notes: '', tags: [] };
+  logActivity('create', 'Created new task');
   M().push(m); autosave(); openModal(m.id);
 }
 
@@ -772,6 +807,7 @@ function openModal(id) {
 function saveModal() {
   if (modalMode === 'school') return saveSchool();
   const m = findM(modalId); if (!m) return;
+  snapshotForUndo('Edit task: ' + (m.activity || '').slice(0, 40));
   m.activity = $('#mAct').value.trim() || m.activity; m.market = $('#mMarket').value; m.state = stateOfMarket(m.market) || m.state;
   m.team = $('#mTeam').value; m.functional_area = m.team; m.workstream = $('#mWs').value.trim() || 'General';
   m.schoolIds = $$('#mSchools .m-school').filter(x => x.checked).map(x => x.value);
@@ -782,12 +818,13 @@ function saveModal() {
   m.owner = $('#mOwner').value.trim(); m.due_date = $('#mDue').value || null; m.dependency = $('#mDep').value.trim();
   m.notes = $('#mNotes').value.trim(); m.keyMilestone = $('#mKey').checked; m.transition = $('#mTrans').checked;
   const os = m.schoolIds.length ? schoolById(m.schoolIds[0]) : null; if (os) m.openingFY = os.openingFY;
+  logActivity('edit', 'Updated: ' + m.activity);
   autosave(); closeModal(); rerender(); toast('Saved', 'ok');
 }
 function deleteModal() {
   if (modalMode === 'school') return deleteSchool();
   if (!modalId) return; const m = findM(modalId), id = modalId;
-  confirmDialog({ title: 'Delete this task?', message: `“${esc(m ? m.activity : 'this task')}” will be permanently removed.`, confirmLabel: 'Delete task', danger: true, onConfirm: () => { state.data.milestones = M().filter(x => x.id !== id); autosave(); closeModal(); rerender(); toast('Task deleted', 'ok'); } });
+  confirmDialog({ title: 'Delete this task?', message: `”${esc(m ? m.activity : 'this task')}” will be permanently removed.`, confirmLabel: 'Delete task', danger: true, onConfirm: () => { snapshotForUndo('Delete task: ' + (m ? m.activity : '')); logActivity('delete', 'Deleted: ' + (m ? m.activity : 'task')); state.data.milestones = M().filter(x => x.id !== id); autosave(); closeModal(); rerender(); toast('Task deleted', 'ok'); } });
 }
 let taskReturnSchool = null;
 function closeModal() { $('#modalBackdrop').classList.remove('open'); modalId = null; const ret = taskReturnSchool; taskReturnSchool = null; if (ret) setTimeout(() => openSchoolModal(ret), 0); }
@@ -1102,15 +1139,14 @@ function importJson(file) { const r = new FileReader(); r.onload = () => { try {
 /* ---------- toast / theme / nav ---------- */
 function toast(msg, kind) { const w = $('#toastWrap'), t = document.createElement('div'); t.className = 'toast' + (kind ? ' ' + kind : ''); t.textContent = msg; w.appendChild(t); setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 300); }, 2400); }
 function applyTheme(mode) { document.documentElement.setAttribute('data-theme', mode); lsSet(LS.theme, mode); $('#themeIcon').innerHTML = mode === 'dark' ? '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>' : '<circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'; }
-const VIEWS = ['timeline', 'progress', 'plan'];
+const VIEWS = ['progress', 'plan', 'reports'];
 function setView(v, fromPop) {
-  if (!VIEWS.includes(v)) v = 'timeline';
+  if (!VIEWS.includes(v)) v = 'progress';
+  if (v === 'timeline') v = 'reports';
   state.view = v;
   $$('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.view === v));
   const pg = $('#planGroup'); if (pg) pg.classList.toggle('expanded', v === 'plan');
   $$('.nav-subitem').forEach(x => x.classList.toggle('active', v === 'plan' && (x.dataset.plan === 'focus' ? state.planFocus : (!state.planFocus && state.planGroup === x.dataset.plan))));
-  // Only the active section keeps content — otherwise all three sections coexist with
-  // duplicate ids (#viewBody, #filterbar, #clearFilters…) and refreshBody() targets the wrong one.
   $$('.view').forEach(s => { const on = s.id === 'view-' + v; s.classList.toggle('active', on); if (!on) s.innerHTML = ''; });
   rerender();
   if (!fromPop) { try { if (location.hash !== '#' + v) history.pushState({ v }, '', '#' + v); } catch (e) {} }
@@ -1141,7 +1177,7 @@ function wireEvents() {
     const ex = e.target.closest('[data-expand]'); if (ex) { if (modalMode === 'school') taskReturnSchool = schoolId; return openModal(ex.dataset.expand); }
   });
   $('#modalBody').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'noteInput') { e.preventDefault(); postNote(e.target.closest('.notes-field')); } });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeDrawer(); closePopover(); closeConfirm(); } });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeCmdk(); closeModal(); closeDrawer(); closePopover(); closeConfirm(); } });
 
   // keep timing colors live vs. the real date (on return-to-tab and hourly rollover)
   let _day = new Date().toDateString();
@@ -1152,7 +1188,7 @@ function wireEvents() {
   document.addEventListener('dragend', e => { const c = e.target.closest('.kcard'); if (c) c.classList.remove('dragging'); $$('.kcol-body.over').forEach(b => b.classList.remove('over')); });
   document.addEventListener('dragover', e => { const b = e.target.closest('.kcol-body'); if (b) { e.preventDefault(); b.classList.add('over'); } });
   document.addEventListener('dragleave', e => { const b = e.target.closest('.kcol-body'); if (b && !b.contains(e.relatedTarget)) b.classList.remove('over'); });
-  document.addEventListener('drop', e => { const b = e.target.closest('.kcol-body'); if (b) { e.preventDefault(); b.classList.remove('over'); const m = findM(e.dataTransfer.getData('text/plain')); if (m && m.stage !== b.dataset.kstage) { m.stage = b.dataset.kstage; if (m.stage === 'complete') { m.status = 'complete'; m.progress_percent = 100; } autosave(); refreshResults(); } } });
+  document.addEventListener('drop', e => { const b = e.target.closest('.kcol-body'); if (b) { e.preventDefault(); b.classList.remove('over'); const m = findM(e.dataTransfer.getData('text/plain')); if (m && m.stage !== b.dataset.kstage) { snapshotForUndo('Move task: ' + (m.activity || '').slice(0, 30)); logActivity('move', `Moved "${m.activity}" to ${b.dataset.kstage}`); m.stage = b.dataset.kstage; if (m.stage === 'complete') { m.status = 'complete'; m.progress_percent = 100; } autosave(); refreshResults(); } } });
 
   $('.container').addEventListener('click', e => {
     const fm = e.target.closest('.fb-menu'); if (fm) return openFilterMenu(fm, fm.dataset.fmenu);
@@ -1163,6 +1199,7 @@ function wireEvents() {
     if (e.target.closest('#pmExpandAll')) { (state._pmKeys || []).forEach(k => state.expanded[k] = true); return refreshBody(); }
     if (e.target.closest('#pmCollapseAll')) { state.expanded = {}; return refreshBody(); }
     const pv = e.target.closest('[data-progressview]'); if (pv) { state.progressView = pv.dataset.progressview; return renderProgress(); }
+    const rt = e.target.closest('[data-reportstab]'); if (rt) { state.reportsTab = rt.dataset.reportstab; return renderReports(); }
     const pd = e.target.closest('[data-progressdim]'); if (pd) { state.progressDim = pd.dataset.progressdim; return refreshBody(); }
     const dr = e.target.closest('[data-drilldim]'); if (dr) return applyDrill(dr.dataset.drilldim, dr.dataset.drillval);
     const sm = e.target.closest('[data-showmore]'); if (sm) { const p = sm.dataset.showmore; if (p === 'focus') state.planFocus = true; else { state.planGroup = p; state.planFocus = false; } return setView('plan'); }
@@ -1265,16 +1302,157 @@ function saveGateSettings() {
   const nb = $('#gateNew'); if (nb) nb.value = '';
 }
 
+/* ============================================================
+   UNDO STACK — snapshot before each mutation, Cmd+Z to restore
+   ============================================================ */
+const undoStack = [];
+const UNDO_LIMIT = 30;
+function snapshotForUndo(label) {
+  undoStack.push({ label, snapshot: JSON.parse(JSON.stringify(state.data)), ts: Date.now() });
+  if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+}
+function undo() {
+  if (!undoStack.length) { toast('Nothing to undo'); return; }
+  const entry = undoStack.pop();
+  state.data = entry.snapshot;
+  autosave();
+  rerender();
+  toast(`Undone: ${entry.label}`, 'ok');
+  logActivity('undo', entry.label);
+}
+
+/* ============================================================
+   ACTIVITY LOG — local change journal (what changed, when)
+   ============================================================ */
+function getActivityLog() { try { return JSON.parse(lsGet('ngc_activity') || '[]'); } catch (e) { return []; } }
+function logActivity(action, detail, extra) {
+  const log = getActivityLog();
+  const author = lsGet('ngc_author') || '';
+  log.push({ action, detail, author, ts: Date.now(), extra: extra || null });
+  if (log.length > 100) log.splice(0, log.length - 100);
+  try { lsSet('ngc_activity', JSON.stringify(log)); } catch (e) {}
+  renderActivityPanel();
+}
+function activityIcon(action) {
+  const icons = { edit: '✏️', create: '➕', delete: '🗑️', status: '🔄', undo: '↩️', move: '↔️' };
+  return icons[action] || '•';
+}
+function renderActivityPanel() {
+  const body = $('#activityBody'); if (!body) return;
+  const log = getActivityLog().slice().reverse().slice(0, 50);
+  if (!log.length) { body.innerHTML = '<div class="activity-empty">No activity yet. Changes you make will appear here.</div>'; return; }
+  body.innerHTML = log.map(e => {
+    const when = fmtWhen(e.ts);
+    const who = e.author ? `<b>${esc(e.author)}</b> · ` : '';
+    return `<div class="activity-item"><span class="activity-ic">${activityIcon(e.action)}</span><div class="activity-detail">${who}<span class="activity-what">${esc(e.detail)}</span><span class="activity-when">${esc(when)}</span></div></div>`;
+  }).join('');
+}
+function toggleActivity() {
+  const panel = $('#activityPanel'); if (!panel) return;
+  panel.classList.toggle('open');
+  renderActivityPanel();
+}
+
+/* ============================================================
+   COMMAND PALETTE — Cmd+K to search tasks, jump views, run actions
+   ============================================================ */
+let cmdkIdx = 0, cmdkItems = [];
+function openCmdk() {
+  const bg = $('#cmdkBackdrop'); bg.classList.remove('hide');
+  const inp = $('#cmdkInput'); inp.value = ''; inp.focus();
+  cmdkIdx = 0;
+  renderCmdkResults('');
+}
+function closeCmdk() { $('#cmdkBackdrop').classList.add('hide'); }
+function renderCmdkResults(q) {
+  const body = $('#cmdkBody');
+  cmdkItems = buildCmdkItems(q);
+  if (cmdkIdx >= cmdkItems.length) cmdkIdx = 0;
+  body.innerHTML = cmdkItems.map((item, i) => `<div class="cmdk-item ${i === cmdkIdx ? 'active' : ''}" data-cmdk="${i}"><span class="cmdk-ic">${item.icon}</span><div class="cmdk-label"><span class="cmdk-name">${esc(item.name)}</span>${item.hint ? `<span class="cmdk-hint">${esc(item.hint)}</span>` : ''}</div>${item.kbd ? `<kbd class="cmdk-kbd">${item.kbd}</kbd>` : ''}</div>`).join('') || '<div class="cmdk-empty">No results</div>';
+}
+function buildCmdkItems(q) {
+  const items = [];
+  items.push({ icon: '📊', name: 'Go to Dashboard', hint: '', kbd: '', action: () => setView('progress') });
+  items.push({ icon: '📋', name: 'Go to Project Plan', hint: '', kbd: '', action: () => setView('plan') });
+  items.push({ icon: '📈', name: 'Go to Reports', hint: '', kbd: '', action: () => setView('reports') });
+  items.push({ icon: '➕', name: 'New task', hint: 'Create a milestone', kbd: 'N', action: () => addItem() });
+  items.push({ icon: '🏫', name: 'Add school opening', hint: '', kbd: '', action: () => openSchoolModal(null) });
+  items.push({ icon: '↩️', name: 'Undo last change', hint: undoStack.length ? undoStack[undoStack.length - 1].label : 'nothing to undo', kbd: '⌘Z', action: () => undo() });
+  items.push({ icon: '📄', name: 'Print / PDF', hint: '', kbd: '', action: () => window.print() });
+  items.push({ icon: '⚙️', name: 'Open settings', hint: '', kbd: '', action: () => { const s = $('#settingsBtn'); if (s) s.click(); } });
+  items.push({ icon: '📜', name: 'Activity log', hint: '', kbd: '⌃⇧A', action: () => toggleActivity() });
+  if (state.data && state.data.milestones) {
+    const q2 = (q || '').toLowerCase();
+    if (q2.length >= 2) {
+      M().filter(m => `${m.activity} ${m.owner} ${m.market} ${m.functional_area}`.toLowerCase().includes(q2)).slice(0, 8).forEach(m => {
+        items.push({ icon: '📌', name: m.activity, hint: `${m.market} · ${m.functional_area}`, kbd: '', action: () => openModal(m.id) });
+      });
+    }
+  }
+  if (!q) return items;
+  const ql = q.toLowerCase();
+  return items.filter(it => it.name.toLowerCase().includes(ql) || (it.hint || '').toLowerCase().includes(ql));
+}
+function execCmdk() {
+  if (cmdkItems[cmdkIdx]) { cmdkItems[cmdkIdx].action(); closeCmdk(); }
+}
+function wireCmdk() {
+  const bg = $('#cmdkBackdrop'), inp = $('#cmdkInput');
+  bg.addEventListener('click', e => { if (e.target === bg) closeCmdk(); });
+  bg.addEventListener('mousedown', e => { const item = e.target.closest('[data-cmdk]'); if (item) { cmdkIdx = +item.dataset.cmdk; execCmdk(); } });
+  inp.addEventListener('input', () => renderCmdkResults(inp.value));
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); cmdkIdx = Math.min(cmdkIdx + 1, cmdkItems.length - 1); renderCmdkResults(inp.value); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); cmdkIdx = Math.max(cmdkIdx - 1, 0); renderCmdkResults(inp.value); }
+    else if (e.key === 'Enter') { e.preventDefault(); execCmdk(); }
+    else if (e.key === 'Escape') { closeCmdk(); }
+  });
+}
+
+/* ============================================================
+   KEYBOARD SHORTCUTS
+   ============================================================ */
+function wireKeyboard() {
+  document.addEventListener('keydown', e => {
+    const inInput = e.target.matches('input, textarea, select, [contenteditable]');
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); openCmdk(); return; }
+    if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) { if (!inInput) { e.preventDefault(); undo(); } return; }
+    if (e.ctrlKey && e.shiftKey && e.key === 'A') { e.preventDefault(); toggleActivity(); return; }
+    if (inInput) return;
+    if (e.key === 'n' || e.key === 'N') { e.preventDefault(); addItem(); return; }
+    if (e.key === '1') { setView('progress'); return; }
+    if (e.key === '2') { setView('plan'); return; }
+    if (e.key === '3') { setView('reports'); return; }
+    if (e.key === '/') { e.preventDefault(); openCmdk(); return; }
+    if (e.key === '?') { e.preventDefault(); openCmdk(); return; }
+  });
+}
+
+/* ============================================================
+   ENHANCED SAVE — hooks into autosave for undo + activity logging
+   ============================================================ */
+const _origAutosave = autosave;
+let _lastSaveLabel = '';
+function autosaveWithUndo(label) {
+  if (label) { _lastSaveLabel = label; snapshotForUndo(label); logActivity('edit', label); }
+  _origAutosave();
+}
+
 async function init() {
-  document.documentElement.setAttribute('data-theme', 'light');   // tool is always light
+  document.documentElement.setAttribute('data-theme', 'light');
   if (lsGet('ngc_nav') === '1') { document.body.classList.add('nav-collapsed'); const nt = $('#navToggle'); if (nt) nt.title = 'Expand menu'; }
   const data = await loadData(); if (!data) return; state.data = data;
-  state.data.schools.forEach(s => { if (!s.id) s.id = uid(); });   // stable ids for school management
-  try { captureTrend(); } catch (e) {}   // snapshot this month's metrics for the "vs last month" deltas
+  state.data.schools.forEach(s => { if (!s.id) s.id = uid(); });
+  try { captureTrend(); } catch (e) {}
   gateStart();
 }
 function bootApp() {
   wireEvents();
+  wireCmdk();
+  wireKeyboard();
+  const ab = $('#activityBtn'); if (ab) ab.addEventListener('click', toggleActivity);
+  const ac = $('#activityClose'); if (ac) ac.addEventListener('click', toggleActivity);
+  renderActivityPanel();
   window.addEventListener('popstate', () => setView((location.hash || '').replace('#', '') || 'progress', true));
   const initial = (location.hash || '').replace('#', '');
   setView(VIEWS.includes(initial) ? initial : 'progress', true);
