@@ -185,7 +185,7 @@ function toggleFilter(key, val, cast) {
   if (key === 'states') { const ok = new Set(marketsForStates()); [...state.filters.markets].forEach(mk => { if (!ok.has(mk)) state.filters.markets.delete(mk); }); }
   if (key === 'states' || key === 'markets') { const sc = state.filters.schoolId && schoolById(state.filters.schoolId); if (sc && !schoolFacetPass(sc, null)) state.filters.schoolId = ''; }
 }
-function clearFilters() { ['states', 'fys', 'types', 'areas', 'markets', 'statuses', 'priorities', 'openingFYs'].forEach(k => state.filters[k].clear()); state.filters.schoolId = ''; state.filters.search = ''; state.filters.timing = ''; }
+function clearFilters() { ['states', 'fys', 'types', 'areas', 'markets', 'statuses', 'priorities', 'openingFYs'].forEach(k => state.filters[k].clear()); state.filters.schoolId = ''; state.filters.search = ''; state.filters.timing = ''; const cb = $('#cbSearch'); if (cb) cb.value = ''; }
 /* which opening cohorts (fiscal years) to display — empty = show all */
 function openingYears() { return [...new Set(state.data.schools.filter(s => s.openingFY).map(s => s.openingFY))].sort((a, b) => a - b); }
 function oyShown(fy) { return !state.filters.openingFYs.size || state.filters.openingFYs.has(fy); }
@@ -254,7 +254,7 @@ function activeCount() { let n = 0; ['states', 'types', 'markets', 'fys', 'areas
 function filterBar(menus, opts = {}) {
   const search = opts.search ? `<div class="fb-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input id="fSearch" autocomplete="off" placeholder="Search…" value="${esc(state.filters.search)}"></div>` : '';
   const btns = menus.map(k => { const n = state.filters[k].size; return `<button class="fb-menu ${n ? 'on' : ''}" data-fmenu="${k}"><span>${FILTER_LABEL[k]}</span>${n ? `<span class="fb-count">${n}</span>` : ''}<svg class="fb-chev" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg></button>`; }).join('');
-  const school = opts.school ? `<select id="dashSchool" class="fb-select"><option value="">All schools</option>${state.data.schools.filter(s => s.openingFY && schoolFacetPass(s, null) && (!state.filters.fys.size || state.filters.fys.has(s.openingFY))).sort((a, b) => (a.openingFY - b.openingFY) || a.market.localeCompare(b.market)).map(s => `<option value="${s.id}" ${state.filters.schoolId === s.id ? 'selected' : ''}>${esc(s.display_label)} · ${esc(s.market)}</option>`).join('')}</select>` : '';
+  const school = opts.school ? `<select id="dashSchool" class="fb-select"><option value="">All schools</option>${state.data.schools.filter(s => s.openingFY && schoolFacetPass(s, null) && (!state.filters.fys.size || state.filters.fys.has(s.openingFY))).sort((a, b) => (a.openingFY - b.openingFY) || a.market.localeCompare(b.market)).map(s => `<option value="${s.id}" ${state.filters.schoolId === s.id ? 'selected' : ''}>${esc(s.market)} · ${esc(s.display_label)}</option>`).join('')}</select>` : '';
   return `<div class="filterbar" id="filterbar"><span class="fb-label">Filters</span>${search}${btns}${school}<button class="fb-clear ${activeCount() ? '' : 'hide'}" id="clearFilters">Clear all</button><span class="fb-spacer"></span>${opts.right || ''}</div>`;
 }
 /* toggle chips to show / hide opening-year cohorts */
@@ -283,10 +283,9 @@ function updateMenuBadge(key) {
 function refreshBody() { const sec = $('#view-' + state.view); const b = sec ? sec.querySelector('#viewBody') : $('#viewBody'); if (!b) return rerender(); if (state.view === 'progress') b.innerHTML = progressBodyHtml(); else if (state.view === 'timeline') b.innerHTML = ganttBodyHtml(); else b.innerHTML = planBodyHtml(); }
 function otCard(s) {
   const sm = schoolMs(s), r = ragReady(sm), n = sm.length;
-  return `<article class="ot-card" data-drillschool="${esc(s.id)}" style="--mk:${mkColor(s.market)}" title="Open ${esc(s.display_label)} — ${esc(s.market)}">
-      <div class="ot-card-h"><span class="state-badge sm" style="background:${stColor(s.state)}">${esc(s.state)}</span><b>${esc(s.display_label)}</b><span class="ot-type">${esc(s.school_type)}</span><span class="ot-rag" style="background:${r.color}" title="${esc(r.label)}"></span></div>
-      <div class="ot-card-mkt"><i style="background:${mkColor(s.market)}"></i>${esc(s.market)}</div>
-      <div class="ot-card-f"><span>Opens August ${s.openingFY - 1}</span><span class="muted">${n} milestone${n === 1 ? '' : 's'}</span></div>
+  return `<article class="ot-card" data-drillschool="${esc(s.id)}" style="--mk:${mkColor(s.market)}" title="${esc(s.state)} · ${esc(s.market)} · ${esc(s.display_label)}">
+      <div class="ot-card-h"><span class="state-badge sm" style="background:${stColor(s.state)}">${esc(s.state)}</span><b>${esc(s.market)}</b><span class="ot-rag" style="background:${r.color}" title="${esc(r.label)}"></span></div>
+      <div class="ot-card-f"><span>Fall ${s.openingFY - 1} · ${esc(s.display_label)}</span><span class="muted">${n} milestone${n === 1 ? '' : 's'}</span></div>
     </article>`;
 }
 function ganttBodyHtml() {
@@ -404,7 +403,7 @@ function groupsByDim(dim, list) {
   else if (dim === 'market') markets().forEach(mk => { const l = list.filter(m => m.market === mk); if (l.length) g.push({ name: mk, val: mk, color: mkColor(mk), list: l }); });
   else if (dim === 'state') statesMeta().forEach(s => { const l = list.filter(m => m.state === s.code); if (l.length) g.push({ name: s.name, val: s.code, color: stColor(s.code), list: l }); });
   else if (dim === 'year') { const map = {}; list.forEach(m => { const k = m.targetFY || 'none'; (map[k] = map[k] || []).push(m); }); Object.keys(map).filter(k => k !== 'none').map(Number).sort((a, b) => a - b).forEach(fy => g.push({ name: 'FY ' + fyLabel(fy), val: fy, list: map[fy] })); if (map['none']) g.push({ name: 'No date', val: '', list: map['none'] }); }
-  else if (dim === 'school') { state.data.schools.forEach(s => { const l = list.filter(m => taskInSchool(m, s)); if (l.length) g.push({ name: s.display_label + ' · ' + s.market, val: s.id, color: mkColor(s.market), list: l, school: s }); }); g.sort((a, b) => ((a.school && a.school.openingFY) || 9999) - ((b.school && b.school.openingFY) || 9999)); }
+  else if (dim === 'school') { state.data.schools.forEach(s => { const l = list.filter(m => taskInSchool(m, s)); if (l.length) g.push({ name: s.market + ' · ' + s.display_label, val: s.id, color: mkColor(s.market), list: l, school: s }); }); g.sort((a, b) => ((a.school && a.school.openingFY) || 9999) - ((b.school && b.school.openingFY) || 9999)); }
   return g;
 }
 function statusBar(list) { const c = effCounts(list), t = list.length || 1; return `<div class="sbar">${STATUS_ORDER.map(s => c[s] ? `<span style="width:${100 * c[s] / t}%;background:${SM(s).color}" title="${SM(s).label}: ${c[s]}"></span>` : '').join('')}</div>`; }
@@ -513,7 +512,7 @@ function planListHtml() {
     if (gb === 'priority') return (PRIORITY[m.priority] || {}).label;
     if (gb === 'market') return m.market;
     if (gb === 'year') { order['FY ' + fyLabel(m.targetFY)] = m.targetFY || 9999; return m.targetFY ? 'FY ' + fyLabel(m.targetFY) : 'No date'; }
-    if (gb === 'school') { const s = state.data.schools.find(x => taskInSchool(m, x)); return s ? s.display_label + ' · ' + s.market : 'Not tied to a school'; }
+    if (gb === 'school') { const s = state.data.schools.find(x => taskInSchool(m, x)); return s ? s.market + ' · ' + s.display_label : 'Not tied to a school'; }
     return m.functional_area;
   };
   list.forEach(m => { const k = keyOf(m) || '—'; (g[k] = g[k] || []).push(m); });
@@ -544,7 +543,7 @@ function renderPlan() {
   const right = `${viewToggle}${focusBtn}${viewSel}${expandBtns}<button class="btn btn-filled" id="newItem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>New milestone</button>`;
   $('#view-plan').innerHTML = `
     <div class="view-head"><div><h2>Project Plan</h2></div></div>
-    ${filterBar(['states', 'markets', 'fys', 'areas'], { search: true, school: true, right })}
+    ${filterBar(['states', 'markets', 'fys', 'areas'], { school: true, right })}
     <div id="viewBody">${planBodyHtml()}</div>`;
 }
 
@@ -710,8 +709,8 @@ function dashboardHtml(list) {
     const body = rows.map(({ s }) => {
       const sm = schoolMs(s);
       const cells = tms.map(t => { const tl = sm.filter(m => m.functional_area === t); return `<td>${tl.length ? ragDotR(tl, t) : ragDot('x')}</td>`; }).join('');
-      return `<tr class="ex-grow" data-drillschool="${esc(s.id)}"><td class="ex-sch"><b>${esc(s.display_label)}</b> <span class="muted">${esc(s.market)}</span></td>
-        <td class="ex-open">${s.openingFY ? 'Aug ' + (s.openingFY - 1) : '—'}</td><td>${ragDotR(sm, 'Overall')}</td>${cells}</tr>`;
+      return `<tr class="ex-grow" data-drillschool="${esc(s.id)}"><td class="ex-sch"><span class="muted">${esc(s.market)}</span> · <b>${esc(s.display_label)}</b></td>
+        <td class="ex-open">${s.openingFY ? 'Fall ' + (s.openingFY - 1) : '—'}</td><td>${ragDotR(sm, 'Overall')}</td>${cells}</tr>`;
     }).join('');
     return `<tr class="ex-band"><td colspan="${3 + tms.length}"><span class="state-badge" style="background:${stColor(st.code)}">${st.code}</span> ${esc(st.name)} <span class="muted">· ${rows.length} openings</span></td></tr>${body}`;
   }).join('');
@@ -861,13 +860,13 @@ function openSchoolModal(id) {
   modalMode = 'school'; schoolId = id;
   const isNew = !id;
   const s = id ? schoolById(id) : { id: uid(), display_label: '', code: '', school_type: 'ES', pod_number: null, market: markets()[0], state: stateOfMarket(markets()[0]), openingFY: currentFY() + 1, openingQuarter: 'Q1', priority: false, confirmed: true, _new: true };
-  $('#modalTitle').textContent = isNew ? 'Add a school opening' : `${s.display_label} — milestones`;
+  $('#modalTitle').textContent = isNew ? 'Add a school opening' : `${s.market} ${s.display_label} — Milestones`;
   const opt = (arr, val) => arr.map(x => Array.isArray(x) ? `<option value="${x[0]}" ${x[0] === val ? 'selected' : ''}>${esc(x[1])}</option>` : `<option ${x === val ? 'selected' : ''}>${esc(x)}</option>`).join('');
   const sm = isNew ? [] : schoolMs(s);
   const roll = sm.length ? rollupStatus(sm) : 'not_started';
   const taskList = sm.length ? sm.slice().sort(bySortUrgency).map(m => `<div class="sm-task" data-expand="${m.id}">${statusDot(effectiveStatus(m))}<span class="sm-t-title">${esc(m.activity)}</span><span class="sm-t-team">${esc(m.functional_area || '')}</span><span class="sm-t-due">${dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : '—')}</span></div>`).join('') : '<div class="muted" style="font-size:12.5px">No milestones yet — add the first one below.</div>';
   const summary = isNew ? '' : `<div class="sm-summary">
-    <span><b>${esc(s.market)}</b> · ${esc(s.school_type)}</span><span class="muted">Opens August ${s.openingFY - 1}</span><span class="muted">${sm.length} milestone${sm.length === 1 ? '' : 's'}</span></div>`;
+    <span><span class="state-badge sm" style="background:${stColor(s.state)}">${esc(s.state)}</span> <b>${esc(s.market)}</b> · Fall ${s.openingFY - 1}</span><span class="muted">${sm.length} milestone${sm.length === 1 ? '' : 's'}</span></div>`;
   // plain calendar year — a school with openingFY=2028 opens in August 2027, so we show "2027"
   const fyField = `<div class="field"><label>Opens in — August of…</label><select id="sFy">${fyList().map(fy => `<option value="${fy}" ${s.openingFY === fy ? 'selected' : ''}>${fy - 1}</option>`).join('')}</select></div>`;
   const qField = `<div class="field"><label>Opening quarter</label><select id="sQ">${opt(['Q1', 'Q2', 'Q3', 'Q4'], s.openingQuarter || 'Q1')}</select></div>`;
@@ -1165,7 +1164,6 @@ function wireEvents() {
     const t = e.target.closest('.nav-tab'); if (t) setView(t.dataset.view);
   });
   const nt = $('#navToggle'); if (nt) nt.addEventListener('click', () => { const on = document.body.classList.toggle('nav-collapsed'); lsSet('ngc_nav', on ? '1' : '0'); nt.title = on ? 'Expand menu' : 'Collapse menu'; });
-  const nsr = $('#navSearch'); if (nsr) nsr.addEventListener('input', () => { state.filters.search = nsr.value.trim(); if (state.view !== 'plan') setView('plan'); else refreshBody(); });
   const showDrawer = () => { renderDrawer(); $('#drawer').classList.add('open'); $('#drawerBackdrop').classList.add('open'); };
   const openDrawer = () => {
     if (adminOn() && !state.adminUnlocked) return promptPassword({ title: 'Admin settings', message: 'Enter the settings password.', verify: v => pwHash(v) === String(meta().adminHash), onOk: () => { state.adminUnlocked = true; showDrawer(); } });
@@ -1212,7 +1210,7 @@ function wireEvents() {
     const ex = e.target.closest('[data-expand]'); if (ex) return openModal(ex.dataset.expand);
     const es2 = e.target.closest('[data-editschool]'); if (es2) return openSchoolModal(es2.dataset.editschool);
     const ds = e.target.closest('[data-drillschool]'); if (ds) return openSchoolModal(ds.dataset.drillschool);
-    const gp = e.target.closest('[data-goplan]'); if (gp) { const m = findM(gp.dataset.goplan); state.filters.search = m ? m.workstream : ''; setView('plan'); return; }
+    const gp = e.target.closest('[data-goplan]'); if (gp) { const m = findM(gp.dataset.goplan); if (m) { state.filters.search = m.activity; const cb = $('#cbSearch'); if (cb) cb.value = m.activity; } setView('plan'); return; }
     if (e.target.closest('#planFocus')) { state.planFocus = !state.planFocus; return renderPlan(); }
     if (e.target.closest('#planExpandAll')) { (state._planKeys || []).forEach(k => state.expanded[k] = true); return refreshBody(); }
     if (e.target.closest('#planCollapseAll')) { (state._planKeys || []).forEach(k => delete state.expanded[k]); return refreshBody(); }
@@ -1226,7 +1224,6 @@ function wireEvents() {
     if (e.target.id === 'planGroupSel') { state.planGroup = e.target.value; state._lastListGroup = state.planGroup; refreshBody(); }
     else if (e.target.id === 'dashSchool') { state.filters.schoolId = e.target.value; refreshBody(); const cl = $('#clearFilters'); if (cl) cl.classList.toggle('hide', !activeCount()); }
   });
-  $('.container').addEventListener('input', e => { if (e.target.id === 'fSearch') { state.filters.search = e.target.value; refreshBody(); const cl = $('#clearFilters'); if (cl) cl.classList.toggle('hide', !activeCount()); } });
 
   $('#drawerBody').addEventListener('click', e => {
     if (e.target.id === 'sbConnect') { const u = $('#sbUrl').value.trim(), k = $('#sbKey').value.trim(); if (!u || !k) $('#sbStatus').innerHTML = '<div class="status-note err">Enter URL and key.</div>'; else sbConnect(u, k); }
