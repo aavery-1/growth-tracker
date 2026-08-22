@@ -609,8 +609,8 @@ function statusPipeline(list) {
   list.forEach(m => { const es = effectiveStatus(m); if (c[es] == null) c[es] = 0; c[es]++; });
   const seg = order.map(s => c[s] ? `<span class="pl-seg" style="flex:${c[s]};background:${SM(s).color}" title="${SM(s).label}: ${c[s]}"></span>` : '').join('') || '<span class="pl-seg" style="flex:1;background:var(--surface-container-high)"></span>';
   const legend = order.filter(s => c[s]).map(s => `<span class="pl-leg"><i style="background:${SM(s).color}"></i>${SM(s).label}<b>${c[s]}</b></span>`).join('');
-  return `<section class="ex-card"><div class="ex-card-head"><div class="ex-cardhead-l"><h3>Milestones by Status</h3></div><span class="muted ex-hint">${list.length} milestone${list.length === 1 ? '' : 's'} in view</span></div>
-    <div class="pl-bar">${seg}</div><div class="pl-legend">${legend || '<span class="muted">No milestones in view.</span>'}</div></section>`;
+  return `<section class="ex-card"><div class="ex-card-head"><div class="ex-cardhead-l"><h3>Milestone Status</h3></div><span class="muted ex-hint">${list.length} total</span></div>
+    <div class="pl-legend">${legend || '<span class="muted">No milestones in view.</span>'}</div><div class="pl-bar">${seg}</div></section>`;
 }
 // NORTH STAR — the charter's stakeholder answer, rendered ABOVE the filters so a busy exec
 // (often on a phone) sees "are we on track?" before any controls.
@@ -724,18 +724,17 @@ function dashboardHtml(list) {
   const upcoming = list.filter(m => (m.keyMilestone || m.greenlight || m.transition) && m.due_date && parseDate(m.due_date) <= soon && effectiveStatus(m) !== 'complete')
     .sort((a, b) => parseDate(a.due_date) - parseDate(b.due_date)).slice(0, 8);
   const stuck = list.filter(m => (m.status === 'blocked' || timingLevel(m) === 'overdue') && effectiveStatus(m) !== 'complete').sort(bySortUrgency);
-  const risksOpen = !state.expanded.dashrisks_collapsed;
   const pOpen = !state.expanded['dash:priorities'];
-  const prCard = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:priorities"><div class="ex-cardhead-l">${chev(pOpen)}<h3>Priorities &amp; Risks</h3></div><button class="card-more" data-showmore="focus">See all →</button></div>
-    <div class="ex-card-body ${pOpen ? '' : 'hide'}"><div class="dash-block-h">Key milestones &amp; greenlights · next 90 days<span class="dash-count">${upcoming.length}</span></div>
-    ${upcoming.length ? `<div class="ex-list">${upcoming.map(m => exLi(m, m.greenlight ? '◆ ' : m.transition ? '⇄ ' : '')).join('')}</div>` : '<div class="muted ex-empty">Nothing in the next 90 days.</div>'}
-    <div class="dash-block-h toggle" data-toggle="dashrisks_collapsed">${chev(risksOpen)}Blocked or past due<span class="dash-count ${stuck.length ? 'bad' : ''}">${stuck.length}</span></div>
-    <div class="ex-risks ${risksOpen ? '' : 'hide'}">${stuck.length ? `<div class="ex-list">${stuck.slice(0, 20).map(m => exLi(m, m.status === 'blocked' ? '⛔ ' : '')).join('')}${stuck.length > 20 ? `<div class="muted ex-empty">+ ${stuck.length - 20} more</div>` : ''}</div>` : '<div class="muted ex-empty">Nothing blocked or overdue.</div>'}</div></div></section>`;
+  const rOpen2 = !state.expanded['dash:risks'];
+  const upcomingCard = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:priorities"><div class="ex-cardhead-l">${chev(pOpen)}<h3>Key Milestones · Next 90 Days</h3></div><span class="dash-count">${upcoming.length}</span></div>
+    <div class="ex-card-body ${pOpen ? '' : 'hide'}">${upcoming.length ? `<div class="ex-list">${upcoming.map(m => exLi(m, m.greenlight ? '◆ ' : m.transition ? '⇄ ' : '')).join('')}</div>` : '<div class="muted ex-empty">Nothing due in the next 90 days.</div>'}</div></section>`;
+  const risksCard = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:risks"><div class="ex-cardhead-l">${chev(rOpen2)}<h3>Blocked &amp; Overdue</h3></div><span class="dash-count ${stuck.length ? 'bad' : ''}">${stuck.length}</span></div>
+    <div class="ex-card-body ${rOpen2 ? '' : 'hide'}">${stuck.length ? `<div class="ex-list">${stuck.slice(0, 20).map(m => exLi(m, m.status === 'blocked' ? '⛔ ' : '')).join('')}${stuck.length > 20 ? `<div class="muted ex-empty">+ ${stuck.length - 20} more</div>` : ''}</div>` : '<div class="muted ex-empty">Nothing blocked or overdue.</div>'}</div></section>`;
 
   // GROWTH FUNDRAISING
   const camps = (state.data.campaigns || []).filter(c => !state.filters.states.size || state.filters.states.has(c.state));
   const fOpen = !state.expanded['dash:fund'];
-  const capital = camps.length ? `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:fund"><div class="ex-cardhead-l">${chev(fOpen)}<h3>Advancement</h3></div></div><div class="ex-card-body ${fOpen ? '' : 'hide'}"><div class="ex-caps">${camps.map(c => {
+  const capital = camps.length ? `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:fund"><div class="ex-cardhead-l">${chev(fOpen)}<h3>Growth Capital Raised</h3></div></div><div class="ex-card-body ${fOpen ? '' : 'hide'}"><div class="ex-caps">${camps.map(c => {
     const p = c.target ? Math.min(100, Math.round(100 * c.raised / c.target)) : 0;
     return `<div class="ex-cap"><div class="ex-cap-top"><b>${esc(c.name)}</b><span>${fmtMoney(c.raised)} <span class="muted">/ ${fmtMoney(c.target)}</span></span></div>
       <div class="ex-cap-bar"><span style="width:${p}%"></span></div><div class="ex-cap-foot muted">${p}% raised</div></div>`;
@@ -743,9 +742,10 @@ function dashboardHtml(list) {
 
   // WORKLOAD — pacing across fiscal years
   const wOpen = !state.expanded['dash:workload'];
-  const workload = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:workload"><div class="ex-cardhead-l">${chev(wOpen)}<h3>Milestones Due by School Year</h3></div></div><div class="ex-card-body ${wOpen ? '' : 'hide'}">${columnChart(list)}</div></section>`;
+  const statusLegend = `<div class="pl-legend pl-legend-sm">${STATUS_ORDER.filter(s => list.some(m => effectiveStatus(m) === s)).map(s => `<span class="pl-leg"><i style="background:${SM(s).color}"></i>${SM(s).label}</span>`).join('')}</div>`;
+  const workload = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:workload"><div class="ex-cardhead-l">${chev(wOpen)}<h3>Milestone Workload by Year</h3></div></div><div class="ex-card-body ${wOpen ? '' : 'hide'}">${statusLegend}${columnChart(list)}</div></section>`;
 
-  return `<div class="dash">${hero}${kpiStrip}${statusPipeline(list)}${readiness}<div class="dash-lower">${prCard}${capital}${workload}</div></div>`;
+  return `<div class="dash">${hero}${kpiStrip}${statusPipeline(list)}${readiness}<div class="dash-pair">${upcomingCard}${risksCard}</div>${capital}${workload}</div>`;
 }
 function applyDrill(dim, val) {
   if (dim === 'team') state.filters.areas = new Set([val]);

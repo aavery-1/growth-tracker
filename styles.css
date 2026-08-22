@@ -1622,9 +1622,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
 .save-state { display: none !important; }
 
 /* ---------- dashboard: compact lower row (Priorities · Advancement · Workload) — less scrolling ---------- */
-.dash-lower { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 15px; align-items: start; }
-@media (max-width: 1040px) { .dash-lower { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 640px) { .dash-lower { grid-template-columns: 1fr; } }
+.dash-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: start; }
+@media (max-width: 640px) { .dash-pair { grid-template-columns: 1fr; } }
+.pl-legend-sm { font-size: 11px; margin-bottom: 10px; }
+.pl-legend-sm .pl-leg b { display: none; }
 
 /* ---------- nav rail: align logo, sub-brand, nav items, and utility icons ---------- */
 @media (min-width: 1000px) {
@@ -1709,7 +1710,7 @@ body.nav-collapsed #navToggle svg { transform: rotate(180deg); }
 /* ---------- segmented status bar (Milestones by Status) ---------- */
 .pl-bar { display: flex; height: 16px; border-radius: 999px; overflow: hidden; background: var(--surface-container-high); }
 .pl-seg { display: block; }
-.pl-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 13px; }
+.pl-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-bottom: 10px; }
 .pl-leg { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--on-surface-variant); }
 .pl-leg i { width: 11px; height: 11px; border-radius: 3px; flex: 0 0 auto; }
 .pl-leg b { color: var(--on-surface); font-weight: 700; margin-left: 1px; }
