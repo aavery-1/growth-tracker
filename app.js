@@ -1203,7 +1203,7 @@ function renderDrawer() {
       <div class="dw-h"><span class="dw-num">2</span><h4>Access &amp; Accounts</h4></div>
       <div class="auth-mode-block">
         <label class="field-check"><input type="radio" name="authMode" value="password" ${!authModeOn() ? 'checked' : ''}> <b>Shared password</b> <span class="muted">— one password for the whole team (legacy)</span></label>
-        <label class="field-check"><input type="radio" name="authMode" value="supabase" ${authModeOn() ? 'checked' : ''} ${state.sb && state.sb.connected ? '' : 'disabled'}> <b>Individual accounts</b> <span class="muted">— each person signs in; edits are attributed${state.sb && state.sb.connected ? '' : ' <b>(connect Supabase above first)</b>'}</span></label>
+        <label class="field-check"><input type="radio" name="authMode" value="supabase" ${authModeOn() ? 'checked' : ''}> <b>Individual accounts</b> <span class="muted">— each person signs in; edits are attributed. Requires Supabase configured with saved URL/key.</span></label>
         ${authModeOn() && state.auth.user ? `<div class="status-note ok" style="margin-top:8px">Signed in as <b>${esc(state.auth.profile ? state.auth.profile.full_name || state.auth.profile.email : state.auth.user.email)}</b> · role: <b>${esc(currentRole() || 'viewer')}</b></div>` : ''}
       </div>
       <div class="dw-divider"></div>
