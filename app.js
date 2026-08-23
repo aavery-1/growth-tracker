@@ -772,7 +772,7 @@ function dashboardHtml(list) {
   const upcomingCard = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:priorities"><div class="ex-cardhead-l">${chev(pOpen)}<h3>Key Milestones · Next 90 Days</h3></div><span class="dash-count">${upcoming.length}</span></div>
     <div class="ex-card-body ${pOpen ? '' : 'hide'}">${upcoming.length ? `<div class="ex-list">${upcoming.map(m => exLi(m, m.greenlight ? '◆ ' : m.transition ? '⇄ ' : '')).join('')}</div>` : '<div class="muted ex-empty">Nothing due in the next 90 days.</div>'}</div></section>`;
   const risksCard = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:risks"><div class="ex-cardhead-l">${chev(rOpen2)}<h3>Overdue</h3></div><span class="dash-count ${stuck.length ? 'bad' : ''}">${stuck.length}</span></div>
-    <div class="ex-card-body ${rOpen2 ? '' : 'hide'}">${stuck.length ? `<div class="ex-list">${stuck.slice(0, 20).map(m => exLi(m, m.status === 'blocked' ? '⛔ ' : '')).join('')}${stuck.length > 20 ? `<div class="muted ex-empty">+ ${stuck.length - 20} more</div>` : ''}</div>` : '<div class="muted ex-empty">Nothing blocked or overdue.</div>'}</div></section>`;
+    <div class="ex-card-body ${rOpen2 ? '' : 'hide'}">${stuck.length ? `<div class="ex-list">${stuck.map(m => exLi(m, m.status === 'blocked' ? '⛔ ' : '')).join('')}</div>` : '<div class="muted ex-empty">Nothing blocked or overdue.</div>'}</div></section>`;
 
   // GROWTH FUNDRAISING
   const camps = (state.data.campaigns || []).filter(c => !state.filters.states.size || state.filters.states.has(c.state));
