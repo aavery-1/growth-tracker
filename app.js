@@ -6,7 +6,7 @@
 'use strict';
 
 const LS = { theme: 'ngc_theme', data: 'ngc_data', gh: 'ngc_gh', supabase: 'ngc_supabase', ui: 'ngc_ui', gate: 'ngc_gate' };
-/* Safe storage — sandboxed iframes (e.g. the published artifact) throw on any localStorage access.
+/* Safe storage - sandboxed iframes (e.g. the published artifact) throw on any localStorage access.
    Never let that break app init / event wiring. */
 function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
@@ -42,7 +42,7 @@ const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const uid = () => Math.random().toString(36).slice(2, 12);
-function fyLabel(fy) { return fy ? `${String(fy - 1).slice(-2)}–${String(fy).slice(-2)}` : '—'; }
+function fyLabel(fy) { return fy ? `${String(fy - 1).slice(-2)}–${String(fy).slice(-2)}` : '-'; }
 function fyList() { return [2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033]; }
 function currentFY() { const n = new Date(); return n.getMonth() >= 6 ? n.getFullYear() + 1 : n.getFullYear(); }
 function initials(n) { return String(n || '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase(); }
@@ -57,7 +57,7 @@ function personChip(name, cls) {
 function fmtMoney(n) { return n >= 1e6 ? '$' + (n / 1e6).toFixed(n % 1e6 ? 1 : 0) + 'M' : n >= 1e3 ? '$' + Math.round(n / 1e3) + 'K' : '$' + n; }
 function parseDate(s) { return s ? new Date(s + 'T00:00:00') : null; }
 function daysUntil(s) { const d = parseDate(s); if (!d) return null; return Math.round((d - new Date(new Date().toDateString())) / 86400000); }
-function fmtDate(s) { const d = parseDate(s); return d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'; }
+function fmtDate(s) { const d = parseDate(s); return d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'; }
 /* ---------- threaded notes (attach to a task or school; surface wherever it's opened) ---------- */
 function fmtWhen(t) { try { return new Date(t).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } }
 function noteItemHtml(nt) { return `<div class="note-item"><div class="note-meta"><b>${nt.by ? esc(nt.by) : 'Someone'}</b> · ${esc(fmtWhen(nt.t))}</div><div class="note-text">${esc(nt.text)}</div></div>`; }
@@ -81,7 +81,7 @@ function postNote(wrap) {
   thread.scrollTop = thread.scrollHeight;
 }
 function notesSection(kind, id, log) {
-  const items = (log || []).slice().sort((a, b) => a.t - b.t).map(noteItemHtml).join('') || '<div class="note-empty muted">No notes yet — add the first update.</div>';
+  const items = (log || []).slice().sort((a, b) => a.t - b.t).map(noteItemHtml).join('') || '<div class="note-empty muted">No notes yet - add the first update.</div>';
   return `<div class="notes-field" data-notekind="${kind}" data-noteid="${esc(id)}"><label class="notes-label">Notes &amp; updates</label>
     <div class="note-thread">${items}</div>
     <div class="note-add"><input id="noteAuthor" class="note-author" placeholder="Your name" value="${esc(lsGet('ngc_author') || '')}"><input id="noteInput" class="note-input" placeholder="Add a note or status update…"><button class="btn btn-filled btn-sm" id="noteAdd">Post</button></div></div>`;
@@ -124,7 +124,7 @@ function dueBadge(m) {
 /* ---------- data load / save ---------- */
 // Per-version migrations. Each runs when upgrading TO that version from anything lower.
 // Mutate the cached user data in place; `base` is the fresh data.json (read-only reference).
-// This preserves user edits across version bumps — only the targeted fields change.
+// This preserves user edits across version bumps - only the targeted fields change.
 const DATA_MIGRATIONS = {
   16: (data /* , base */) => {
     // Fix "complete" status color: #79A81E failed WCAG AA contrast with white text (~2.9:1).
@@ -151,8 +151,8 @@ async function loadData() {
     if (s && s.milestones) {
       const baseV = (base.meta && base.meta.version) || 0;
       const cachedV = s.__baseVersion || 0;
-      if (cachedV === baseV) return s;                 // versions match — use cache as-is
-      if (cachedV < baseV) {                            // upgrade path — migrate in place, keep user data
+      if (cachedV === baseV) return s;                 // versions match - use cache as-is
+      if (cachedV < baseV) {                            // upgrade path - migrate in place, keep user data
         for (let v = cachedV + 1; v <= baseV; v++) {
           const fn = DATA_MIGRATIONS[v];
           if (fn) { try { fn(s, base); } catch (e) { console.warn('data migration v' + v + ' failed:', e); } }
@@ -161,7 +161,7 @@ async function loadData() {
         try { lsSet(LS.data, JSON.stringify(s)); } catch (e) {}   // persist the migrated cache
         return s;
       }
-      return s;                                         // cached ahead of shipped (unexpected) — trust cache
+      return s;                                         // cached ahead of shipped (unexpected) - trust cache
     }
   } catch (e) {}
   return base;
@@ -225,19 +225,19 @@ function toggleFilter(key, val, cast) {
   if (key === 'states' || key === 'markets') { const sc = state.filters.schoolId && schoolById(state.filters.schoolId); if (sc && !schoolFacetPass(sc, null)) state.filters.schoolId = ''; }
 }
 function clearFilters() { ['states', 'fys', 'types', 'areas', 'markets', 'statuses', 'priorities', 'openingFYs'].forEach(k => state.filters[k].clear()); state.filters.schoolId = ''; state.filters.search = ''; state.filters.timing = ''; const cb = $('#cbSearch'); if (cb) cb.value = ''; }
-/* which opening cohorts (fiscal years) to display — empty = show all */
+/* which opening cohorts (fiscal years) to display - empty = show all */
 function openingYears() { return [...new Set(state.data.schools.filter(s => s.openingFY).map(s => s.openingFY))].sort((a, b) => a - b); }
 function oyShown(fy) { return !state.filters.openingFYs.size || state.filters.openingFYs.has(fy); }
 function toggleOpeningYear(fy) {
   // Additive: no selection = show all; click a year to add it to the filter; click again to remove.
-  // No more "seed all then subtract" trick — that made the first click read as "delete this year."
+  // No more "seed all then subtract" trick - that made the first click read as "delete this year."
   const f = state.filters.openingFYs;
   f.has(fy) ? f.delete(fy) : f.add(fy);
   if (f.size === openingYears().length) f.clear();   // selecting every year is equivalent to no filter
 }
 
 /* ============================================================
-   TAB 1 — SCHOOL OPENING TIMELINE (Gantt)
+   TAB 1 - SCHOOL OPENING TIMELINE (Gantt)
    ============================================================ */
 function ganttSchools() {
   const f = state.filters;
@@ -297,7 +297,7 @@ function filterOpts(key) {
 }
 function activeCount() { let n = 0; ['states', 'types', 'markets', 'fys', 'areas', 'statuses', 'priorities', 'openingFYs'].forEach(k => n += state.filters[k].size); if (state.filters.schoolId) n++; if (state.filters.search) n++; if (state.filters.timing) n++; return n; }
 function filterBar(menus, opts = {}) {
-  // #fSearch removed — #cbSearch in the header content-bar is the single, wired search across every view
+  // #fSearch removed - #cbSearch in the header content-bar is the single, wired search across every view
   const search = '';
   const btns = menus.map(k => { const n = state.filters[k].size; return `<button class="fb-menu ${n ? 'on' : ''}" data-fmenu="${k}"><span>${FILTER_LABEL[k]}</span>${n ? `<span class="fb-count">${n}</span>` : ''}<svg class="fb-chev" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg></button>`; }).join('');
   const school = opts.school ? `<select id="dashSchool" class="fb-select"><option value="">All schools</option>${state.data.schools.filter(s => s.openingFY && schoolFacetPass(s, null) && (!state.filters.fys.size || state.filters.fys.has(s.openingFY))).sort((a, b) => (a.openingFY - b.openingFY) || a.market.localeCompare(b.market)).map(s => `<option value="${s.id}" ${state.filters.schoolId === s.id ? 'selected' : ''}>${esc(s.market)} · ${esc(s.display_label)}</option>`).join('')}</select>` : '';
@@ -398,7 +398,7 @@ function renderReports() {
 }
 
 /* ============================================================
-   TAB 2 — PROGRESS MONITORING (collapsible)
+   TAB 2 - PROGRESS MONITORING (collapsible)
    ============================================================ */
 function isExp(k) { return !!state.expanded[k]; }
 function chev(open) { return `<svg class="chev ${open ? 'open' : ''}" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 18 6-6-6-6"/></svg>`; }
@@ -410,7 +410,7 @@ function pmItem(m) {
       ${chev(open)}${statusDot(es)}
       <span class="pm-title">${m.keyMilestone ? '★ ' : ''}${esc(m.activity)}<span class="dept-chip">${esc(m.functional_area)}</span></span>
       ${personChip(m.owner, 'pchip-sm')}
-      <span class="pm-due">${dueBadge(m) || (m.due_date ? `<span class="due-ok">${fmtDate(m.due_date)}</span>` : '<span class="muted">—</span>')}</span>
+      <span class="pm-due">${dueBadge(m) || (m.due_date ? `<span class="due-ok">${fmtDate(m.due_date)}</span>` : '<span class="muted">-</span>')}</span>
       <div class="pm-prog"><span style="width:${m.progress_percent || 0}%;background:${pcol}"></span></div>
       <span class="pm-pct">${m.progress_percent || 0}%</span>
     </div>
@@ -467,7 +467,7 @@ function columnChart(list) {
   const map = {}; list.forEach(m => { if (m.targetFY) (map[m.targetFY] = map[m.targetFY] || []).push(m); });
   const fys = Object.keys(map).map(Number).sort((a, b) => a - b); if (!fys.length) return '<div class="placeholder-note">No dated items.</div>';
   const max = Math.max(...fys.map(fy => map[fy].length), 1);
-  const yrLbl = fy => fy ? `${fy - 1}–${String(fy).slice(2)}` : '—';   // school year, e.g. 2027–28 (no "FY" jargon)
+  const yrLbl = fy => fy ? `${fy - 1}–${String(fy).slice(2)}` : '-';   // school year, e.g. 2027–28 (no "FY" jargon)
   return `<div class="colchart">` + fys.map(fy => { const l = map[fy], c = effCounts(l); return `<div class="col drill" data-drilldim="year" data-drillval="${fy}" title="Click to see ${yrLbl(fy)} school-year items"><div class="col-n">${l.length}</div><div class="col-bar" style="height:${Math.max(6, 100 * l.length / max)}%">${STATUS_ORDER.filter(s => c[s]).map(s => `<span style="height:${100 * c[s] / l.length}%;background:${SM(s).color}" title="${SM(s).label}: ${c[s]}"></span>`).join('')}</div><div class="col-lbl">${yrLbl(fy)}</div></div>`; }).join('') + `</div>`;
 }
 function chartsHtml(list) {
@@ -524,7 +524,7 @@ function renderProgress() {
 }
 
 /* ============================================================
-   TAB 3 — PROJECT PLAN (Kanban)
+   TAB 3 - PROJECT PLAN (Kanban)
    ============================================================ */
 function planCard(m) {
   const es = effectiveStatus(m), t = timingLevel(m), scol = SM(es).color;
@@ -537,10 +537,10 @@ function planCard(m) {
 }
 function planFocusHtml() {
   const list = filtered().filter(m => ['overdue', 'this_month'].includes(timingLevel(m)) || ['behind', 'at_risk'].includes(effectiveStatus(m)));
-  if (!list.length) return '<div class="empty-state">Nothing needs attention right now — no overdue, due-soon, or off-track milestones in this filter.</div>';
+  if (!list.length) return '<div class="empty-state">Nothing needs attention right now - no overdue, due-soon, or off-track milestones in this filter.</div>';
   const rank = m => timingLevel(m) === 'overdue' ? 0 : effectiveStatus(m) === 'behind' ? 1 : timingLevel(m) === 'this_month' ? 2 : 3;
   list.sort((a, b) => rank(a) - rank(b) || (parseDate(a.due_date) || 9e15) - (parseDate(b.due_date) || 9e15));
-  return `<div class="plan-focus-note">${list.length} task${list.length === 1 ? '' : 's'} overdue, due this month, or off-track — sorted by urgency.</div><div class="plan-cards">${list.map(planCard).join('')}</div>`;
+  return `<div class="plan-focus-note">${list.length} task${list.length === 1 ? '' : 's'} overdue, due this month, or off-track - sorted by urgency.</div><div class="plan-cards">${list.map(planCard).join('')}</div>`;
 }
 function planKanbanHtml() {
   const list = filtered();
@@ -561,7 +561,7 @@ function planListHtml() {
     if (gb === 'school') { const s = state.data.schools.find(x => taskInSchool(m, x)); return s ? s.market + ' · ' + s.display_label : 'Not tied to a school'; }
     return m.functional_area;
   };
-  list.forEach(m => { const k = keyOf(m) || '—'; (g[k] = g[k] || []).push(m); });
+  list.forEach(m => { const k = keyOf(m) || '-'; (g[k] = g[k] || []).push(m); });
   const keys = Object.keys(g).sort((a, b) => gb === 'year' ? (order[a] || 9999) - (order[b] || 9999) : a.localeCompare(b));
   if (!keys.length) return '<div class="empty-state">No milestones match the filters.</div>';
   state._planKeys = keys.map(k => 'pg:' + k);
@@ -599,7 +599,7 @@ function renderPlan() {
 function rerender() { if (state.view === 'progress') renderProgress(); else if (state.view === 'timeline') renderTimeline(); else renderPlan(); requestAnimationFrame(() => paintAvatars()); }
 
 /* ============================================================
-   TAB 0 — EXECUTIVE SUMMARY (board / chiefs readout, print-ready)
+   TAB 0 - EXECUTIVE SUMMARY (board / chiefs readout, print-ready)
    ============================================================ */
 function schoolsInView() {
   const f = state.filters;
@@ -613,7 +613,7 @@ function schoolsInView() {
 function fmtMoney(n) { return n >= 1e6 ? '$' + (n / 1e6).toFixed(n % 1e6 ? 1 : 0) + 'M' : n >= 1e3 ? '$' + Math.round(n / 1e3) + 'K' : '$' + (n || 0); }
 function ragDot(st, title) { const c = st === 'x' ? '#C9CDD6' : SM(st).color; return `<span class="rag" style="background:${c}" title="${esc(title || (st === 'x' ? 'no milestones' : SM(st).label))}"></span>`; }
 /* consistent R/Y/G by milestone completion: <50% red · ≥50% yellow · all complete green */
-/* greenlight/gating status per domain — deliberately distinct from market brand colors.
+/* greenlight/gating status per domain - deliberately distinct from market brand colors.
    grey = not started · blue = in progress · green = cleared (gate met) · amber/red = off-track */
 // status palette drawn from the KIPP brand: green=complete, sky=on track, orange=at risk, red=behind
 const RAG = { green: '#4A8C1F', blue: '#43B0E6', yellow: '#F6A11C', red: '#E63E2F', none: '#C7CCD6' };
@@ -624,7 +624,7 @@ function ragProgress(list) {
   if (done * 2 >= list.length) return { key: 'yellow', color: RAG.yellow, label: pctc + '% complete', pct: pctc };
   return { key: 'red', color: RAG.red, label: pctc + '% complete', pct: pctc };
 }
-function ragDotP(list, prefix) { const r = ragProgress(list); return `<span class="rag" style="background:${r.color}" title="${esc((prefix ? prefix + ' — ' : '') + r.label)}"></span>`; }
+function ragDotP(list, prefix) { const r = ragProgress(list); return `<span class="rag" style="background:${r.color}" title="${esc((prefix ? prefix + ' - ' : '') + r.label)}"></span>`; }
 /* readiness = are we ON SCHEDULE (timing-aware), with % complete kept in the tooltip */
 function ragReady(list) {
   if (!list.length) return { key: 'none', color: RAG.none, label: 'Not started' };
@@ -635,7 +635,7 @@ function ragReady(list) {
   if (eff.some(s => s === 'on_track' || s === 'complete')) return { key: 'blue', color: RAG.blue, label: 'On track · ' + pctc + '% done' };
   return { key: 'none', color: RAG.none, label: 'Not started' };
 }
-function ragDotR(list, prefix) { const r = ragReady(list); return `<span class="rag" style="background:${r.color}" title="${esc((prefix ? prefix + ' — ' : '') + r.label)}"></span>`; }
+function ragDotR(list, prefix) { const r = ragReady(list); return `<span class="rag" style="background:${r.color}" title="${esc((prefix ? prefix + ' - ' : '') + r.label)}"></span>`; }
 function exLi(m, flag) { return `<div class="ex-li nodot" data-expand="${m.id}"><span class="ex-li-t">${flag || ''}${esc(m.activity)}</span><span class="ex-li-m muted">${esc(m.market)} · ${esc(m.functional_area)}</span><span class="ex-li-d muted">${m.due_date ? fmtDate(m.due_date) : ''}</span></div>`; }
 // monthly trend snapshots (localStorage) → powers the KPI "vs last month" deltas
 function captureTrend() {
@@ -658,7 +658,7 @@ function statusPipeline(list) {
   return `<section class="ex-card"><div class="ex-card-head"><div class="ex-cardhead-l"><h3>Milestone Status</h3></div><span class="muted ex-hint">${list.length} total</span></div>
     <div class="pl-legend">${legend || '<span class="muted">No milestones in view.</span>'}</div><div class="pl-bar">${seg}</div></section>`;
 }
-// NORTH STAR — the charter's stakeholder answer, rendered ABOVE the filters so a busy exec
+// NORTH STAR - the charter's stakeholder answer, rendered ABOVE the filters so a busy exec
 // (often on a phone) sees "are we on track?" before any controls.
 function northStarHtml() {
   const schools = schoolsInView();
@@ -694,7 +694,7 @@ function dashboardHtml(list) {
   const tms = teams();
   const seg = (v, c) => v ? `<span style="flex:${v};background:${c}"></span>` : '';
 
-  // HERO — how ready is each UPCOMING opening batch (by fiscal-year cohort)?
+  // HERO - how ready is each UPCOMING opening batch (by fiscal-year cohort)?
   const now = Date.now();
   const cohorts = [...new Set(schools.map(s => s.openingFY))].filter(Boolean).sort((a, b) => a - b).map(fy => {
     const cs = schools.filter(s => s.openingFY === fy);
@@ -726,10 +726,10 @@ function dashboardHtml(list) {
     <div class="dash-hero-head"><div class="dash-hero-eyebrow">Upcoming school openings</div></div>
     <div class="dash-cohorts">${cohorts.map(cohortCard).join('') || '<div class="muted" style="opacity:.8">No upcoming openings in view.</div>'}</div></section>`;
 
-  // KPI SUMMARY — restrained, clearly-labeled cards; each number tied to a click-through
+  // KPI SUMMARY - restrained, clearly-labeled cards; each number tied to a click-through
   const b = cnt('blue'), attention = r + y, onTrack = total - attention;
   const overdue = list.filter(m => timingLevel(m) === 'overdue').length;
-  // Material Symbols (Rounded, filled) — clean geometric shapes on a subtle tinted disc
+  // Material Symbols (Rounded, filled) - clean geometric shapes on a subtle tinted disc
   const KPI_IC = {
     school:  '<path d="M12 3 1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/>',
     warning: '<path d="M12 2 1 21h22L12 2zm1 15h-2v-2h2v2zm0-4h-2V9h2v4z"/>',
@@ -742,14 +742,14 @@ function dashboardHtml(list) {
   const dChip = (cur, key, goodUp) => { if (!tp || typeof tp[key] !== 'number') return ''; const d = cur - tp[key]; if (!d) return ''; const up = d > 0; const good = up === goodUp; return `<span class="k-delta ${good ? 'good' : 'bad'}">${up ? '▲' : '▼'} ${Math.abs(d)}<span class="k-delta-lbl"> vs last month</span></span>`; };
   const kpi = (icon, num, den, lbl, sub, cls, drill, delta) => `<${drill ? 'button' : 'div'} class="kcard2 ${cls || ''} ${drill ? 'drill' : ''}" ${drill || ''}><span class="k-ic"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">${KPI_IC[icon]}</svg></span><div class="k-num">${num}${den ? `<span class="k-den">${den}</span>` : ''}</div><div class="k-lbl">${lbl}</div><div class="k-sub">${sub}</div>${delta || ''}</${drill ? 'button' : 'div'}>`;
   const kpiStrip = `<section class="kpi-strip">
-    ${kpi('school', onTrack, `/ ${total}`, 'Schools on track', '', '', '', dChip(onTrack, 'onTrack', true))}
-    ${kpi('warning', attention, '', 'Need attention', '', attention ? 'k-alert' : '', attention ? 'data-drilldim="riskbehind" data-drillval=""' : '', dChip(attention, 'attention', false))}
-    ${nextC ? kpi('flag', nextC.mo <= 0 ? 'Now' : nextC.mo, nextC.mo <= 0 ? '' : ' mo', 'Next opening', `Fall ${nextC.fy - 1} · ${esc(nextC.mkts.join(' · '))}`, '', `data-drilldim="year" data-drillval="${nextC.fy}"`) : ''}
-    ${kpi('alarm', overdue, '', 'Milestones overdue', '', overdue ? 'k-alert' : '', overdue ? 'data-drilldim="timing" data-drillval="overdue"' : '', dChip(overdue, 'overdue', false))}
+    ${kpi('school', onTrack, `/ ${total}`, 'Schools on track', '', 'k-tone-ok', '', dChip(onTrack, 'onTrack', true))}
+    ${kpi('warning', attention, '', 'Need attention', '', 'k-tone-warn' + (attention ? ' k-alert' : ''), attention ? 'data-drilldim="riskbehind" data-drillval=""' : '', dChip(attention, 'attention', false))}
+    ${nextC ? kpi('flag', nextC.mo <= 0 ? 'Now' : nextC.mo, nextC.mo <= 0 ? '' : ' mo', 'Next opening', `Fall ${nextC.fy - 1} · ${esc(nextC.mkts.join(' · '))}`, 'k-tone-nav', `data-drilldim="year" data-drillval="${nextC.fy}"`) : ''}
+    ${kpi('alarm', overdue, '', 'Milestones overdue', '', 'k-tone-err' + (overdue ? ' k-alert' : ''), overdue ? 'data-drilldim="timing" data-drillval="overdue"' : '', dChip(overdue, 'overdue', false))}
   </section>`;
 
 
-  // READINESS INDEX — where every opening stands, by workstream (full width)
+  // READINESS INDEX - where every opening stands, by workstream (full width)
   const grid = statesMeta().map(st => {
     const rows = rags.filter(x => x.s.state === st.code);
     if (!rows.length) return '';
@@ -757,7 +757,7 @@ function dashboardHtml(list) {
       const sm = schoolMs(s);
       const cells = tms.map(t => { const tl = sm.filter(m => m.functional_area === t); return `<td>${tl.length ? ragDotR(tl, t) : ragDot('x')}</td>`; }).join('');
       return `<tr class="ex-grow" data-drillschool="${esc(s.id)}"><td class="ex-sch"><span class="muted">${esc(s.market)}</span> · <b>${esc(s.display_label)}</b></td>
-        <td class="ex-open">${s.openingFY ? 'Fall ' + (s.openingFY - 1) : '—'}</td><td>${ragDotR(sm, 'Overall')}</td>${cells}</tr>`;
+        <td class="ex-open">${s.openingFY ? 'Fall ' + (s.openingFY - 1) : '-'}</td><td>${ragDotR(sm, 'Overall')}</td>${cells}</tr>`;
     }).join('');
     return `<tr class="ex-band"><td colspan="${3 + tms.length}"><span class="state-badge" style="background:${stColor(st.code)}">${st.code}</span> ${esc(st.name)} <span class="muted">· ${rows.length} openings</span></td></tr>${body}`;
   }).join('');
@@ -787,75 +787,41 @@ function dashboardHtml(list) {
       <div class="ex-cap-bar"><span style="width:${p}%"></span></div><div class="ex-cap-foot muted">${p}% raised</div></div>`;
   }).join('')}</div></div></section>` : '';
 
-  // WORKLOAD — pacing across fiscal years
+  // WORKLOAD - pacing across fiscal years
   const wOpen = !state.expanded['dash:workload'];
   const statusLegend = `<div class="pl-legend pl-legend-sm">${STATUS_ORDER.filter(s => list.some(m => effectiveStatus(m) === s)).map(s => `<span class="pl-leg"><i style="background:${SM(s).color}"></i>${SM(s).label}</span>`).join('')}</div>`;
   const workload = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:workload"><div class="ex-cardhead-l">${chev(wOpen)}<h3>Milestone Workload by Year</h3></div></div><div class="ex-card-body ${wOpen ? '' : 'hide'}">${statusLegend}${columnChart(list)}</div></section>`;
 
-  return `<div class="dash">${greetHeader()}${kpiStrip}${personalRow(list)}${hero}${statusPipeline(list)}${readiness}${upcomingCard}<div class="dash-pair"><div class="dash-lstack">${capital}${workload}</div>${risksCard}</div></div>`;
+  return `<div class="dash">${greetBanner(list)}${kpiStrip}${hero}${statusPipeline(list)}${readiness}${upcomingCard}<div class="dash-pair"><div class="dash-lstack">${capital}${workload}</div>${risksCard}</div></div>`;
 }
 
-/* Dashboard: greeting header — time-of-day + user name + today's date */
-function greetHeader() {
-  const first = (currentDisplayName() || '').split(/\s+/)[0];
+/* Photo-backed banner: greeting + date. If the signed-in user has open tasks
+   assigned to them, a compact "You have N tasks" pill appears inline. Everything
+   else personal was pruned: Chiefs read this dashboard, they don't manage from it. */
+function greetBanner(list) {
+  const name = currentDisplayName();
+  const first = (name || '').split(/\s+/)[0];
   const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  return `<header class="dash-greet"><div class="dash-greet-l">
-    <h1>${esc(timeGreeting())}${first ? `, <span class="u-name">${esc(first)}</span>` : ''}</h1>
-    <div class="dg-date">${esc(dateStr)} · Network Growth Hub</div>
+  const myCount = name ? myOpenTasks(list, name).length : 0;
+  const pill = myCount ? `<button class="db-pill" data-drillmine="1"><span class="db-pill-n">${myCount}</span>${myCount === 1 ? ' task assigned to you' : ' tasks assigned to you'}<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>` : '';
+  return `<header class="dash-banner"><div class="db-tint"></div><div class="db-inner">
+    <div class="db-eyebrow">${esc(dateStr)}</div>
+    <h1>${esc(timeGreeting())}${first ? `, <span class="db-name">${esc(first)}</span>` : ''}</h1>
+    ${pill}
   </div></header>`;
 }
 
-/* Dashboard: two-up row — My tasks | Recent activity (only when signed in / attributed) */
-function personalRow(list) {
-  const name = currentDisplayName();
-  if (!name) return '';   // nothing personal to show
-  return `<section class="dash-row-my">${myTasksCard(list, name)}${recentActivityCard()}</section>`;
-}
-function myTasksCard(list, name) {
-  const isMine = m => {
-    if (!name) return false;
-    const owner = (m.owner || '').toLowerCase().trim();
-    const n = name.toLowerCase().trim();
-    if (!owner) return false;
-    if (owner === n) return true;
-    // fuzzy: last-name match ("Aden Avery" matches "A. Avery" or "Avery")
-    const ln = n.split(/\s+/).pop(); return ln && ln.length > 2 && owner.includes(ln);
-  };
-  const mine = list.filter(isMine).filter(m => effectiveStatus(m) !== 'complete')
-    .sort((a, b) => {
-      const ad = a.due_date ? parseDate(a.due_date) : Infinity;
-      const bd = b.due_date ? parseDate(b.due_date) : Infinity;
-      return ad - bd;
-    }).slice(0, 6);
-  const rows = mine.map(m => {
-    const s = SM(effectiveStatus(m));
-    const t = timingLevel(m);
-    const due = m.due_date ? fmtDate(m.due_date) : 'No date';
-    const warn = t === 'overdue' || t === 'due-this-month';
-    return `<div class="dmt-row drill" data-openitem="${esc(m.id)}"><span class="dmt-dot" style="background:${s.color}"></span>
-      <div class="dmt-title">${esc(m.activity)}<span class="dmt-meta">${esc(m.market || '')} · ${esc(m.functional_area || m.team || '')}</span></div>
-      <span class="dmt-pill" style="background:${s.color}22;color:${s.color}">${esc(s.label)}</span>
-      <span class="dmt-due ${warn ? 'warn' : ''}">${esc(due)}</span></div>`;
-  }).join('');
-  const body = mine.length ? `<div class="dmt-list">${rows}</div>` : `<div class="dmt-empty">Nothing assigned to <b>${esc(name)}</b> right now. Tasks you own will appear here — set yourself as Owner on a task to see it.</div>`;
-  return `<article class="dash-mytasks"><div class="dmt-head"><h3>Your open tasks</h3>${mine.length ? `<span class="dmt-count">${mine.length}</span>` : ''}</div>${body}</article>`;
-}
-function recentActivityCard() {
-  const log = getActivityLog().slice().reverse().slice(0, 5);
-  if (!log.length) {
-    return `<article class="dash-activity"><div class="dact-head"><h3>Recent activity</h3></div><div class="dact-empty">Changes made in the workspace will appear here.</div></article>`;
-  }
-  const rows = log.map(e => {
-    const who = e.author || '—';
-    const init = userInitials(who);
-    const when = fmtWhen(e.ts);
-    const itemId = e.extra && e.extra.itemId;
-    const attr = itemId && findM(itemId) ? ` data-openitem="${esc(itemId)}" style="cursor:pointer"` : '';
-    return `<div class="dact-row"${attr}><span class="dact-avatar" data-seed="${esc(who)}">${esc(init)}</span>
-      <span class="dact-msg"><b>${esc(who)}</b> ${esc(e.detail)}</span>
-      <span class="dact-when">${esc(when)}</span></div>`;
-  }).join('');
-  return `<article class="dash-activity"><div class="dact-head"><h3>Recent activity</h3><button class="btn btn-outlined btn-sm" data-toggleactivity>See all</button></div><div class="dact-list">${rows}</div></article>`;
+/* Tasks assigned to the current user. Exact owner match, then last-name fallback
+   so "Aden Avery" catches "A. Avery". Used by banner pill and drill handler. */
+function myOpenTasks(list, name) {
+  const n = (name || '').toLowerCase().trim(); if (!n) return [];
+  const ln = n.split(/\s+/).pop();
+  return list.filter(m => {
+    if (effectiveStatus(m) === 'complete') return false;
+    const o = (m.owner || '').toLowerCase().trim(); if (!o) return false;
+    if (o === n) return true;
+    return ln && ln.length > 2 && o.includes(ln);
+  });
 }
 function applyDrill(dim, val) {
   if (dim === 'team') state.filters.areas = new Set([val]);
@@ -910,7 +876,7 @@ function openModal(id) {
     <details class="sm-details"><summary>More options</summary>
       <div class="field"><label>Detail / sub-workstream</label><input id="mWs" value="${esc(m.workstream)}"></div>
       <div class="field-row"><div class="field"><label>Priority</label><select id="mPri">${opt([['high', 'High'], ['medium', 'Medium'], ['low', 'Low']], m.priority)}</select></div><div class="field"><label>Progress %</label><input id="mProg" type="number" min="0" max="100" value="${m.progress_percent || 0}"></div></div>
-      <div class="field-row"><div class="field"><label>Target fiscal year</label><select id="mFy"><option value="">—</option>${fyList().map(fy => `<option value="${fy}" ${m.targetFY === fy ? 'selected' : ''}>${fyLabel(fy)}</option>`).join('')}</select></div><div class="field"><label>Quarter</label><select id="mQ">${opt(['', 'Q1', 'Q2', 'Q3', 'Q4'], m.targetQuarter)}</select></div></div>
+      <div class="field-row"><div class="field"><label>Target fiscal year</label><select id="mFy"><option value="">-</option>${fyList().map(fy => `<option value="${fy}" ${m.targetFY === fy ? 'selected' : ''}>${fyLabel(fy)}</option>`).join('')}</select></div><div class="field"><label>Quarter</label><select id="mQ">${opt(['', 'Q1', 'Q2', 'Q3', 'Q4'], m.targetQuarter)}</select></div></div>
       <div class="field"><label>Stage (Kanban)</label><select id="mStage">${opt(meta().stages, m.stage || 'to_do')}</select></div>
       <div class="field"><label>Dependency / blockers</label><input id="mDep" value="${esc(m.dependency)}"></div>
       <div class="field-row"><label class="field-check"><input type="checkbox" id="mKey" ${m.keyMilestone ? 'checked' : ''}> ★ Key milestone</label><label class="field-check"><input type="checkbox" id="mTrans" ${m.transition ? 'checked' : ''}> ⇄ Transition to Regional Ops</label></div>
@@ -965,7 +931,7 @@ function confirmDialog(opts) {
     <div class="confirm-ic ${opts.danger ? 'danger' : ''}">${opts.danger ? '⚠' : '?'}</div>
     <h3>${esc(opts.title)}</h3>
     <div class="confirm-msg">${opts.message}</div>
-    ${opts.danger ? `<div class="confirm-shared">${shared ? 'This deletes it for <b>everyone</b> on the shared board' : 'This cannot be undone'} — please confirm.</div>` : ''}
+    ${opts.danger ? `<div class="confirm-shared">${shared ? 'This deletes it for <b>everyone</b> on the shared board' : 'This cannot be undone'} - please confirm.</div>` : ''}
     ${typedBlock}
     <div class="confirm-actions"><button class="btn btn-tonal" id="cfgCancel">Cancel</button><button class="btn ${opts.danger ? 'btn-danger-solid' : 'btn-filled'}" id="cfgOk"${opts.requireTyped ? ' disabled' : ''}>${esc(opts.confirmLabel || 'Confirm')}</button></div>
   </div>`;
@@ -981,7 +947,7 @@ function confirmDialog(opts) {
 }
 
 /* ============================================================
-   SCHOOL MANAGEMENT — add / edit / remove openings + their tasks
+   SCHOOL MANAGEMENT - add / edit / remove openings + their tasks
    ============================================================ */
 function schoolById(id) { return state.data.schools.find(s => s.id === id); }
 function typeFromCode(code) { const m = /^([A-Za-z]+)(\d+)?/.exec(code || ''); const t = (m ? m[1] : '').toUpperCase(); return t === 'HS' ? 'HS' : t === 'ES' ? 'ES' : 'MS'; }
@@ -989,16 +955,16 @@ function openSchoolModal(id) {
   modalMode = 'school'; schoolId = id; modalDirty = false;
   const isNew = !id;
   const s = id ? schoolById(id) : { id: uid(), display_label: '', code: '', school_type: 'ES', pod_number: null, market: markets()[0], state: stateOfMarket(markets()[0]), openingFY: currentFY() + 1, openingQuarter: 'Q1', priority: false, confirmed: true, _new: true };
-  $('#modalTitle').textContent = isNew ? 'Add a school opening' : `${s.market} ${s.display_label} — Milestones`;
+  $('#modalTitle').textContent = isNew ? 'Add a school opening' : `${s.market} ${s.display_label} - Milestones`;
   const opt = (arr, val) => arr.map(x => Array.isArray(x) ? `<option value="${x[0]}" ${x[0] === val ? 'selected' : ''}>${esc(x[1])}</option>` : `<option ${x === val ? 'selected' : ''}>${esc(x)}</option>`).join('');
   const sm = isNew ? [] : schoolMs(s);
   const roll = sm.length ? rollupStatus(sm) : 'not_started';
-  const taskList = sm.length ? sm.slice().sort(bySortUrgency).map(m => `<div class="sm-task" data-expand="${m.id}">${statusDot(effectiveStatus(m))}<span class="sm-t-title">${esc(m.activity)}</span><span class="sm-t-team">${esc(m.functional_area || '')}</span><span class="sm-t-due">${dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : '—')}</span></div>`).join('') : '<div class="muted" style="font-size:12.5px">No milestones yet — add the first one below.</div>';
+  const taskList = sm.length ? sm.slice().sort(bySortUrgency).map(m => `<div class="sm-task" data-expand="${m.id}">${statusDot(effectiveStatus(m))}<span class="sm-t-title">${esc(m.activity)}</span><span class="sm-t-team">${esc(m.functional_area || '')}</span><span class="sm-t-due">${dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : '-')}</span></div>`).join('') : '<div class="muted" style="font-size:12.5px">No milestones yet - add the first one below.</div>';
   const summary = isNew ? '' : `<div class="sm-summary">
     <span><span class="state-badge sm" style="background:${stColor(s.state)}">${esc(s.state)}</span> <b>${esc(s.market)}</b> · Fall ${s.openingFY - 1}</span>
     <span class="sm-summary-r"><span class="muted">${sm.length} milestone${sm.length === 1 ? '' : 's'}</span>${sm.length ? `<button class="btn btn-text btn-sm sm-openplan" data-openplanschool="${esc(s.id)}" title="See this school's tasks in the Project Plan (filtered)">Open in Project Plan →</button>` : ''}</span></div>`;
-  // plain calendar year — a school with openingFY=2028 opens in August 2027, so we show "2027"
-  const fyField = `<div class="field"><label>Opens in — August of… <span class="req">*</span></label><select id="sFy">${fyList().map(fy => `<option value="${fy}" ${s.openingFY === fy ? 'selected' : ''}>${fy - 1}</option>`).join('')}</select></div>`;
+  // plain calendar year - a school with openingFY=2028 opens in August 2027, so we show "2027"
+  const fyField = `<div class="field"><label>Opens in - August of… <span class="req">*</span></label><select id="sFy">${fyList().map(fy => `<option value="${fy}" ${s.openingFY === fy ? 'selected' : ''}>${fy - 1}</option>`).join('')}</select></div>`;
   const qField = `<div class="field"><label>Opening quarter</label><select id="sQ">${opt(['Q1', 'Q2', 'Q3', 'Q4'], s.openingQuarter || 'Q1')}</select></div>`;
   const marketOnly = `<div class="field"><label>Market / location <span class="req">*</span></label><select id="sMarket">${opt(markets(), s.market)}</select></div>`;
   const labelField = `<div class="field-row"><div class="field"><label>Label <span class="req">*</span></label><input id="sLabel" value="${esc(s.display_label || s.code || '')}" placeholder="ES4"><div class="help-text">Short identifier, e.g. <span class="mono">ES4</span> for the 4th Elementary or <span class="mono">MS2</span> for the 2nd Middle.</div></div><div class="field"><label>School type</label><select id="sType">${opt([['ES', 'Elementary (ES)'], ['MS', 'Middle (MS)'], ['HS', 'High (HS)']], s.school_type)}</select></div></div>`;
@@ -1006,9 +972,9 @@ function openSchoolModal(id) {
   const confField = `<label class="field-check"><input type="checkbox" id="sConf" ${s.confirmed !== false ? 'checked' : ''}> Opening confirmed</label>`;
   $('#modalBody').innerHTML = isNew ? `
     <div class="add-school-intro">
-      <div class="asi-step"><span class="asi-num">1</span><div><b>Set up the school opening</b><span class="muted"> — market, opening year, label</span></div></div>
-      <div class="asi-step"><span class="asi-num">2</span><div><b>Save</b><span class="muted"> — you'll return to this school with a task list</span></div></div>
-      <div class="asi-step"><span class="asi-num">3</span><div><b>Load starter milestones or add your own</b><span class="muted"> — assign owners and deadlines</span></div></div>
+      <div class="asi-step"><span class="asi-num">1</span><div><b>Set up the school opening</b><span class="muted"> - market, opening year, label</span></div></div>
+      <div class="asi-step"><span class="asi-num">2</span><div><b>Save</b><span class="muted"> - you'll return to this school with a task list</span></div></div>
+      <div class="asi-step"><span class="asi-num">3</span><div><b>Load starter milestones or add your own</b><span class="muted"> - assign owners and deadlines</span></div></div>
     </div>
     ${labelField}
     ${marketOnly}
@@ -1020,11 +986,11 @@ function openSchoolModal(id) {
     : `
     ${summary}
     <div class="reschedule">
-      <div class="rs-head">Reschedule opening <span class="muted">— push it back or pull it forward as plans change</span></div>
+      <div class="rs-head">Reschedule opening <span class="muted">- push it back or pull it forward as plans change</span></div>
       <div class="field-row">${fyField}${qField}</div>
       <label class="field-check"><input type="checkbox" id="sShift" checked> Also move this school's ${sm.length} milestone deadline${sm.length === 1 ? '' : 's'} by the same shift</label>
     </div>
-    <div class="field"><label>Milestones — click any to open</label><div class="sm-tasks">${taskList}</div>
+    <div class="field"><label>Milestones - click any to open</label><div class="sm-tasks">${taskList}</div>
       <div class="sm-task-actions"><button class="btn btn-tonal btn-sm" id="addTaskForSchool">+ Add milestone</button>${templatesButton(s)}</div>${templatesPanel(s)}</div>
     <details class="sm-details"><summary>More school details</summary>
       ${labelField}
@@ -1063,8 +1029,8 @@ function saveSchool() {
     });
   }
   autosave(); const nid = s.id;
-  if (isNew) { closeModal(); rerender(); toast('School added — now add its tasks', 'ok'); setTimeout(() => openSchoolModal(nid), 60); }
-  else { closeModal(); rerender(); const msg = shift ? `Opening moved ${shift > 0 ? 'back' : 'earlier'} ${Math.abs(shift)} yr — tasks shifted` : 'School saved'; toast(msg, 'ok'); }
+  if (isNew) { closeModal(); rerender(); toast('School added - now add its tasks', 'ok'); setTimeout(() => openSchoolModal(nid), 60); }
+  else { closeModal(); rerender(); const msg = shift ? `Opening moved ${shift > 0 ? 'back' : 'earlier'} ${Math.abs(shift)} yr - tasks shifted` : 'School saved'; toast(msg, 'ok'); }
 }
 function deleteSchool() {
   const s = schoolById(schoolId); if (!s) return; const tasks = schoolMs(s), sid = s.id, mk = s.market, ofy = s.openingFY, cd = s.code;
@@ -1188,9 +1154,9 @@ async function sbConnect(url, key, silent) {
     const client = mod.createClient(url, key);
     state.sb = { connected: true, client };
     lsSet(LS.supabase, JSON.stringify({ url, key }));
-    // Auth bootstrap FIRST — restores session if any, wires onAuthStateChange to load data on sign-in
+    // Auth bootstrap FIRST - restores session if any, wires onAuthStateChange to load data on sign-in
     try { await bootstrapAuth(client); } catch (e) { console.warn('bootstrapAuth failed:', e); }
-    // In auth mode with no session, skip data ops — they'd fail RLS. Data loads after sign-in.
+    // In auth mode with no session, skip data ops - they'd fail RLS. Data loads after sign-in.
     if (authModeOn() && !state.auth.user) {
       if (s && !silent) s.innerHTML = '<div class="status-note ok">✓ Connected. Sign in to load the board.</div>';
       renderDrawer(); return true;
@@ -1252,7 +1218,7 @@ function renderDrawer() {
 
     <section class="dw-sec">
       <div class="dw-h"><span class="dw-num">1</span><h4>Share with the Committee</h4></div>
-      ${connected ? `<div class="status-note ok">● Live — everyone connected to <span class="mono">${esc((sc.url || '').replace(/^https?:\/\//, ''))}</span> shares this board.</div><div class="dw-btns"><button class="btn btn-tonal" id="sbDisconnect">Disconnect</button></div>`
+      ${connected ? `<div class="status-note ok">● Live - everyone connected to <span class="mono">${esc((sc.url || '').replace(/^https?:\/\//, ''))}</span> shares this board.</div><div class="dw-btns"><button class="btn btn-tonal" id="sbDisconnect">Disconnect</button></div>`
       : `<p class="dw-help">Paste your Supabase <b>Project URL</b> and <b>anon public key</b> (Supabase → Project Settings → API). First time only: open <b>SQL setup</b> and run it once in Supabase.</p>
          <div class="field"><label>Project URL</label><input id="sbUrl" class="mono" placeholder="https://xxxx.supabase.co" value="${esc(sc.url || '')}"></div>
          <div class="field"><label>Anon public key</label><input id="sbKey" type="password" class="mono" value="${esc(sc.key || '')}"></div>
@@ -1269,8 +1235,8 @@ function renderDrawer() {
     <section class="dw-sec">
       <div class="dw-h"><span class="dw-num">2</span><h4>Access &amp; Accounts</h4></div>
       <div class="auth-mode-block">
-        <label class="field-check"><input type="radio" name="authMode" value="password" ${!authModeOn() ? 'checked' : ''}> <b>Shared password</b> <span class="muted">— one password for the whole team (legacy)</span></label>
-        <label class="field-check"><input type="radio" name="authMode" value="supabase" ${authModeOn() ? 'checked' : ''}> <b>Individual accounts</b> <span class="muted">— each person signs in; edits are attributed. Requires Supabase configured with saved URL/key.</span></label>
+        <label class="field-check"><input type="radio" name="authMode" value="password" ${!authModeOn() ? 'checked' : ''}> <b>Shared password</b> <span class="muted">- one password for the whole team (legacy)</span></label>
+        <label class="field-check"><input type="radio" name="authMode" value="supabase" ${authModeOn() ? 'checked' : ''}> <b>Individual accounts</b> <span class="muted">- each person signs in; edits are attributed. Requires Supabase configured with saved URL/key.</span></label>
         ${authModeOn() && state.auth.user ? `<div class="status-note ok" style="margin-top:8px">Signed in as <b>${esc(state.auth.profile ? state.auth.profile.full_name || state.auth.profile.email : state.auth.user.email)}</b> · role: <b>${esc(currentRole() || 'viewer')}</b></div>` : ''}
       </div>
       <div class="dw-divider"></div>
@@ -1279,14 +1245,14 @@ function renderDrawer() {
       <div class="field" style="margin-top:10px"><label>Change the password</label><input id="gateNew" type="text" autocomplete="off" placeholder="Leave blank to keep the current one"></div>
       <div class="dw-btns"><button class="btn btn-filled" id="gateSave">Save</button><button class="btn btn-text" id="gateLock">Lock &amp; sign out</button></div>
       <div id="gateStatus"></div>
-      <p class="dw-help">After changing it, Connect (or Commit) so everyone gets the new password. A light gate to keep casual visitors out — not strong security.</p>
+      <p class="dw-help">After changing it, Connect (or Commit) so everyone gets the new password. A light gate to keep casual visitors out - not strong security.</p>
       <div class="dw-divider"></div>
-      <div class="dw-sublabel">Admin lock — protects this Settings panel</div>
+      <div class="dw-sublabel">Admin lock - protects this Settings panel</div>
       <label class="field-check"><input type="checkbox" id="adminEnable" ${adminOn() ? 'checked' : ''}> Require an admin password to open Settings (only you)</label>
       <div class="field" style="margin-top:10px"><label>Change the admin password</label><input id="adminNew" type="text" autocomplete="off" placeholder="Leave blank to keep the current one"></div>
       <div class="dw-btns"><button class="btn btn-filled" id="adminSave">Save admin password</button></div>
       <div id="adminStatus"></div>
-      <p class="dw-help">This one is just for you — teammates use the board password above but can't open Settings without this.</p>
+      <p class="dw-help">This one is just for you - teammates use the board password above but can't open Settings without this.</p>
     </section>
 
     <details class="dw-sec dw-fold"><summary><span class="dw-num">3</span>Customize Markets, Workstreams &amp; Owners</summary>
@@ -1394,7 +1360,7 @@ function czRename(type, oldV, newV) {
 }
 function czRemove(type, val) {
   const n = type === 'owner' ? 0 : czInUse(type, val);
-  if (n) return toast(`${val} is used by ${n} item(s) — reassign them first`, 'err');
+  if (n) return toast(`${val} is used by ${n} item(s) - reassign them first`, 'err');
   confirmDialog({ title: `Remove "${esc(val)}"?`, message: `This removes the ${type === 'markets' ? 'market' : type === 'teams' ? 'team' : 'person'} from your lists.`, confirmLabel: 'Remove', danger: true, onConfirm: () => {
     if (type === 'owner') meta().owners = (meta().owners || []).filter(o => o.name !== val);
     else if (type === 'markets') { meta().markets = markets().filter(x => x !== val); statesMeta().forEach(s => s.markets = s.markets.filter(x => x !== val)); }
@@ -1504,7 +1470,11 @@ function wireEvents() {
     const tg = e.target.closest('[data-toggle]'); if (tg) { const k = tg.dataset.toggle; state.expanded[k] = !state.expanded[k]; return refreshBody(); }
     const ex = e.target.closest('[data-expand]'); if (ex) return openModal(ex.dataset.expand);
     const oi = e.target.closest('[data-openitem]'); if (oi) return openModal(oi.dataset.openitem);
-    if (e.target.closest('[data-toggleactivity]')) return toggleActivity();
+    if (e.target.closest('[data-drillmine]')) {
+      const nm = currentDisplayName();
+      if (nm) { state.filters.search = nm; const cb = $('#cbSearch'); if (cb) cb.value = nm; setView('plan'); }
+      return;
+    }
     const es2 = e.target.closest('[data-editschool]'); if (es2) return openSchoolModal(es2.dataset.editschool);
     const ds = e.target.closest('[data-drillschool]'); if (ds) return openSchoolModal(ds.dataset.drillschool);
     const gp = e.target.closest('[data-goplan]'); if (gp) { const m = findM(gp.dataset.goplan); if (m) { state.filters.search = m.activity; const cb = $('#cbSearch'); if (cb) cb.value = m.activity; } setView('plan'); return; }
@@ -1537,7 +1507,7 @@ function wireEvents() {
   });
   $('#drawerBody').addEventListener('change', e => {
     if (e.target.id === 'impFile' && e.target.files[0]) return importJson(e.target.files[0]);
-    if (e.target.name === 'authMode') { meta().authMode = e.target.value; autosave(); renderDrawer(); toast(e.target.value === 'supabase' ? 'Account mode ON — sign in required next load' : 'Shared-password mode restored', 'ok'); return; }
+    if (e.target.name === 'authMode') { meta().authMode = e.target.value; autosave(); renderDrawer(); toast(e.target.value === 'supabase' ? 'Account mode ON - sign in required next load' : 'Shared-password mode restored', 'ok'); return; }
     if (e.target.classList.contains('cz-name')) return czRename(e.target.dataset.cztype, e.target.dataset.czold, e.target.value);
     if (e.target.classList.contains('cz-state')) { const mk = e.target.dataset.czmarket, to = e.target.value; statesMeta().forEach(s => s.markets = s.markets.filter(x => x !== mk)); const s = statesMeta().find(x => x.code === to); if (s && !s.markets.includes(mk)) s.markets.push(mk); M().forEach(m => { if (m.market === mk) m.state = to; }); state.data.schools.forEach(x => { if (x.market === mk) x.state = to; }); autosave(); rerender(); renderDrawer(); return; }
     if (e.target.classList.contains('cz-role')) { const o = (meta().owners || []).find(x => x.name === e.target.dataset.czowner); if (o) { o.role = e.target.value; autosave(); } return; }
@@ -1546,10 +1516,10 @@ function wireEvents() {
 
 /* ---------- shared access gate ----------
    A lightweight shared password to keep casual visitors out of the committee board.
-   NOTE: this is client-side only — it deters, it does not encrypt. Anyone technical can
+   NOTE: this is client-side only - it deters, it does not encrypt. Anyone technical can
    read past it by viewing source. For real access control, use Supabase Auth. */
 /* ============================================================
-   SUPABASE AUTH — Phase 1
+   SUPABASE AUTH - Phase 1
    Real accounts, session persistence, attribution via DB triggers.
    Toggled by meta.authMode:  'password' (legacy shared gate) | 'supabase' (auth)
    ============================================================ */
@@ -1647,7 +1617,7 @@ function showAuthScreen(err, mode, info) {
           g.remove();
           if (!state._booted) { state._booted = true; bootApp(); } else { updateUserBadge(); rerender(); toast('Account created', 'ok'); }
         } else {
-          showAuthScreen(null, 'signin', 'Account created — check your email for the verification link, then sign in.');
+          showAuthScreen(null, 'signin', 'Account created - check your email for the verification link, then sign in.');
         }
       } else {
         await signInEmail($('#authEmail').value, $('#authPw').value);
@@ -1711,7 +1681,7 @@ function pwHash(str) { let h1 = 0xdeadbeef, h2 = 0x41c6ce57; for (let i = 0, ch;
 function gateOn() { return !!(meta().gateEnabled && meta().gateHash); }
 async function gateStart() {
   if (authModeOn()) {
-    // Supabase auth mode — needs an active session, not a shared password.
+    // Supabase auth mode - needs an active session, not a shared password.
     // sbConnect (from saved cfg) is fired async by bootApp normally; here we need it BEFORE gating.
     let sc = sbSavedCfg();
     if ((!sc || !sc.url || !sc.key) && SB_DEFAULT.url && SB_DEFAULT.key) sc = SB_DEFAULT;
@@ -1749,7 +1719,7 @@ function showGate(err) {
   setTimeout(() => { const i = $('#gatePw'); if (i) i.focus(); }, 30);
 }
 function lockNow() { lsDel(LS.gate); location.reload(); }
-/* admin gate — protects the ⚙ Settings drawer (admin-only) */
+/* admin gate - protects the ⚙ Settings drawer (admin-only) */
 function adminOn() { return !!(meta().adminEnabled && meta().adminHash); }
 function promptPassword(opts) {
   closeConfirm();
@@ -1772,7 +1742,7 @@ function saveAdminSettings() {
   if (pw) meta().adminHash = pwHash(pw);
   if (enabled && !meta().adminHash) { meta().adminEnabled = false; $('#adminStatus').innerHTML = '<div class="status-note err">Set a password first.</div>'; return; }
   autosave();
-  $('#adminStatus').innerHTML = `<div class="status-note ok">✓ Saved${pw ? ' — new admin password set' : ''}. Commit/Export so it applies for you everywhere.</div>`;
+  $('#adminStatus').innerHTML = `<div class="status-note ok">✓ Saved${pw ? ' - new admin password set' : ''}. Commit/Export so it applies for you everywhere.</div>`;
   const nb = $('#adminNew'); if (nb) nb.value = '';
 }
 function saveGateSettings() {
@@ -1781,12 +1751,12 @@ function saveGateSettings() {
   if (pw) { meta().gateHash = pwHash(pw); lsSet(LS.gate, String(meta().gateHash)); }
   if (!meta().gateHash) { meta().gateEnabled = false; $('#gateStatus').innerHTML = '<div class="status-note err">Set a password first.</div>'; return; }
   autosave();
-  $('#gateStatus').innerHTML = `<div class="status-note ok">✓ Saved${pw ? ' — new password set' : ''}. ${enabled ? 'Password is required' : 'Gate is off'}. Commit or Export so everyone gets it.</div>`;
+  $('#gateStatus').innerHTML = `<div class="status-note ok">✓ Saved${pw ? ' - new password set' : ''}. ${enabled ? 'Password is required' : 'Gate is off'}. Commit or Export so everyone gets it.</div>`;
   const nb = $('#gateNew'); if (nb) nb.value = '';
 }
 
 /* ============================================================
-   UNDO STACK — snapshot before each mutation, Cmd+Z to restore
+   UNDO STACK - snapshot before each mutation, Cmd+Z to restore
    ============================================================ */
 const undoStack = [];
 const UNDO_LIMIT = 30;
@@ -1805,7 +1775,7 @@ function undo() {
 }
 
 /* ============================================================
-   ACTIVITY LOG — local change journal (what changed, when)
+   ACTIVITY LOG - local change journal (what changed, when)
    ============================================================ */
 function getActivityLog() { try { return JSON.parse(lsGet('ngc_activity') || '[]'); } catch (e) { return []; } }
 function logActivity(action, detail, extra) {
@@ -1842,7 +1812,7 @@ function toggleActivity() {
 }
 
 /* ============================================================
-   COMMAND PALETTE — Cmd+K to search tasks, jump views, run actions
+   COMMAND PALETTE - Cmd+K to search tasks, jump views, run actions
    ============================================================ */
 let cmdkIdx = 0, cmdkItems = [];
 function openCmdk() {
@@ -1917,7 +1887,7 @@ function wireKeyboard() {
 }
 
 /* ============================================================
-   ENHANCED SAVE — hooks into autosave for undo + activity logging
+   ENHANCED SAVE - hooks into autosave for undo + activity logging
    ============================================================ */
 const _origAutosave = autosave;
 let _lastSaveLabel = '';
