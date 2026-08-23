@@ -542,16 +542,24 @@ function planCard(m) {
   const es = effectiveStatus(m), t = timingLevel(m), scol = SM(es).color;
   const urgent = t === 'overdue' || t === 'this_month';
   const nc = (m.noteLog || []).length;
-  // Context chip: shows the market (which sets the color) and the workstream,
-  // so a card read out of context still tells you where it lives.
   const mk = m.market ? mkColor(m.market) : '';
+  // Top row: due date (with clock) on the left, priority flag on the right.
+  const due = dueBadge(m) || (m.due_date ? `<span class="kc-due"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>${fmtDate(m.due_date)}</span>` : '');
+  const flag = m.priority === 'high' ? '<span class="kc-flag kc-flag-high" title="High priority">⚑</span>'
+    : m.priority === 'low' ? '<span class="kc-flag kc-flag-low" title="Low priority">⚑</span>' : '';
+  const headRow = (due || flag) ? `<div class="kc-headrow">${due || '<span></span>'}${flag}</div>` : '';
+  // Context chip: market (sets the color) + workstream, so a card read out of context still places itself.
   const ctx = (m.market || m.functional_area) ? `<div class="kc-ctx">${m.market ? `<span class="kc-mkdot" style="background:${mk}"></span><span class="kc-mk">${esc(m.market)}</span>` : ''}${m.functional_area ? `<span class="kc-team">${esc(m.functional_area)}</span>` : ''}</div>` : '';
-  const prio = (m.priority && m.priority !== 'medium') ? `<span class="kc-prio kc-prio-${esc(m.priority)}" title="${esc(m.priority)} priority"></span>` : '';
-  const due = dueBadge(m) || (m.due_date ? `<span class="kc-due">${fmtDate(m.due_date)}</span>` : '');
-  return `<div class="kcard ${urgent ? 'urgent' : ''}" draggable="true" data-id="${m.id}" style="border-left-color:${scol}">
+  // Progress bar (Relatio-style) - colored by live status.
+  const pct = Math.max(0, Math.min(100, m.progress_percent || 0));
+  const prog = `<div class="kc-prog"><div class="kc-prog-top"><span>Progress</span><b>${pct}%</b></div><div class="kc-prog-bar"><span style="width:${pct}%;background:${scol}"></span></div></div>`;
+  const notes = nc ? `<span class="kc-notes" title="${nc} note${nc === 1 ? '' : 's'}"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${nc}</span>` : '';
+  return `<div class="kcard kcard-v2 ${urgent ? 'urgent' : ''}" draggable="true" data-id="${m.id}" style="border-left-color:${scol}">
+    ${headRow}
+    <div class="kc-title" data-expand="${m.id}">${esc(m.activity)}</div>
     ${ctx}
-    <div class="kc-top"><span class="kc-title" data-expand="${m.id}">${prio}${esc(m.activity)}</span></div>
-    <div class="kc-foot">${personChip(m.owner)}<span class="kc-foot-r">${nc ? `<span class="kc-notes" title="${nc} note${nc === 1 ? '' : 's'}">💬 ${nc}</span>` : ''}${due}</span></div>
+    ${prog}
+    <div class="kc-foot">${personChip(m.owner)}<span class="kc-foot-r">${notes}</span></div>
   </div>`;
 }
 function planFocusHtml() {
@@ -566,7 +574,7 @@ function planKanbanHtml() {
   return '<div class="kanban">' + meta().stages.map(([sk, label]) => {
     const cards = list.filter(m => (m.stage || 'to_do') === sk);
     const ck = 'kc:' + sk, open = !state.expanded[ck];
-    return `<div class="kcol ${open ? '' : 'collapsed'}"><div class="kcol-head stage-${sk}" data-toggle="${esc(ck)}" title="${open ? 'Collapse' : 'Expand'} column"><span class="kcol-name">${esc(label)}</span><span class="kcount">${cards.length}</span></div>
+    return `<div class="kcol ${open ? '' : 'collapsed'}"><div class="kcol-head stage-${sk}" data-toggle="${esc(ck)}" title="${open ? 'Collapse' : 'Expand'} column"><span class="kcol-name">${esc(label)}</span><span class="kcol-head-r"><span class="kcount">${cards.length}</span><button class="kcol-add" data-addstage="${esc(sk)}" title="Add milestone to ${esc(label)}" aria-label="Add milestone to ${esc(label)}">+</button></span></div>
       <div class="kcol-body" data-kstage="${sk}">${cards.map(planCard).join('')}<div class="kcol-drop">Drop here</div></div></div>`;
   }).join('') + '</div>';
 }
@@ -704,6 +712,95 @@ function northStarHtml() {
     </div>
   </section>`;
 }
+/* ============================================================
+   DASHBOARD building blocks (overview layout)
+   ============================================================ */
+const EH_IC = {
+  table:    '<path d="M3 5h18M3 12h18M3 19h18"/>',
+  warning:  '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/>',
+  check:    '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+  people:   '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+  flag:     '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>'
+};
+function ehIc(k) { return `<svg class="eh-ic" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${EH_IC[k] || ''}</svg>`; }
+const RAG_SEV = { red: 4, yellow: 3, blue: 2, none: 1, green: 0 };
+function ragTonePill(r) { return `<span class="rt-pill rt-${r.key}"><i></i>${esc(r.label.split(' · ')[0])}</span>`; }
+
+// School progress table - the "Project Progress" centerpiece (each opening = a project)
+function schoolProgressTable(schools) {
+  const head = `<div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('table')}<h3>Opening readiness</h3></div><button class="card-more" data-goview="timeline">Timeline →</button></div>`;
+  if (!schools.length) return `<section class="ex-card dash-tablecard">${head}<div class="muted ex-empty">No openings match the current filters.</div></section>`;
+  const rows = schools.map(s => {
+    const sm = schoolMs(s), r = ragReady(sm), n = sm.length;
+    const done = sm.filter(m => effectiveStatus(m) === 'complete').length;
+    const pct = n ? Math.round(100 * done / n) : 0;
+    return { s, r, n, pct, mk: mkColor(s.market), opens: s.openingFY ? 'Fall ' + (s.openingFY - 1) : '—', fy: s.openingFY || 9999, sev: RAG_SEV[r.key] || 0 };
+  }).sort((a, b) => a.fy - b.fy || b.sev - a.sev || a.s.market.localeCompare(b.s.market));
+  const body = rows.map(({ s, r, n, pct, mk, opens }) => `<tr class="rt-row" data-drillschool="${esc(s.id)}" title="Open ${esc(s.display_label)}">
+      <td class="rt-name"><span class="rt-dot" style="background:${mk}"></span><span class="rt-nm"><b>${esc(s.display_label)}</b><small>${esc(s.market)}</small></span></td>
+      <td class="rt-st">${ragTonePill(r)}</td>
+      <td class="rt-pc"><div class="rt-prog"><div class="rt-bar"><span style="width:${pct}%;background:${r.color}"></span></div><span class="rt-pct">${n ? pct + '%' : '—'}</span></div></td>
+      <td class="rt-due">${esc(opens)}</td>
+    </tr>`).join('');
+  return `<section class="ex-card dash-tablecard">${head}<div class="rt-wrap"><table class="rt-table"><thead><tr><th>School opening</th><th>Status</th><th>Progress</th><th>Opens</th></tr></thead><tbody>${body}</tbody></table></div></section>`;
+}
+
+// Needs attention - overdue / off-track / blocked, ranked by urgency (replaces the AI-insights slot)
+function needsAttentionCard(list) {
+  const items = list.filter(m => effectiveStatus(m) !== 'complete' && (['overdue', 'this_month'].includes(timingLevel(m)) || ['behind', 'at_risk', 'blocked'].includes(effectiveStatus(m))));
+  const rank = m => timingLevel(m) === 'overdue' ? 0 : (effectiveStatus(m) === 'behind' || effectiveStatus(m) === 'blocked') ? 1 : timingLevel(m) === 'this_month' ? 2 : 3;
+  items.sort((a, b) => rank(a) - rank(b) || (parseDate(a.due_date) || 9e15) - (parseDate(b.due_date) || 9e15));
+  const reason = m => {
+    const t = timingLevel(m), es = effectiveStatus(m), d = daysUntil(m.due_date);
+    if (t === 'overdue') return { c: 'na-tag-r', t: d != null ? Math.abs(d) + 'd overdue' : 'Overdue' };
+    if (es === 'blocked') return { c: 'na-tag-r', t: 'Blocked' };
+    if (es === 'behind') return { c: 'na-tag-r', t: 'Behind' };
+    if (es === 'at_risk') return { c: 'na-tag-y', t: 'At risk' };
+    if (t === 'this_month') return { c: 'na-tag-y', t: d != null && d >= 0 ? 'Due in ' + d + 'd' : 'Due soon' };
+    return { c: 'na-tag-y', t: 'Attention' };
+  };
+  const top = items.slice(0, 6);
+  const rows = top.map(m => { const z = reason(m); return `<div class="na-item" data-expand="${m.id}"><div class="na-main"><span class="na-title">${esc(m.activity)}</span><span class="na-meta">${esc([m.market, m.functional_area].filter(Boolean).join(' · '))}</span></div><span class="na-tag ${z.c}">${esc(z.t)}</span></div>`; }).join('');
+  const foot = items.length ? `<button class="na-more" data-showmore="focus">${items.length > top.length ? 'View all ' + items.length + ' →' : 'Open in Project Plan →'}</button>` : '';
+  return `<section class="ex-card na-card"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('warning')}<h3>Needs attention</h3></div><span class="dash-count ${items.length ? 'bad' : ''}">${items.length}</span></div>
+    <div class="na-body">${top.length ? rows : '<div class="muted ex-empty">Nothing overdue, off-track, or blocked right now.</div>'}</div>${foot}</section>`;
+}
+
+// My tasks (assigned to signed-in user) - falls back to upcoming key milestones when none/anonymous
+function myTasksCard(list) {
+  const name = currentDisplayName();
+  const mine = name ? myOpenTasks(list, name) : [];
+  if (mine.length) {
+    mine.sort(bySortUrgency);
+    const rows = mine.slice(0, 6).map(m => {
+      const due = dueBadge(m) || (m.due_date ? `<span class="mt-due">${fmtDate(m.due_date)}</span>` : '');
+      return `<div class="mt-item"><button class="mt-check" data-complete="${m.id}" title="Mark complete" aria-label="Mark complete"></button><div class="mt-main" data-expand="${m.id}"><span class="mt-title">${esc(m.activity)}</span><span class="mt-tags">${m.market ? `<span class="mt-tag">${esc(m.market)}</span>` : ''}${due}</span></div></div>`;
+    }).join('');
+    return `<section class="ex-card mt-card"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('check')}<h3>My tasks</h3></div><button class="card-more" data-drillmine="1">View all →</button></div><div class="mt-body">${rows}</div></section>`;
+  }
+  const soon = Date.now() + 90 * 864e5;
+  const up = list.filter(m => (m.keyMilestone || m.greenlight || m.transition) && m.due_date && parseDate(m.due_date) <= soon && effectiveStatus(m) !== 'complete')
+    .sort((a, b) => parseDate(a.due_date) - parseDate(b.due_date)).slice(0, 6);
+  const rows = up.map(m => {
+    const flag = m.greenlight ? '<span class="ex-flag ex-flag-green" title="Greenlight decision"></span>' : m.transition ? '<span class="ex-flag ex-flag-trans" title="Transition to Regional Ops"></span>' : '';
+    const due = dueBadge(m) || (m.due_date ? `<span class="mt-due">${fmtDate(m.due_date)}</span>` : '');
+    return `<div class="mt-item"><div class="mt-main" data-expand="${m.id}"><span class="mt-title">${flag}${esc(m.activity)}</span><span class="mt-tags">${m.market ? `<span class="mt-tag">${esc(m.market)}</span>` : ''}${due}</span></div></div>`;
+  }).join('');
+  return `<section class="ex-card mt-card"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('flag')}<h3>Upcoming milestones</h3></div><span class="muted ex-hint">Next 90 days</span></div><div class="mt-body">${up.length ? rows : '<div class="muted ex-empty">Nothing due in the next 90 days.</div>'}</div></section>`;
+}
+
+// Team activity - the recent change feed, inline on the dashboard
+function teamActivityCard() {
+  const log = getActivityLog().slice().reverse().slice(0, 6);
+  const rows = log.map(e => {
+    const who = e.author || 'Someone';
+    const itemId = e.extra && e.extra.itemId, exists = itemId && findM(itemId);
+    const attr = exists ? ` data-openitem="${esc(itemId)}" title="Open milestone"` : '';
+    return `<div class="ta-item${exists ? ' ta-click' : ''}"${attr}>${personChip(e.author || '')}<div class="ta-main"><span class="ta-what"><b>${esc(who)}</b> ${esc(e.detail)}</span><span class="ta-when">${esc(fmtWhen(e.ts))}</span></div></div>`;
+  }).join('');
+  return `<section class="ex-card ta-card"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('people')}<h3>Team activity</h3></div><button class="card-more" data-activityall="1">View all →</button></div><div class="ta-body">${log.length ? rows : '<div class="muted ex-empty">No activity yet. Changes you make will appear here.</div>'}</div></section>`;
+}
+
 function dashboardHtml(list) {
   const schools = schoolsInView();
   const total = schools.length;
@@ -726,24 +823,6 @@ function dashboardHtml(list) {
     return { fy, cs, ms, prep, mkts, mo };
   });
   const nextC = cohorts.find(c => c.mo >= 0) || cohorts[0];
-  const nextS = nextC && nextC.cs.slice().sort((a, b) => parseDate(a.opening_date) - parseDate(b.opening_date))[0];
-  // charter tracks active prep from ~24 months out; further-out cohorts read as roadmap, not "0% done"
-  const cohortCard = c => {
-    const active = c.mo <= 24;
-    const sum = c.ms.length === 0 ? 'Not yet scoped'
-      : active ? `${c.prep}% of pre-opening milestones cleared`
-      : `On the roadmap · prep begins ~${c.fy - 3}`;
-    const bar = active && c.ms.length ? `<div class="dash-cohort-bar"><span style="width:${c.prep}%"></span></div>` : '';
-    return `<div class="dash-cohort drill ${active ? '' : 'is-roadmap'}" data-drilldim="year" data-drillval="${c.fy}" title="See Fall ${c.fy - 1} openings">
-      <div class="dash-cohort-top"><span class="dash-cohort-fy">Fall ${c.fy - 1}</span><span class="dash-cohort-mo">${c.mo <= 0 ? 'opening' : c.mo + ' mo out'}</span></div>
-      <div class="dash-cohort-n">${c.cs.length} <span>school${c.cs.length === 1 ? '' : 's'}</span></div>
-      <div class="dash-cohort-mkts">${esc(c.mkts.join(' · '))}</div>
-      ${bar}
-      <div class="dash-cohort-sum">${sum}</div></div>`;
-  };
-  const hero = `<section class="dash-hero">
-    <div class="dash-hero-head"><div class="dash-hero-eyebrow">Upcoming school openings</div></div>
-    <div class="dash-cohorts">${cohorts.map(cohortCard).join('') || '<div class="muted" style="opacity:.8">No upcoming openings in view.</div>'}</div></section>`;
 
   // KPI SUMMARY - restrained, clearly-labeled cards; each number tied to a click-through
   const b = cnt('blue'), attention = r + y, onTrack = total - attention;
@@ -785,18 +864,6 @@ function dashboardHtml(list) {
     <div class="ex-card-body ${rOpen ? '' : 'hide'}"><div class="ex-legend ex-legend-top"><span><i class="rag" style="background:${RAG.none}"></i>Not started</span><span><i class="rag" style="background:${RAG.blue}"></i>On track</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind</span><span><i class="rag" style="background:${RAG.green}"></i>Complete</span></div>
     <div class="ex-grid-wrap"><table class="ex-grid"><thead><tr><th>School</th><th>Opens</th><th>Overall</th>${tms.map(t => `<th class="ex-th-team"><span>${esc(t)}</span></th>`).join('')}</tr></thead><tbody>${grid}</tbody></table></div></div></section>`;
 
-  // PRIORITIES & RISKS
-  const soon = Date.now() + 90 * 864e5;
-  const upcoming = list.filter(m => (m.keyMilestone || m.greenlight || m.transition) && m.due_date && parseDate(m.due_date) <= soon && effectiveStatus(m) !== 'complete')
-    .sort((a, b) => parseDate(a.due_date) - parseDate(b.due_date)).slice(0, 8);
-  const stuck = list.filter(m => (m.status === 'blocked' || timingLevel(m) === 'overdue') && effectiveStatus(m) !== 'complete').sort(bySortUrgency);
-  const pOpen = !state.expanded['dash:priorities'];
-  const rOpen2 = !state.expanded['dash:risks'];
-  const upcomingCard = `<section class="ex-card" data-section="upcoming"><div class="ex-card-head toggle" data-toggle="dash:priorities"><div class="ex-cardhead-l">${chev(pOpen)}<h3>Key Milestones · Next 90 Days</h3></div><span class="dash-count">${upcoming.length}</span></div>
-    <div class="ex-card-body ${pOpen ? '' : 'hide'}">${upcoming.length ? `<div class="ex-list">${upcoming.map(m => exLi(m, m.greenlight ? '<span class="ex-flag ex-flag-green" title="Greenlight decision"></span>' : m.transition ? '<span class="ex-flag ex-flag-trans" title="Transition to Regional Ops"></span>' : '')).join('')}</div>` : '<div class="muted ex-empty">Nothing due in the next 90 days.</div>'}</div></section>`;
-  const risksCard = `<section class="ex-card" data-section="overdue"><div class="ex-card-head toggle" data-toggle="dash:risks"><div class="ex-cardhead-l">${chev(rOpen2)}<h3>Overdue Milestones</h3></div><span class="dash-count ${stuck.length ? 'bad' : ''}">${stuck.length}</span></div>
-    <div class="ex-card-body ${rOpen2 ? '' : 'hide'}">${stuck.length ? `<div class="ex-list">${stuck.map(m => exLi(m, m.status === 'blocked' ? '<span class="ex-flag ex-flag-block" title="Blocked"></span>' : '')).join('')}</div>` : '<div class="muted ex-empty">Nothing blocked or overdue.</div>'}</div></section>`;
-
   // GROWTH FUNDRAISING
   const camps = (state.data.campaigns || []).filter(c => !state.filters.states.size || state.filters.states.has(c.state));
   const fOpen = !state.expanded['dash:fund'];
@@ -811,19 +878,24 @@ function dashboardHtml(list) {
   const statusLegend = `<div class="pl-legend pl-legend-sm">${STATUS_ORDER.filter(s => list.some(m => effectiveStatus(m) === s)).map(s => `<span class="pl-leg"><i style="background:${SM(s).color}"></i>${SM(s).label}</span>`).join('')}</div>`;
   const workload = `<section class="ex-card" data-section="workload"><div class="ex-card-head toggle" data-toggle="dash:workload"><div class="ex-cardhead-l">${chev(wOpen)}<h3>Milestone Workload by Year</h3></div></div><div class="ex-card-body ${wOpen ? '' : 'hide'}">${statusLegend}${columnChart(list)}</div></section>`;
 
-  // Info hierarchy (thoughtful order for Chiefs/Board):
-  //   1. Banner - orientation
+  // Info hierarchy (overview layout, for Chiefs/Board):
+  //   1. Personal pill (only if you have assigned tasks)
   //   2. KPI strip - top-line health
-  //   3. Cohort strip - portfolio horizon
-  //   4. Status pipeline - visual distribution
-  //   5. Key Milestones next 90d - actionable near-term (default open)
-  //   6. Readiness grid - full portfolio deep-dive (default open)
-  //   7. Growth Fundraising - capital context (default open)
-  //   8. Workload | Overdue Milestones - side by side, equal height (default open)
-  // Bottom row: [Growth Fundraising + Milestone Workload stacked] | [Overdue Milestones]
-  //             This saves vertical space and puts the "actionable" list next
-  //             to the two context cards.
-  return `<div class="dash">${greetBanner(list)}${kpiStrip}${hero}${statusPipeline(list)}${upcomingCard}${readiness}<div class="dash-pair"><div class="dash-lstack">${capital}${workload}</div>${risksCard}</div></div>`;
+  //   3. Main grid:  Opening-readiness table  |  Needs attention
+  //   4. Sub grid:   My tasks  |  Team activity
+  //   5. Detail:     Milestone status · Readiness-by-workstream · Fundraising | Workload
+  const detail = capital
+    ? `<div class="dash-pair"><div class="dash-lstack">${capital}</div>${workload}</div>`
+    : workload;
+  return `<div class="dash dash-v2">
+    ${greetBanner(list)}
+    ${kpiStrip}
+    <div class="dash-main">${schoolProgressTable(schools)}${needsAttentionCard(list)}</div>
+    <div class="dash-sub">${myTasksCard(list)}${teamActivityCard()}</div>
+    ${statusPipeline(list)}
+    ${readiness}
+    ${detail}
+  </div>`;
 }
 
 /* The full greeting moved to the top content bar (updateGreeting).
@@ -862,9 +934,10 @@ function applyDrill(dim, val) {
 }
 function refreshResults() { refreshBody(); }
 
-function addItem() {
+function addItem(stage) {
   snapshotForUndo('Create new milestone');
-  const m = { id: uid(), state: 'NJ', market: 'Paterson', team: teams()[0], functional_area: teams()[0], workstream: 'General', activity: 'New milestone', schools: [], schoolIds: [], targetFY: currentFY(), targetQuarter: '', openingFY: null, due_date: null, status: 'not_started', stage: 'to_do', progress_percent: 0, priority: 'medium', owner: '', dependency: '', keyMilestone: false, greenlight: false, transition: false, notes: '', tags: [] };
+  const st = stage || 'to_do', done = st === 'complete';
+  const m = { id: uid(), state: 'NJ', market: 'Paterson', team: teams()[0], functional_area: teams()[0], workstream: 'General', activity: 'New milestone', schools: [], schoolIds: [], targetFY: currentFY(), targetQuarter: '', openingFY: null, due_date: null, status: done ? 'complete' : 'not_started', stage: st, progress_percent: done ? 100 : 0, priority: 'medium', owner: '', dependency: '', keyMilestone: false, greenlight: false, transition: false, notes: '', tags: [] };
   M().push(m); autosave(); logActivity('create', 'Created new milestone', { itemId: m.id }); openModal(m.id);
 }
 
@@ -1501,6 +1574,10 @@ function wireEvents() {
     const pv = e.target.closest('[data-progressview]'); if (pv) { state.progressView = pv.dataset.progressview; return renderProgress(); }
     const pd = e.target.closest('[data-progressdim]'); if (pd) { state.progressDim = pd.dataset.progressdim; return refreshBody(); }
     const dr = e.target.closest('[data-drilldim]'); if (dr) return applyDrill(dr.dataset.drilldim, dr.dataset.drillval);
+    const gv = e.target.closest('[data-goview]'); if (gv) { window.scrollTo({ top: 0, behavior: 'smooth' }); return setView(gv.dataset.goview); }
+    if (e.target.closest('[data-activityall]')) return toggleActivity();
+    const as = e.target.closest('[data-addstage]'); if (as) return addItem(as.dataset.addstage);
+    const cp = e.target.closest('[data-complete]'); if (cp) { const m = findM(cp.dataset.complete); if (m) { snapshotForUndo('Complete: ' + (m.activity || '').slice(0, 30)); m.status = 'complete'; m.progress_percent = 100; m.stage = 'complete'; logActivity('status', `Completed "${m.activity}"`, { itemId: m.id }); autosave(); rerender(); toast('Marked complete', 'ok'); } return; }
     const sm = e.target.closest('[data-showmore]'); if (sm) { const p = sm.dataset.showmore; if (p === 'focus') state.planFocus = true; else { state.planGroup = p; state.planFocus = false; } return setView('plan'); }
     const tg = e.target.closest('[data-toggle]'); if (tg) { const k = tg.dataset.toggle; state.expanded[k] = !state.expanded[k]; return refreshBody(); }
     const ex = e.target.closest('[data-expand]'); if (ex) return openModal(ex.dataset.expand);
