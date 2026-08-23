@@ -2005,4 +2005,40 @@ body.nav-collapsed #navToggle svg { transform: scaleX(-1); }
 .confirm-typed input { width: 100%; padding: 8px 12px; border: 2px solid var(--outline, #CFD4DF); border-radius: 8px; font: inherit; font-size: 14px; background: #FFF; color: var(--on-surface, #1A1F2B); outline: none; }
 .confirm-typed input:focus { border-color: #DC2626; }
 
+/* ============================================================
+   SUPABASE AUTH — sign-in screen, user menu, mode toggle
+   ============================================================ */
+
+/* Sign-in card (variant of the shared-password gate) */
+.auth-card { max-width: 400px; padding: 32px 32px 26px; }
+.auth-card h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+.auth-card p { font-size: 13.5px; color: var(--on-surface-variant, #5A6172); margin-bottom: 20px; }
+.auth-card #authForm { display: flex; flex-direction: column; gap: 10px; }
+.auth-card #authForm input { padding: 11px 14px; border: 2px solid var(--outline, #CFD4DF); border-radius: 10px; font: inherit; font-size: 14.5px; background: #FFF; color: var(--on-surface, #1A1F2B); outline: none; transition: border-color .12s; }
+.auth-card #authForm input:focus { border-color: var(--primary, #16357F); }
+.auth-card #authForm button { margin-top: 6px; height: 44px; font-size: 14.5px; font-weight: 700; }
+.auth-card #authForm button:disabled { opacity: .6; cursor: wait; }
+.auth-foot { margin-top: 16px; font-size: 12.5px; color: var(--on-surface-variant, #6B7280); text-align: center; }
+
+/* Signed-in user badge (in header) */
+#cbUser[data-authed="1"] { box-shadow: 0 0 0 2px rgba(22,53,127,.15); }
+
+/* User menu popover (opened from the signed-in badge) */
+.user-menu { min-width: 220px; padding: 4px; }
+.um-head { padding: 12px 14px 10px; border-bottom: 1px solid var(--outline-variant, #E4E7EF); }
+.um-name { font-size: 14px; font-weight: 700; color: var(--on-surface, #1A1F2B); line-height: 1.3; }
+.um-email { font-size: 12px; color: var(--on-surface-variant, #6B7280); margin-top: 2px; word-break: break-all; }
+.um-role { font-size: 11.5px; color: var(--on-surface-variant, #6B7280); margin-top: 6px; letter-spacing: .01em; }
+.um-role b { color: var(--primary, #16357F); font-weight: 700; text-transform: capitalize; }
+.um-actions { padding: 4px; }
+.um-item { display: block; width: 100%; text-align: left; padding: 9px 12px; border: 0; background: transparent; font: inherit; font-size: 13.5px; color: var(--on-surface, #1A1F2B); border-radius: 7px; cursor: pointer; transition: background .1s; }
+.um-item:hover { background: var(--surface-container, #EEF1F6); }
+
+/* Auth-mode toggle block in the Settings drawer */
+.auth-mode-block { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.auth-mode-block .field-check { padding: 8px 10px; border-radius: 8px; background: var(--surface-container-lowest, #FFF); border: 1px solid var(--outline-variant, #E4E7EF); }
+.auth-mode-block .field-check:has(input:checked) { border-color: var(--primary, #16357F); background: color-mix(in srgb, var(--primary) 6%, transparent); }
+.auth-mode-block .field-check b { font-weight: 600; }
+
+
 

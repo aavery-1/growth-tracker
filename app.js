@@ -24,6 +24,7 @@ const state = {
   filters: { states: new Set(), fys: new Set(), types: new Set(), areas: new Set(), markets: new Set(), statuses: new Set(), priorities: new Set(), openingFYs: new Set(), schoolId: '', search: '', timing: '' },
   sb: { connected: false, client: null },
   adminUnlocked: false,
+  auth: { user: null, profile: null, wired: false },
 };
 
 /* ---------- palette (spec colors) ---------- */
@@ -1118,22 +1119,37 @@ async function sbConnect(url, key, silent) {
   try {
     const mod = await import('https://esm.sh/@supabase/supabase-js@2');
     const client = mod.createClient(url, key);
-    // milestones
-    const rm = await client.from(SB_TABLE.m).select('id,doc'); if (rm.error) throw rm.error;
-    if (rm.data && rm.data.length) state.data.milestones = rm.data.map(r => r.doc).filter(Boolean);
-    else { const r = await client.from(SB_TABLE.m).upsert(M().map(m => ({ id: m.id, doc: m, updated_at: new Date().toISOString() }))); if (r.error) throw r.error; }
-    sbLastPushed = new Map(M().map(m => [m.id, JSON.stringify(m)]));
-    // schools
-    const rs = await client.from(SB_TABLE.s).select('id,doc'); if (rs.error) throw rs.error;
-    if (rs.data && rs.data.length) state.data.schools = rs.data.map(r => r.doc).filter(Boolean);
-    else { const r = await client.from(SB_TABLE.s).upsert(S().map(x => ({ id: x.id, doc: x, updated_at: new Date().toISOString() }))); if (r.error) throw r.error; }
-    sbLastSchools = new Map(S().map(x => [x.id, JSON.stringify(x)]));
-    client.channel('gm_rt').on('postgres_changes', { event: '*', schema: 'public', table: SB_TABLE.m }, sbOnRemote).subscribe();
-    client.channel('gs_rt').on('postgres_changes', { event: '*', schema: 'public', table: SB_TABLE.s }, sbOnRemote).subscribe();
-    state.sb = { connected: true, client }; lsSet(LS.supabase, JSON.stringify({ url, key })); autosaveWriteLocal(); rerender();
+    state.sb = { connected: true, client };
+    lsSet(LS.supabase, JSON.stringify({ url, key }));
+    // Auth bootstrap FIRST — restores session if any, wires onAuthStateChange to load data on sign-in
+    try { await bootstrapAuth(client); } catch (e) { console.warn('bootstrapAuth failed:', e); }
+    // In auth mode with no session, skip data ops — they'd fail RLS. Data loads after sign-in.
+    if (authModeOn() && !state.auth.user) {
+      if (s && !silent) s.innerHTML = '<div class="status-note ok">✓ Connected. Sign in to load the board.</div>';
+      renderDrawer(); return true;
+    }
+    await sbLoadData(client);
     const b = $('#saveState'); if (b) { b.textContent = 'Synced • live'; b.className = 'save-state saved'; }
     if (s) s.innerHTML = '<div class="status-note ok">✓ Connected. Edits &amp; schools sync live to everyone on this project.</div>'; renderDrawer(); return true;
   } catch (e) { state.sb = { connected: false, client: null }; if (s) s.innerHTML = `<div class="status-note err">Couldn't connect: ${esc(e.message || e)}. Check URL/key and that you ran the SQL.</div>`; return false; }
+}
+async function sbLoadData(client) {
+  // milestones
+  const rm = await client.from(SB_TABLE.m).select('id,doc'); if (rm.error) throw rm.error;
+  if (rm.data && rm.data.length) state.data.milestones = rm.data.map(r => r.doc).filter(Boolean);
+  else { const r = await client.from(SB_TABLE.m).upsert(M().map(m => ({ id: m.id, doc: m, updated_at: new Date().toISOString() }))); if (r.error) throw r.error; }
+  sbLastPushed = new Map(M().map(m => [m.id, JSON.stringify(m)]));
+  // schools
+  const rs = await client.from(SB_TABLE.s).select('id,doc'); if (rs.error) throw rs.error;
+  if (rs.data && rs.data.length) state.data.schools = rs.data.map(r => r.doc).filter(Boolean);
+  else { const r = await client.from(SB_TABLE.s).upsert(S().map(x => ({ id: x.id, doc: x, updated_at: new Date().toISOString() }))); if (r.error) throw r.error; }
+  sbLastSchools = new Map(S().map(x => [x.id, JSON.stringify(x)]));
+  if (!client._ngcChannels) {
+    client.channel('gm_rt').on('postgres_changes', { event: '*', schema: 'public', table: SB_TABLE.m }, sbOnRemote).subscribe();
+    client.channel('gs_rt').on('postgres_changes', { event: '*', schema: 'public', table: SB_TABLE.s }, sbOnRemote).subscribe();
+    client._ngcChannels = true;
+  }
+  autosaveWriteLocal(); rerender();
 }
 function sbDisconnect() { try { if (state.sb.client) state.sb.client.removeAllChannels(); } catch (e) {} state.sb = { connected: false, client: null }; lsDel(LS.supabase); renderDrawer(); toast('Disconnected', 'ok'); }
 function sbOnRemote(p) {
@@ -1184,7 +1200,14 @@ function renderDrawer() {
     </section>
 
     <section class="dw-sec">
-      <div class="dw-h"><span class="dw-num">2</span><h4>Access Password</h4></div>
+      <div class="dw-h"><span class="dw-num">2</span><h4>Access &amp; Accounts</h4></div>
+      <div class="auth-mode-block">
+        <label class="field-check"><input type="radio" name="authMode" value="password" ${!authModeOn() ? 'checked' : ''}> <b>Shared password</b> <span class="muted">— one password for the whole team (legacy)</span></label>
+        <label class="field-check"><input type="radio" name="authMode" value="supabase" ${authModeOn() ? 'checked' : ''} ${state.sb && state.sb.connected ? '' : 'disabled'}> <b>Individual accounts</b> <span class="muted">— each person signs in; edits are attributed${state.sb && state.sb.connected ? '' : ' <b>(connect Supabase above first)</b>'}</span></label>
+        ${authModeOn() && state.auth.user ? `<div class="status-note ok" style="margin-top:8px">Signed in as <b>${esc(state.auth.profile ? state.auth.profile.full_name || state.auth.profile.email : state.auth.user.email)}</b> · role: <b>${esc(currentRole() || 'viewer')}</b></div>` : ''}
+      </div>
+      <div class="dw-divider"></div>
+      <div class="dw-sublabel">Shared password (used when Individual accounts is off)</div>
       <label class="field-check"><input type="checkbox" id="gateEnable" ${gateOn() ? 'checked' : ''}> Require a shared password to open the board</label>
       <div class="field" style="margin-top:10px"><label>Change the password</label><input id="gateNew" type="text" autocomplete="off" placeholder="Leave blank to keep the current one"></div>
       <div class="dw-btns"><button class="btn btn-filled" id="gateSave">Save</button><button class="btn btn-text" id="gateLock">Lock &amp; sign out</button></div>
@@ -1445,6 +1468,7 @@ function wireEvents() {
   });
   $('#drawerBody').addEventListener('change', e => {
     if (e.target.id === 'impFile' && e.target.files[0]) return importJson(e.target.files[0]);
+    if (e.target.name === 'authMode') { meta().authMode = e.target.value; autosave(); renderDrawer(); toast(e.target.value === 'supabase' ? 'Account mode ON — sign in required next load' : 'Shared-password mode restored', 'ok'); return; }
     if (e.target.classList.contains('cz-name')) return czRename(e.target.dataset.cztype, e.target.dataset.czold, e.target.value);
     if (e.target.classList.contains('cz-state')) { const mk = e.target.dataset.czmarket, to = e.target.value; statesMeta().forEach(s => s.markets = s.markets.filter(x => x !== mk)); const s = statesMeta().find(x => x.code === to); if (s && !s.markets.includes(mk)) s.markets.push(mk); M().forEach(m => { if (m.market === mk) m.state = to; }); state.data.schools.forEach(x => { if (x.market === mk) x.state = to; }); autosave(); rerender(); renderDrawer(); return; }
     if (e.target.classList.contains('cz-role')) { const o = (meta().owners || []).find(x => x.name === e.target.dataset.czowner); if (o) { o.role = e.target.value; autosave(); } return; }
@@ -1455,11 +1479,148 @@ function wireEvents() {
    A lightweight shared password to keep casual visitors out of the committee board.
    NOTE: this is client-side only — it deters, it does not encrypt. Anyone technical can
    read past it by viewing source. For real access control, use Supabase Auth. */
+/* ============================================================
+   SUPABASE AUTH — Phase 1
+   Real accounts, session persistence, attribution via DB triggers.
+   Toggled by meta.authMode:  'password' (legacy shared gate) | 'supabase' (auth)
+   ============================================================ */
+function authModeOn() { return meta().authMode === 'supabase'; }
+function currentProfile() { return state.auth && state.auth.profile; }
+function currentRole() { const p = currentProfile(); return p ? p.role : null; }
+function isEditor() { const r = currentRole(); return r === 'editor' || r === 'admin'; }
+function isAdmin() { return currentRole() === 'admin'; }
+
+async function loadProfile(userId) {
+  const client = state.sb && state.sb.client; if (!client || !userId) return null;
+  try {
+    const { data, error } = await client.from('profiles').select('id, full_name, email, department, role, mfa_enrolled').eq('id', userId).single();
+    if (error) throw error;
+    state.auth.profile = data; return data;
+  } catch (e) { console.warn('loadProfile failed:', e); return null; }
+}
+
+async function bootstrapAuth(client) {
+  if (!client || state.auth.wired) return;
+  state.auth.wired = true;
+  const { data: { session } } = await client.auth.getSession();
+  if (session && session.user) { state.auth.user = session.user; await loadProfile(session.user.id); }
+  client.auth.onAuthStateChange(async (event, sess) => {
+    if (sess && sess.user) {
+      state.auth.user = sess.user; await loadProfile(sess.user.id);
+      // First sign-in in auth mode: pull the board now that RLS lets us
+      if (authModeOn() && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+        try { await sbLoadData(client); } catch (e) { console.warn('post-signin data load failed:', e); }
+      }
+    } else { state.auth.user = null; state.auth.profile = null; }
+    updateUserBadge();
+    if (authModeOn() && !state.auth.user && state._booted) return showAuthScreen();   // signed out mid-session
+  });
+  updateUserBadge();
+}
+
+async function signInEmail(email, password) {
+  const client = state.sb && state.sb.client; if (!client) throw new Error('Supabase is not connected. Ask an admin.');
+  const { data, error } = await client.auth.signInWithPassword({ email: email.trim(), password });
+  if (error) throw error;
+  state.auth.user = data.user; await loadProfile(data.user.id);
+  return data.user;
+}
+
+async function signOutUser() {
+  const client = state.sb && state.sb.client; if (!client) return;
+  await client.auth.signOut();
+  state.auth.user = null; state.auth.profile = null;
+  if (authModeOn()) showAuthScreen(); else location.reload();
+}
+
+function showAuthScreen(err) {
+  let g = $('#gateScreen');
+  if (!g) { g = document.createElement('div'); g.id = 'gateScreen'; g.className = 'gate-screen'; document.body.appendChild(g); }
+  const logoSrc = (document.querySelector('.brand-logo') || {}).src || '';
+  g.innerHTML = `<div class="gate-card auth-card">
+      <img class="gate-logo" src="${logoSrc}" alt="KIPP">
+      <h1>Network Growth Hub</h1>
+      <p>Sign in with your work email.</p>
+      <form id="authForm" autocomplete="on">
+        <input id="authEmail" type="email" placeholder="Email" autocomplete="username" required autofocus>
+        <input id="authPw" type="password" placeholder="Password" autocomplete="current-password" required>
+        <button type="submit" class="btn btn-filled" id="authSubmit">Sign in</button>
+      </form>
+      ${err ? `<div class="gate-err">${esc(err)}</div>` : ''}
+      <div class="auth-foot">No account? Ask an admin to invite you.</div>
+    </div>`;
+  const f = $('#authForm'), sub = $('#authSubmit');
+  f.addEventListener('submit', async e => {
+    e.preventDefault();
+    sub.disabled = true; sub.textContent = 'Signing in…';
+    try {
+      await signInEmail($('#authEmail').value, $('#authPw').value);
+      g.remove();
+      if (!state._booted) { state._booted = true; bootApp(); } else { updateUserBadge(); rerender(); toast('Signed in', 'ok'); }
+    } catch (ex) {
+      sub.disabled = false; sub.textContent = 'Sign in';
+      showAuthScreen(ex.message || 'Sign-in failed. Check your email and password.');
+    }
+  });
+  setTimeout(() => { const i = $('#authEmail'); if (i && !i.value) i.focus(); else { const p = $('#authPw'); if (p) p.focus(); } }, 30);
+}
+
+function updateUserBadge() {
+  const btn = $('#cbUser'); if (!btn) return;
+  const p = currentProfile();
+  if (p) {
+    const nm = p.full_name || p.email || 'User';
+    const initials = nm.split(/\s+/).map(w => w[0]).filter(Boolean).join('').toUpperCase().slice(0, 2) || nm.slice(0, 2).toUpperCase();
+    btn.textContent = initials;
+    btn.title = `${nm} · ${p.role || 'viewer'}\nClick for menu`;
+    btn.dataset.authed = '1';
+  } else {
+    const author = lsGet('ngc_author') || '';
+    const initials = author ? author.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : '?';
+    btn.textContent = initials;
+    btn.title = author || 'Set your name';
+    delete btn.dataset.authed;
+  }
+}
+
+function openUserMenu(anchor) {
+  const p = currentProfile(); if (!p) return;
+  closePopover();
+  const html = `<div class="user-menu">
+      <div class="um-head"><div class="um-name">${esc(p.full_name || p.email)}</div><div class="um-email">${esc(p.email || '')}</div><div class="um-role">Role: <b>${esc(p.role || 'viewer')}</b></div></div>
+      <div class="um-actions">
+        <button class="um-item" id="umSignOut">Sign out</button>
+      </div>
+    </div>`;
+  const pop = openPopover(anchor, html);
+  pop.querySelector('#umSignOut').addEventListener('click', () => { closePopover(); signOutUser(); });
+}
+
+/* ---------- shared-password gate (legacy fallback when authMode !== 'supabase') ---------- */
 function pwHash(str) { let h1 = 0xdeadbeef, h2 = 0x41c6ce57; for (let i = 0, ch; i < str.length; i++) { ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); } h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507); h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909); h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507); h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909); return String(4294967296 * (2097151 & h2) + (h1 >>> 0)); }
 function gateOn() { return !!(meta().gateEnabled && meta().gateHash); }
-function gateStart() {
+async function gateStart() {
+  if (authModeOn()) {
+    // Supabase auth mode — needs an active session, not a shared password.
+    // sbConnect (from saved cfg) is fired async by bootApp normally; here we need it BEFORE gating.
+    const sc = sbSavedCfg();
+    if (!sc || !sc.url || !sc.key) return showAuthConfigNeeded();
+    if (!state.sb.connected) { await sbConnect(sc.url, sc.key, true); }
+    // bootstrapAuth (called from sbConnect on success) has now populated state.auth if there's a session
+    if (state.auth.user) { state._booted = true; return bootApp(); }
+    return showAuthScreen();
+  }
   if (!gateOn() || lsGet(LS.gate) === String(meta().gateHash)) return bootApp();
   showGate();
+}
+function showAuthConfigNeeded() {
+  let g = $('#gateScreen');
+  if (!g) { g = document.createElement('div'); g.id = 'gateScreen'; g.className = 'gate-screen'; document.body.appendChild(g); }
+  g.innerHTML = `<div class="gate-card auth-card">
+      <img class="gate-logo" src="${(document.querySelector('.brand-logo') || {}).src || ''}" alt="KIPP">
+      <h1>Setup needed</h1>
+      <p>Account mode is on, but Supabase isn't configured yet. An admin must connect Supabase in Settings first.</p>
+    </div>`;
 }
 function showGate(err) {
   let g = $('#gateScreen');
@@ -1663,15 +1824,15 @@ async function init() {
   gateStart();
 }
 function initContentBar() {
-  const author = lsGet('ngc_author') || '';
   const btn = $('#cbUser');
   if (btn) {
-    const initials = author ? author.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : '?';
-    btn.textContent = initials;
-    btn.title = author || 'Set your name';
-    btn.addEventListener('click', () => {
+    updateUserBadge();   // populates initials + title based on auth state (or legacy ngc_author)
+    btn.addEventListener('click', ev => {
+      // Signed-in user → show account menu (name / role / sign out)
+      if (btn.dataset.authed === '1') return openUserMenu(btn);
+      // Legacy: prompt for display name (only in password mode)
       const name = prompt('Your name (shown on edits):', lsGet('ngc_author') || '');
-      if (name !== null) { lsSet('ngc_author', name.trim()); initContentBar(); }
+      if (name !== null) { lsSet('ngc_author', name.trim()); updateUserBadge(); }
     });
   }
   const cbSearch = $('#cbSearch');
@@ -1709,6 +1870,8 @@ function bootApp() {
   const initial = (location.hash || '').replace('#', '');
   setView(VIEWS.includes(initial) ? initial : 'progress', true);
   if (!location.hash) { try { history.replaceState({ v: state.view }, '', '#' + state.view); } catch (e) {} }
-  let sc = sbSavedCfg(); if (SB_DEFAULT.url && (!sc || sc.url === SB_DEFAULT.url)) sc = SB_DEFAULT; if (sc && sc.url && sc.key) sbConnect(sc.url, sc.key, true);
+  let sc = sbSavedCfg(); if (SB_DEFAULT.url && (!sc || sc.url === SB_DEFAULT.url)) sc = SB_DEFAULT;
+  // In auth mode, gateStart already connected via sbConnect. Avoid a second connect that would recreate the client.
+  if (sc && sc.url && sc.key && !state.sb.connected) sbConnect(sc.url, sc.key, true);
 }
 document.addEventListener('DOMContentLoaded', init);
