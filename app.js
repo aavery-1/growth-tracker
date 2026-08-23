@@ -726,17 +726,18 @@ function dashboardHtml(list) {
   // KPI SUMMARY — restrained, clearly-labeled cards; each number tied to a click-through
   const b = cnt('blue'), attention = r + y, onTrack = total - attention;
   const overdue = list.filter(m => timingLevel(m) === 'overdue').length;
+  // Material Symbols (Rounded, filled) — clean geometric shapes on a subtle tinted disc
   const KPI_IC = {
-    school: '<path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/>',
-    warning: '<path d="m10.29 3.86-8.47 14.14a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
-    flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>',
-    alarm: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/><path d="M6.38 18.7 4 21"/><path d="M17.64 18.67 20 21"/>'
+    school:  '<path d="M12 3 1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/>',
+    warning: '<path d="M12 2 1 21h22L12 2zm1 15h-2v-2h2v2zm0-4h-2V9h2v4z"/>',
+    flag:    '<path d="M14.4 6 14 4H5v17h2v-7h5.6l.4 2h7V6z"/>',
+    alarm:   '<path d="M22 5.72 17.4 1.86 16.11 3.39l4.6 3.86 1.29-1.53zM7.88 3.39 6.6 1.86 2 5.71 3.29 7.24zM12.5 8H11v6l4.75 2.85.75-1.23-4-2.37V8zM12 4a9 9 0 1 0 .01 18.01A9 9 0 0 0 12 4zm0 16c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>'
   };
   // month-over-month trend (portfolio-wide; only shown when no filters are applied)
   const unfiltered = !state.filters.states.size && !state.filters.markets.size && !state.filters.areas.size && !state.filters.statuses.size && !state.filters.openingFYs.size && !state.filters.schoolId && !state.filters.search && !state.filters.timing;
   const tp = unfiltered ? trendPrev() : null;
   const dChip = (cur, key, goodUp) => { if (!tp || typeof tp[key] !== 'number') return ''; const d = cur - tp[key]; if (!d) return ''; const up = d > 0; const good = up === goodUp; return `<span class="k-delta ${good ? 'good' : 'bad'}">${up ? '▲' : '▼'} ${Math.abs(d)}<span class="k-delta-lbl"> vs last month</span></span>`; };
-  const kpi = (icon, num, den, lbl, sub, cls, drill, delta) => `<${drill ? 'button' : 'div'} class="kcard2 ${cls || ''} ${drill ? 'drill' : ''}" ${drill || ''}><span class="k-ic"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${KPI_IC[icon]}</svg></span><div class="k-num">${num}${den ? `<span class="k-den">${den}</span>` : ''}</div><div class="k-lbl">${lbl}</div><div class="k-sub">${sub}</div>${delta || ''}</${drill ? 'button' : 'div'}>`;
+  const kpi = (icon, num, den, lbl, sub, cls, drill, delta) => `<${drill ? 'button' : 'div'} class="kcard2 ${cls || ''} ${drill ? 'drill' : ''}" ${drill || ''}><span class="k-ic"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">${KPI_IC[icon]}</svg></span><div class="k-num">${num}${den ? `<span class="k-den">${den}</span>` : ''}</div><div class="k-lbl">${lbl}</div><div class="k-sub">${sub}</div>${delta || ''}</${drill ? 'button' : 'div'}>`;
   const kpiStrip = `<section class="kpi-strip">
     ${kpi('school', onTrack, `/ ${total}`, 'Schools on track', '', '', '', dChip(onTrack, 'onTrack', true))}
     ${kpi('warning', attention, '', 'Need attention', '', attention ? 'k-alert' : '', attention ? 'data-drilldim="riskbehind" data-drillval=""' : '', dChip(attention, 'attention', false))}
