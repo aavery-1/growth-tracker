@@ -19,6 +19,7 @@ const state = {
   planFocus: false,              // "Needs attention" quick filter (overdue/due-soon/behind)
   progressView: 'charts',        // charts | list
   progressDim: 'team',           // team | year | market | school | state
+  dashBreakdown: 'workstream',   // dashboard progress breakdown: workstream | school
   reportsTab: 'overview',       // overview | timeline | list
   expanded: {},                  // progress section/item expand map
   filters: { states: new Set(), fys: new Set(), types: new Set(), areas: new Set(), markets: new Set(), statuses: new Set(), priorities: new Set(), openingFYs: new Set(), schoolId: '', search: '', timing: '' },
@@ -726,23 +727,85 @@ function ehIc(k) { return `<svg class="eh-ic" viewBox="0 0 24 24" width="17" hei
 const RAG_SEV = { red: 4, yellow: 3, blue: 2, none: 1, green: 0 };
 function ragTonePill(r) { return `<span class="rt-pill rt-${r.key}"><i></i>${esc(r.label.split(' · ')[0])}</span>`; }
 
-// School progress table - the "Project Progress" centerpiece (each opening = a project)
-function schoolProgressTable(schools) {
-  const head = `<div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('table')}<h3>Opening readiness</h3></div><button class="card-more" data-goview="timeline">Timeline →</button></div>`;
-  if (!schools.length) return `<section class="ex-card dash-tablecard">${head}<div class="muted ex-empty">No openings match the current filters.</div></section>`;
+/* ---- Progress monitoring by opening year (cohort) + by workstream ---- */
+// The focused opening year = the single value in the openingFYs filter (null = all years).
+// Focusing scopes the whole app (passFilters/schoolsInView/ganttSchools all honor openingFYs),
+// so a drill from here into the Plan or Timeline stays on the same cohort.
+function focusCohort() { return state.filters.openingFYs.size === 1 ? [...state.filters.openingFYs][0] : null; }
+function setDashCohort(v) {
+  if (v === 'all') state.filters.openingFYs.clear();
+  else state.filters.openingFYs = new Set([Number(v)]);
+  rerender();
+  if (typeof updateFilterBubble === 'function') updateFilterBubble();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+// High level: pre-opening milestone progress for each opening YEAR. Always shows every
+// cohort (computed from all schools); the focused one is highlighted.
+function cohortStrip() {
+  const years = openingYears();
+  if (!years.length) return '';
+  const focus = focusCohort(), now = Date.now();
+  const cards = years.map(fy => {
+    const cs = state.data.schools.filter(s => s.openingFY === fy);
+    const ms = cs.flatMap(schoolMs);
+    const total = ms.length, done = ms.filter(m => effectiveStatus(m) === 'complete').length;
+    const pctc = total ? Math.round(100 * done / total) : 0;
+    const c = effCounts(ms), behind = (c.behind || 0) + (c.blocked || 0), atRisk = c.at_risk || 0;
+    const firsts = cs.map(s => +parseDate(s.opening_date)).filter(n => !isNaN(n));
+    const mo = firsts.length ? Math.max(0, Math.round((Math.min(...firsts) - now) / 2.63e9)) : null;
+    const mkts = [...new Set(cs.map(s => s.market))];
+    const health = behind ? `<span class="coh-c r">${behind} behind</span>` : atRisk ? `<span class="coh-c y">${atRisk} at risk</span>` : total ? `<span class="coh-c g">on track</span>` : `<span class="coh-c muted">not scoped</span>`;
+    return `<button class="coh-card ${focus === fy ? 'is-focus' : ''}" data-cohort="${fy}" title="Focus Fall ${fy - 1} - scopes the dashboard, plan &amp; timeline">
+      <div class="coh-top"><span class="coh-fy">Fall ${fy - 1}</span>${mo != null ? `<span class="coh-mo">${mo <= 0 ? 'opening' : mo + ' mo out'}</span>` : ''}</div>
+      <div class="coh-meta">${cs.length} school${cs.length === 1 ? '' : 's'}${mkts.length ? ' · ' + esc(mkts.join(' · ')) : ''}</div>
+      <div class="coh-pct">${total ? pctc + '%' : '—'}<span>pre-opening complete</span></div>
+      <div class="coh-bar"><span style="width:${pctc}%"></span></div>
+      <div class="coh-foot">${health}<span class="coh-c muted">${done}/${total} done</span></div>
+    </button>`;
+  }).join('');
+  const right = focus ? '<button class="card-more" data-cohort="all">Show all years →</button>' : '<span class="muted ex-hint">Click a year to focus</span>';
+  return `<section class="ex-card coh-wrap"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('flag')}<h3>Progress by opening year</h3></div>${right}</div><div class="coh-grid">${cards}</div></section>`;
+}
+// Progress broken down by workstream (functional area), scoped to the current focus.
+function wsBreakdownRows(list) {
+  const rows = teams().map(t => {
+    const tl = list.filter(m => m.functional_area === t);
+    if (!tl.length) return null;
+    const done = tl.filter(m => effectiveStatus(m) === 'complete').length;
+    return { t, n: tl.length, done, pctc: Math.round(100 * done / tl.length), r: ragReady(tl) };
+  }).filter(Boolean).sort((a, b) => (RAG_SEV[b.r.key] || 0) - (RAG_SEV[a.r.key] || 0) || a.pctc - b.pctc);
+  if (!rows.length) return '<div class="muted ex-empty">No milestones in scope.</div>';
+  return `<div class="wb-list">${rows.map(x => `<button class="wb-row" data-drilldim="team" data-drillval="${esc(x.t)}" title="Open ${esc(x.t)} in the Project Plan">
+      <span class="wb-name">${esc(x.t)}</span>
+      <span class="wb-bar"><span style="width:${x.pctc}%;background:${x.r.color}"></span></span>
+      <span class="wb-pct">${x.pctc}%</span>
+      <span class="wb-n">${x.done}/${x.n}</span>
+      ${ragTonePill(x.r)}
+    </button>`).join('')}</div>`;
+}
+// Progress broken down by school opening, scoped to the current focus.
+function schoolBreakdownRows(schools) {
+  if (!schools.length) return '<div class="muted ex-empty">No openings in scope.</div>';
   const rows = schools.map(s => {
     const sm = schoolMs(s), r = ragReady(sm), n = sm.length;
     const done = sm.filter(m => effectiveStatus(m) === 'complete').length;
-    const pct = n ? Math.round(100 * done / n) : 0;
-    return { s, r, n, pct, mk: mkColor(s.market), opens: s.openingFY ? 'Fall ' + (s.openingFY - 1) : '—', fy: s.openingFY || 9999, sev: RAG_SEV[r.key] || 0 };
+    return { s, r, n, pctc: n ? Math.round(100 * done / n) : 0, mk: mkColor(s.market), opens: s.openingFY ? 'Fall ' + (s.openingFY - 1) : '—', fy: s.openingFY || 9999, sev: RAG_SEV[r.key] || 0 };
   }).sort((a, b) => a.fy - b.fy || b.sev - a.sev || a.s.market.localeCompare(b.s.market));
-  const body = rows.map(({ s, r, n, pct, mk, opens }) => `<tr class="rt-row" data-drillschool="${esc(s.id)}" title="Open ${esc(s.display_label)}">
+  const body = rows.map(({ s, r, n, pctc, mk, opens }) => `<tr class="rt-row" data-drillschool="${esc(s.id)}" title="Open ${esc(s.display_label)}">
       <td class="rt-name"><span class="rt-dot" style="background:${mk}"></span><span class="rt-nm"><b>${esc(s.display_label)}</b><small>${esc(s.market)}</small></span></td>
       <td class="rt-st">${ragTonePill(r)}</td>
-      <td class="rt-pc"><div class="rt-prog"><div class="rt-bar"><span style="width:${pct}%;background:${r.color}"></span></div><span class="rt-pct">${n ? pct + '%' : '—'}</span></div></td>
-      <td class="rt-due">${esc(opens)}</td>
-    </tr>`).join('');
-  return `<section class="ex-card dash-tablecard">${head}<div class="rt-wrap"><table class="rt-table"><thead><tr><th>School opening</th><th>Status</th><th>Progress</th><th>Opens</th></tr></thead><tbody>${body}</tbody></table></div></section>`;
+      <td class="rt-pc"><div class="rt-prog"><div class="rt-bar"><span style="width:${pctc}%;background:${r.color}"></span></div><span class="rt-pct">${n ? pctc + '%' : '—'}</span></div></td>
+      <td class="rt-due">${esc(opens)}</td></tr>`).join('');
+  return `<div class="rt-wrap"><table class="rt-table"><thead><tr><th>School opening</th><th>Status</th><th>Progress</th><th>Opens</th></tr></thead><tbody>${body}</tbody></table></div>`;
+}
+// Breakdown card with a By workstream / By school toggle.
+function breakdownCard(list, schools) {
+  const dim = state.dashBreakdown === 'school' ? 'school' : 'workstream';
+  const focus = focusCohort();
+  const scope = focus ? `Fall ${focus - 1}` : 'all openings';
+  const toggle = `<div class="segmented sm bd-toggle"><button class="seg ${dim === 'workstream' ? 'on' : ''}" data-dashbd="workstream">By workstream</button><button class="seg ${dim === 'school' ? 'on' : ''}" data-dashbd="school">By school</button></div>`;
+  const body = dim === 'school' ? schoolBreakdownRows(schools) : wsBreakdownRows(list);
+  return `<section class="ex-card bd-card"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('table')}<h3>Progress · ${esc(scope)}</h3></div>${toggle}</div>${body}</section>`;
 }
 
 // Needs attention - overdue / off-track / blocked, ranked by urgency (replaces the AI-insights slot)
@@ -869,11 +932,12 @@ function dashboardHtml(list) {
   //   LEFT  (wide): Opening-readiness table · Milestone status · Growth fundraising
   //   RIGHT (rail): Needs attention · My tasks · Team activity
   //   FULL width:   Milestone workload by year
-  const leftCol = `<div class="dash-col dash-col-main">${schoolProgressTable(schools)}${statusPipeline(list)}${capital}${workload}</div>`;
+  const leftCol = `<div class="dash-col dash-col-main">${breakdownCard(list, schools)}${statusPipeline(list)}${capital}${workload}</div>`;
   const rightCol = `<div class="dash-col dash-col-rail">${needsAttentionCard(list)}${myTasksCard(list)}${teamActivityCard()}</div>`;
   return `<div class="dash dash-v2">
     ${greetBanner(list)}
     ${kpiStrip}
+    ${cohortStrip()}
     <div class="dash-main">${leftCol}${rightCol}</div>
   </div>`;
 }
@@ -1557,6 +1621,8 @@ function wireEvents() {
     const plv = e.target.closest('[data-planview]'); if (plv) { state.planGroup = plv.dataset.planview === 'board' ? 'stage' : (state._lastListGroup || 'team'); if (plv.dataset.planview !== 'board') state._lastListGroup = state.planGroup; return renderPlan(); }
     const pv = e.target.closest('[data-progressview]'); if (pv) { state.progressView = pv.dataset.progressview; return renderProgress(); }
     const pd = e.target.closest('[data-progressdim]'); if (pd) { state.progressDim = pd.dataset.progressdim; return refreshBody(); }
+    const ch = e.target.closest('[data-cohort]'); if (ch) return setDashCohort(ch.dataset.cohort);
+    const bd = e.target.closest('[data-dashbd]'); if (bd) { state.dashBreakdown = bd.dataset.dashbd; return refreshBody(); }
     const dr = e.target.closest('[data-drilldim]'); if (dr) return applyDrill(dr.dataset.drilldim, dr.dataset.drillval);
     const gv = e.target.closest('[data-goview]'); if (gv) { window.scrollTo({ top: 0, behavior: 'smooth' }); return setView(gv.dataset.goview); }
     if (e.target.closest('[data-activityall]')) return toggleActivity();

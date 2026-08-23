@@ -3022,6 +3022,47 @@ body[data-view="progress"] #cbPillFilter { display: none; }
 .rt-pct { font-size: 12px; font-weight: 700; color: var(--on-surface-variant); min-width: 32px; text-align: right; }
 .rt-due { font-weight: 600; color: var(--on-surface); white-space: nowrap; }
 
+/* --- Cohort progress strip (progress by opening year) --- */
+.coh-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(188px, 1fr)); gap: 12px; }
+.coh-card { text-align: left; font-family: inherit; cursor: pointer; background: var(--surface-container-lowest, #fff); border: 1.5px solid var(--outline-variant); border-radius: 12px; padding: 13px 14px; display: flex; flex-direction: column; gap: 7px; transition: border-color .12s, box-shadow .12s, transform .1s; }
+.coh-card:hover { border-color: var(--outline); box-shadow: 0 4px 14px rgba(16,24,64,.08); transform: translateY(-1px); }
+.coh-card.is-focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(22,53,127,.12); }
+:root[data-theme="dark"] .coh-card { background: var(--surface-container-low); }
+.coh-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.coh-fy { font-size: 15px; font-weight: 800; color: var(--on-surface); letter-spacing: -.2px; }
+.coh-mo { font-size: 11px; font-weight: 600; color: var(--on-surface-variant); white-space: nowrap; }
+.coh-meta { font-size: 11.5px; color: var(--on-surface-variant); line-height: 1.35; }
+.coh-pct { font-size: 26px; font-weight: 800; color: var(--on-surface); letter-spacing: -.5px; line-height: 1; display: flex; align-items: baseline; gap: 6px; margin-top: 2px; }
+.coh-pct span { font-size: 11px; font-weight: 600; color: var(--on-surface-variant); letter-spacing: 0; }
+.coh-bar { height: 6px; border-radius: 999px; background: var(--surface-container-high); overflow: hidden; }
+.coh-bar span { display: block; height: 100%; border-radius: 999px; background: var(--primary); }
+.coh-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; }
+.coh-c { font-weight: 700; }
+.coh-c.r { color: #C0341F; } .coh-c.y { color: #9A6200; } .coh-c.g { color: #1E7A3D; } .coh-c.muted { color: var(--on-surface-variant); font-weight: 600; }
+:root[data-theme="dark"] .coh-c.r { color: #F79D8F; } :root[data-theme="dark"] .coh-c.y { color: #F5C177; } :root[data-theme="dark"] .coh-c.g { color: #8FD8A6; }
+
+/* --- Progress by workstream rows --- */
+.wb-list { display: flex; flex-direction: column; }
+.wb-row { display: grid; grid-template-columns: minmax(118px, 1.4fr) minmax(80px, 2fr) 40px 52px auto; align-items: center; gap: 12px; width: 100%; text-align: left; font-family: inherit; cursor: pointer; background: none; border: 0; border-bottom: 1px solid var(--outline-variant); padding: 11px 6px; transition: background .1s; }
+.wb-row:last-child { border-bottom: 0; }
+.wb-row:hover { background: rgba(22,53,127,.045); }
+.wb-name { font-size: 13.5px; font-weight: 600; color: var(--on-surface); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wb-bar { height: 7px; border-radius: 999px; background: var(--surface-container-high); overflow: hidden; }
+.wb-bar span { display: block; height: 100%; border-radius: 999px; }
+.wb-pct { font-size: 13px; font-weight: 800; color: var(--on-surface); text-align: right; }
+.wb-n { font-size: 12px; font-weight: 600; color: var(--on-surface-variant); text-align: right; }
+.wb-row .rt-pill { justify-self: end; }
+@media (max-width: 560px) {
+  .wb-row { grid-template-columns: 1fr 44px auto; }
+  .wb-bar, .wb-n { display: none; }
+}
+
+/* small segmented toggle inside a card header */
+.segmented.sm { display: inline-flex; gap: 2px; padding: 3px; background: var(--surface-container, #EEF1F6); border-radius: 9px; }
+.segmented.sm .seg { border: 0; background: none; font: inherit; font-size: 12px; font-weight: 700; color: var(--on-surface-variant); padding: 5px 11px; border-radius: 7px; cursor: pointer; }
+.segmented.sm .seg.on { background: var(--card-white, #fff); color: var(--primary); box-shadow: 0 1px 3px rgba(16,24,64,.12); }
+:root[data-theme="dark"] .segmented.sm .seg.on { background: var(--surface-container-high); color: var(--on-surface); }
+
 /* --- Needs attention --- */
 .na-body { display: flex; flex-direction: column; }
 .na-item { display: flex; align-items: center; gap: 10px; padding: 10px 6px; border-bottom: 1px solid var(--outline-variant); cursor: pointer; border-radius: 8px; transition: background .1s; }
