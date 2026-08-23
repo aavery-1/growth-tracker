@@ -42,8 +42,6 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="m15 10-2 2 2 2"/></svg>
       </button>
     </div>
-    <!-- Sidebar profile card (Weihu-style). Filled by updateUserBadge(). -->
-    <button class="sidebar-profile" id="cbUser" aria-label="Account menu"></button>
   </header>
 
   <main class="container">
@@ -57,8 +55,10 @@
       <div class="cb-search"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input id="cbSearch" type="search" placeholder="Search" autocomplete="off"></div>
       <div class="cb-actions">
         <button class="cb-iconbtn" id="cbActivityBtn" title="Activity" aria-label="Activity">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="cb-badge" id="cbActivityDot" hidden></span>
         </button>
+        <button class="cb-profile" id="cbUser" aria-label="Account menu"></button>
       </div>
     </div>
     <section class="view active" id="view-progress" role="tabpanel"></section>
@@ -69,7 +69,7 @@
   <div class="modal-backdrop" id="modalBackdrop">
     <div class="modal" role="dialog" aria-modal="true">
       <div class="modal-head"><h3 id="modalTitle">Milestone details</h3>
-        <button class="icon-btn" id="modalClose" aria-label="Close"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        <button class="icon-btn" id="modalClose" aria-label="Close"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
       </div>
       <div class="modal-body" id="modalBody"></div>
       <div class="modal-foot"><button class="btn btn-danger" id="modalDelete">Delete</button><div style="display:flex;gap:8px"><button class="btn btn-text" id="modalCancel">Cancel</button><button class="btn btn-filled" id="modalSave">Save</button></div></div>
@@ -78,7 +78,7 @@
 
   <div class="drawer-backdrop" id="drawerBackdrop"></div>
   <aside class="drawer" id="drawer" aria-label="Settings">
-    <div class="drawer-head"><h3>Sync &amp; settings</h3><button class="icon-btn" id="drawerClose" aria-label="Close"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="drawer-head"><h3>Sync &amp; settings</h3><button class="icon-btn" id="drawerClose" aria-label="Close"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
     <div class="drawer-body" id="drawerBody"></div>
   </aside>
 
@@ -92,7 +92,7 @@
 
   <!-- Activity Log Sidebar -->
   <aside class="activity-panel" id="activityPanel">
-    <div class="activity-head"><h4>Activity</h4><button class="icon-btn activity-close" id="activityClose" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="activity-head"><h4>Activity</h4><button class="icon-btn activity-close" id="activityClose" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
     <div class="activity-body" id="activityBody"></div>
   </aside>
 

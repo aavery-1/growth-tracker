@@ -1106,13 +1106,13 @@ body.edit-on .edit-pill { display: inline-flex; }
 /* ---- shared access gate ---- */
 .gate-screen{
   position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:24px;
-  background:#16357F url('assets/landing-bg.jpg') center/cover no-repeat;
+  background:linear-gradient(150deg,#1E45A8 0%,#16357F 45%,#0B1944 100%);
 }
 .gate-screen::before{
   content:'';position:absolute;inset:0;
-  /* Lighter gradient so the photo actually reads through it. Card side is
-     kept a touch darker to guarantee contrast under the sign-in card. */
-  background:linear-gradient(105deg,rgba(11,25,68,.55) 0%,rgba(11,25,68,.30) 55%,rgba(11,25,68,.15) 100%);
+  background:
+    radial-gradient(60% 55% at 18% 12%,rgba(90,140,255,.28),transparent 60%),
+    radial-gradient(50% 50% at 88% 90%,rgba(56,90,200,.30),transparent 62%);
 }
 .gate-screen > *{position:relative;z-index:1}
 .gate-card{width:min(400px,92vw);background:rgba(255,255,255,.97);border:1px solid rgba(255,255,255,.4);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.35),0 8px 24px rgba(0,0,0,.2);padding:34px 30px;text-align:center;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
@@ -3301,4 +3301,108 @@ b, strong { font-weight: 600; }
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+/* ============================================================
+   27. TOP BAR RESHAPE — Aug 23 2026
+   Account card lives top-right. Search breathes. On scroll the
+   greeting peels off and the profile compacts to just an avatar,
+   while search + actions stay put.
+   ============================================================ */
+
+/* Grid: greeting | search (breathing room) | actions.
+   The search column can shrink to nothing so it never crowds. */
+.content-bar {
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  gap: 24px !important;
+}
+
+/* Search: capped, left-aligned in its column, generous inner padding */
+.cb-search {
+  justify-self: start !important;
+  width: 100% !important;
+  max-width: 360px !important;
+  height: 42px !important;
+}
+.cb-search input { font-size: 14px !important; }
+
+/* Actions cluster: bell + account card */
+.cb-actions { gap: 10px !important; }
+
+/* Notification dot on the bell */
+.cb-iconbtn { position: relative !important; }
+.cb-badge {
+  position: absolute; top: 7px; right: 8px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--rag-r, #D62828);
+  box-shadow: 0 0 0 2px var(--card-white, #fff);
+}
+:root[data-theme="dark"] .cb-badge { box-shadow: 0 0 0 2px #111218; }
+
+/* Account card, top-right (replaces the old sidebar profile) */
+.cb-profile {
+  display: inline-flex !important; align-items: center; gap: 9px;
+  height: 42px; padding: 0 10px 0 6px;
+  border-radius: 999px;
+  background: var(--card-white, #fff);
+  border: 1px solid var(--outline-variant);
+  cursor: pointer;
+  transition: background .14s ease, border-color .14s ease, box-shadow .14s ease;
+  max-width: 220px; overflow: hidden;
+}
+.cb-profile:hover {
+  border-color: var(--outline);
+  box-shadow: 0 1px 2px rgba(16,24,64,.05), 0 4px 12px rgba(16,24,64,.07);
+}
+:root[data-theme="dark"] .cb-profile { background: var(--surface-container); }
+.cb-profile .sp-avatar {
+  width: 30px !important; height: 30px !important; flex: 0 0 auto;
+  font-size: 11.5px !important; border-radius: 50%;
+}
+.cb-profile .sp-info {
+  display: flex; flex-direction: column; min-width: 0; line-height: 1.2;
+  transition: max-width .28s cubic-bezier(.2,0,0,1), opacity .2s ease, margin .28s ease;
+  max-width: 130px; overflow: hidden;
+}
+.cb-profile .sp-name {
+  font-size: 12.5px !important; font-weight: 600 !important;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cb-profile .sp-sub {
+  font-size: 11px !important; color: var(--on-surface-variant) !important;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cb-profile .sp-chev {
+  flex: 0 0 auto; width: 14px !important; height: 14px !important;
+  color: var(--on-surface-variant);
+  transition: opacity .2s ease, transform .2s ease;
+}
+
+/* --- Scroll state: greeting peels off, profile compacts --- */
+.cb-greeting {
+  transition: max-width .3s cubic-bezier(.2,0,0,1), opacity .22s ease,
+              transform .3s cubic-bezier(.2,0,0,1), margin .3s ease !important;
+  max-width: 340px; overflow: hidden;
+}
+.content-bar.scrolled .cb-greeting {
+  max-width: 0 !important; opacity: 0 !important;
+  transform: translateY(-8px) !important; margin: 0 !important;
+}
+.content-bar.scrolled .cb-profile .sp-info {
+  max-width: 0 !important; opacity: 0 !important; margin-left: -9px;
+}
+.content-bar.scrolled .cb-profile .sp-chev { opacity: 0; }
+.content-bar.scrolled .cb-profile { padding: 0 6px; }
+
+@media (max-width: 999px) {
+  /* On mobile the greeting is already hidden; keep account card avatar-only */
+  .cb-profile { max-width: 42px; padding: 0 6px; }
+  .cb-profile .sp-info, .cb-profile .sp-chev { display: none; }
+  .content-bar { grid-template-columns: 1fr auto !important; }
+  .cb-search { max-width: none !important; }
+}
+
+/* 28. TOP-BAR ICON CONSISTENCY: unify stroke weight (Material outline) */
+.cb-iconbtn svg, .cb-search svg {
+  stroke-width: 1.75 !important;
 }

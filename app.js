@@ -320,7 +320,7 @@ function activeCount() { let n = 0; ['states', 'types', 'markets', 'fys', 'areas
 function filterBar(menus, opts = {}) {
   // #fSearch removed - #cbSearch in the header content-bar is the single, wired search across every view
   const search = '';
-  const btns = menus.map(k => { const n = state.filters[k].size; return `<button class="fb-menu ${n ? 'on' : ''}" data-fmenu="${k}"><span>${FILTER_LABEL[k]}</span>${n ? `<span class="fb-count">${n}</span>` : ''}<svg class="fb-chev" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg></button>`; }).join('');
+  const btns = menus.map(k => { const n = state.filters[k].size; return `<button class="fb-menu ${n ? 'on' : ''}" data-fmenu="${k}"><span>${FILTER_LABEL[k]}</span>${n ? `<span class="fb-count">${n}</span>` : ''}<svg class="fb-chev" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button>`; }).join('');
   const school = opts.school ? `<select id="dashSchool" class="fb-select"><option value="">All schools</option>${state.data.schools.filter(s => s.openingFY && schoolFacetPass(s, null) && (!state.filters.fys.size || state.filters.fys.has(s.openingFY))).sort((a, b) => (a.openingFY - b.openingFY) || a.market.localeCompare(b.market)).map(s => `<option value="${s.id}" ${state.filters.schoolId === s.id ? 'selected' : ''}>${esc(s.market)} · ${esc(s.display_label)}</option>`).join('')}</select>` : '';
   return `<div class="filterbar" id="filterbar"><span class="fb-label">Filters</span>${search}${btns}${school}<button class="fb-clear ${activeCount() ? '' : 'is-empty'}" id="clearFilters"${activeCount() ? '' : ' disabled'}>Clear all</button><span class="fb-spacer"></span>${opts.right || ''}</div>`;
 }
@@ -397,7 +397,7 @@ function renderTimeline() {
   // No H2 - sidebar already indicates active page. Action button floats right.
   const el = $('#view-timeline'); if (el) el.innerHTML = `
     <div class="view-actions">
-      <button class="btn btn-filled" id="addSchool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>Add school opening</button>
+      <button class="btn btn-filled" id="addSchool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>Add school opening</button>
     </div>
     ${filterBar(['states', 'markets', 'types'])}
     ${openingYearBar()}
@@ -411,7 +411,7 @@ function renderTimeline() {
    TAB 2 - PROGRESS MONITORING (collapsible)
    ============================================================ */
 function isExp(k) { return !!state.expanded[k]; }
-function chev(open) { return `<svg class="chev ${open ? 'open' : ''}" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 18 6-6-6-6"/></svg>`; }
+function chev(open) { return `<svg class="chev ${open ? 'open' : ''}" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>`; }
 
 function pmItem(m) {
   const open = isExp('it:' + m.id), es = effectiveStatus(m), pcol = SM(es).color;
@@ -605,7 +605,7 @@ function renderPlan() {
   const viewSel = isBoard ? '' : `<label class="tb-group ${state.planFocus ? 'is-dim' : ''}">Group by
     <select id="planGroupSel" ${state.planFocus ? 'disabled' : ''}>${[['team', 'Workstream'], ['school', 'School opening'], ['market', 'Market'], ['year', 'Year']].map(([v, l]) => `<option value="${v}" ${state.planGroup === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`;
   const expandBtns = (!state.planFocus && !isBoard) ? `<button class="btn btn-ghost btn-sm" id="planExpandAll">Expand all</button><button class="btn btn-ghost btn-sm" id="planCollapseAll">Collapse all</button>` : '';
-  const right = `${viewToggle}${focusBtn}${viewSel}${expandBtns}<button class="btn btn-filled" id="newItem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>New milestone</button>`;
+  const right = `${viewToggle}${focusBtn}${viewSel}${expandBtns}<button class="btn btn-filled" id="newItem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>New milestone</button>`;
   // No H2 - all actions live in the filter bar's right slot.
   $('#view-plan').innerHTML = `
     ${filterBar(['states', 'markets', 'fys', 'areas'], { school: true, right })}
@@ -833,7 +833,7 @@ function greetBanner(list) {
   const name = currentDisplayName();
   const myCount = name ? myOpenTasks(list, name).length : 0;
   if (!myCount) return '';
-  return `<div class="dash-mypill"><button class="db-pill" data-drillmine="1"><span class="db-pill-n">${myCount}</span>${myCount === 1 ? ' task assigned to you' : ' tasks assigned to you'}<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div>`;
+  return `<div class="dash-mypill"><button class="db-pill" data-drillmine="1"><span class="db-pill-n">${myCount}</span>${myCount === 1 ? ' task assigned to you' : ' tasks assigned to you'}<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div>`;
 }
 
 /* Tasks assigned to the current user. Exact owner match, then last-name fallback
@@ -1832,6 +1832,14 @@ function logActivity(action, detail, extra) {
   if (log.length > 100) log.splice(0, log.length - 100);
   try { lsSet('ngc_activity', JSON.stringify(log)); } catch (e) {}
   renderActivityPanel();
+  updateActivityDot();
+}
+function updateActivityDot() {
+  const dot = $('#cbActivityDot'); if (!dot) return;
+  const log = getActivityLog();
+  const seen = Number(lsGet('ngc_activity_seen') || 0);
+  const last = log.length ? log[log.length - 1].ts : 0;
+  dot.hidden = !(last > seen);
 }
 /* Material-style single-color glyphs (outlined, 1.75 stroke, 14px). */
 function activityIcon(action) {
@@ -1863,8 +1871,10 @@ function renderActivityPanel() {
 }
 function toggleActivity() {
   const panel = $('#activityPanel'); if (!panel) return;
+  const opening = !panel.classList.contains('open');
   panel.classList.toggle('open');
   renderActivityPanel();
+  if (opening) { try { lsSet('ngc_activity_seen', String(Date.now())); } catch (e) {} updateActivityDot(); }
 }
 
 /* ============================================================
@@ -2022,6 +2032,7 @@ function bootApp() {
   updateGreeting();
   const ac = $('#activityClose'); if (ac) ac.addEventListener('click', toggleActivity);
   renderActivityPanel();
+  updateActivityDot();
   window.addEventListener('popstate', () => setView((location.hash || '').replace('#', '') || 'progress', true));
   const initial = (location.hash || '').replace('#', '');
   setView(VIEWS.includes(initial) ? initial : 'progress', true);
