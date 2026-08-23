@@ -1110,8 +1110,9 @@ body.edit-on .edit-pill { display: inline-flex; }
 }
 .gate-screen::before{
   content:'';position:absolute;inset:0;
-  background:linear-gradient(135deg,rgba(11,25,68,.72) 0%,rgba(11,25,68,.55) 45%,rgba(22,53,127,.4) 100%);
-  backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);
+  /* Lighter gradient so the photo actually reads through it. Card side is
+     kept a touch darker to guarantee contrast under the sign-in card. */
+  background:linear-gradient(105deg,rgba(11,25,68,.55) 0%,rgba(11,25,68,.30) 55%,rgba(11,25,68,.15) 100%);
 }
 .gate-screen > *{position:relative;z-index:1}
 .gate-card{width:min(400px,92vw);background:rgba(255,255,255,.97);border:1px solid rgba(255,255,255,.4);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.35),0 8px 24px rgba(0,0,0,.2);padding:34px 30px;text-align:center;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
@@ -2101,84 +2102,73 @@ body.nav-collapsed #navToggle svg { transform: scaleX(-1); }
 
 
 /* ============================================================
-   LEVEL-UP POLISH v2 - Aug 22 2026
-   Photo banner · rich user chip · KPI tone system · overdue scroll
+   LEVEL-UP POLISH v3 - Aug 22 2026
+   Elegant typography banner (no photo) · fixed top-right user chip
+   · KPI tone system · Workload/Overdue equal-height pair
    · extended search · responsive typography · avatar palette
-   Everything here earns its place - dropped My-tasks card and
-   Recent-activity card as redundant with the banner pill and the
-   existing slide-out Activity panel.
+   The photo lives on the sign-in page where it earns its size.
    ============================================================ */
 
-/* Dashboard photo banner - replaces the plain greeting header. Uses the
-   landing photo behind a navy gradient so the greeting still contrasts. */
+/* Dashboard greeting - typography only. A subtle left accent stripe in the
+   brand color anchors it to the app without shouting. Reads as executive. */
 .dash-banner {
-  position: relative; overflow: hidden;
-  border-radius: 20px; margin: 4px 0 22px;
-  min-height: clamp(140px, 18vw, 200px);
-  background: #16357F url('assets/landing-bg.jpg') center 35% / cover no-repeat;
-  box-shadow: 0 1px 2px rgba(16,24,64,.06), 0 12px 30px rgba(16,24,64,.12);
-  isolation: isolate;
+  position: relative;
+  padding: 6px 0 18px 22px;
+  margin: 6px 0 22px;
+  border-left: 4px solid var(--primary);
+  display: flex; flex-direction: column; gap: 6px;
 }
-.db-tint {
-  position: absolute; inset: 0; z-index: 1;
-  background: linear-gradient(105deg, rgba(11,25,68,.86) 0%, rgba(22,53,127,.72) 45%, rgba(22,53,127,.42) 100%);
+.db-eyebrow {
+  font-size: 11.5px; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--on-surface-variant);
 }
-.db-inner {
-  position: relative; z-index: 2;
-  padding: clamp(20px, 3.2vw, 34px) clamp(22px, 3.6vw, 40px);
-  color: #fff;
-  display: flex; flex-direction: column; gap: 10px;
-  min-height: inherit; justify-content: center;
-}
-.db-eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; opacity: .78; }
 .dash-banner h1 {
-  color: #fff; margin: 0; line-height: 1.1;
-  font-size: clamp(24px, 3.4vw, 38px); font-weight: 600; letter-spacing: -.4px;
+  color: var(--on-surface); margin: 0; line-height: 1.1;
+  font-size: clamp(28px, 3.6vw, 40px); font-weight: 600; letter-spacing: -.6px;
 }
-.dash-banner .db-name { color: #FFD3A6; }
+.dash-banner .db-name { color: var(--primary); }
+.db-pillrow { margin-top: 8px; }
 .db-pill {
-  align-self: flex-start; margin-top: 6px;
   display: inline-flex; align-items: center; gap: 8px;
-  height: 36px; padding: 0 14px 0 8px;
-  border: 0; border-radius: 999px;
-  background: rgba(255,255,255,.16); color: #fff;
+  height: 34px; padding: 0 14px 0 6px;
+  border: 1px solid var(--outline-variant); border-radius: 999px;
+  background: var(--surface-container-lowest); color: var(--on-surface);
   font: inherit; font-size: 13px; font-weight: 500; cursor: pointer;
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-  transition: background .15s;
+  transition: background .12s, box-shadow .12s, border-color .12s;
 }
-.db-pill:hover { background: rgba(255,255,255,.26); }
+.db-pill:hover { background: var(--surface-container-low); border-color: var(--outline); box-shadow: 0 1px 3px rgba(16,24,64,.06); }
 .db-pill .db-pill-n {
   display: inline-flex; align-items: center; justify-content: center;
   width: 24px; height: 24px; border-radius: 50%;
-  background: #FFD3A6; color: #16357F; font-weight: 800; font-size: 12px;
+  background: var(--primary); color: var(--on-primary); font-weight: 800; font-size: 12px;
 }
-@media (max-width: 640px) { .dash-banner { min-height: 130px; margin-bottom: 16px; } }
 
-/* Content-bar user chip - richer than a bare initials button */
-#cbUser.cb-user-rich {
-  display: inline-flex; align-items: center; gap: 10px;
-  width: auto; height: 40px; padding: 4px 12px 4px 4px;
-  border-radius: 999px;
-  background: var(--surface-container-low); border: 1px solid var(--outline-variant);
-  color: var(--on-surface); cursor: pointer; transition: background .12s, box-shadow .12s;
-  flex-shrink: 0;
-}
-#cbUser.cb-user-rich:hover { background: var(--surface-container); box-shadow: 0 1px 3px rgba(16,24,64,.06); }
-.cb-user-avatar {
-  width: 32px; height: 32px; border-radius: 50%;
+/* User chip: fixed to viewport top-right, initials-only circle.
+   Sits above everything, always reachable. Click opens the user menu. */
+#cbUser.cb-user-fixed {
+  position: fixed; top: 14px; right: 22px; z-index: 90;
+  width: 40px; height: 40px; padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-lowest);
+  cursor: pointer; overflow: hidden;
+  box-shadow: 0 1px 3px rgba(16,24,64,.08), 0 4px 12px rgba(16,24,64,.08);
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700; color: #fff; letter-spacing: .02em; flex-shrink: 0;
+  transition: transform .12s, box-shadow .12s;
 }
-.cb-user-info { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; }
-.cb-user-info b { font-size: 13px; font-weight: 600; color: var(--on-surface); }
-.cb-user-info small { font-size: 10px; font-weight: 600; color: var(--on-surface-variant); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
-@media (max-width: 720px) { .cb-user-info { display: none; } #cbUser.cb-user-rich { padding: 4px; } }
+#cbUser.cb-user-fixed:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(16,24,64,.10), 0 8px 20px rgba(16,24,64,.12); }
+.cb-user-avatar {
+  width: 100%; height: 100%; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; color: #fff; letter-spacing: .02em;
+}
+.cb-user-info { display: none !important; }
 
-/* Extend the content-bar search so it fills available width; breadcrumb goes
-   because the sidebar already tells you which page you're on. */
+/* Content-bar: search now fills the remaining space since the user chip
+   left the row (breadcrumb was already redundant with the sidebar). */
 @media (min-width: 720px) {
   .cb-crumb { display: none !important; }
-  .cb-search { flex: 1; min-width: 0; width: 100%; max-width: 640px; height: 40px; }
+  .cb-search { flex: 1; min-width: 0; width: 100%; max-width: none; height: 40px; margin-right: 60px; }
   .content-bar { gap: 14px; }
 }
 .cb-search input { font-size: 14px; }
@@ -2187,32 +2177,33 @@ body.nav-collapsed #navToggle svg { transform: scaleX(-1); }
 .owner-avatar.painted, .cb-user-avatar.painted { color: #fff !important; }
 .owner-avatar.unassigned, .owner-avatar[data-empty="1"] { background: var(--surface-container-high) !important; color: var(--on-surface-variant) !important; }
 
-/* KPI icon tones - one hue per meaning, matches the reference dashboards. */
+/* KPI icon tones - one hue per meaning */
 .kcard2 .k-ic { transition: transform .15s, background .15s; }
 button.kcard2:hover .k-ic { transform: scale(1.06); }
 .kcard2.k-tone-ok   .k-ic { background: #E4F6EA; color: #1E7A3D; }
 .kcard2.k-tone-warn .k-ic { background: #FDF1DF; color: #B36A00; }
 .kcard2.k-tone-nav  .k-ic { background: rgba(22,53,127,.10); color: #16357F; }
 .kcard2.k-tone-err  .k-ic { background: #FDECEA; color: #C0341F; }
-/* keep the number reddened only when the count is actually bad (k-alert set) */
 .kcard2.k-alert .k-num { color: #C0341F; }
 
-/* Fix the Overdue card: bottom-align with the left stack, scroll inside if
-   its list is longer than the space the stack leaves for it. */
-.dash-pair > .ex-card:last-child { max-height: 100%; }
-.dash-pair > .ex-card:last-child > .ex-card-body { max-height: 520px; overflow-y: auto; padding-right: 4px; }
-.dash-pair > .ex-card:last-child > .ex-card-body::-webkit-scrollbar { width: 8px; }
-.dash-pair > .ex-card:last-child > .ex-card-body::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 999px; }
-.dash-pair > .ex-card:last-child > .ex-card-body::-webkit-scrollbar-thumb:hover { background: var(--outline); }
+/* Workload | Overdue pair: guarantee equal heights, both cards scroll
+   internally if their content overflows the shared row height. */
+.dash-pair { grid-template-columns: 1fr 1fr; align-items: stretch; }
+.dash-pair > .ex-card { display: flex; flex-direction: column; min-width: 0; max-height: 100%; }
+.dash-pair > .ex-card > .ex-card-body { flex: 1 1 auto; max-height: 520px; overflow-y: auto; padding-right: 4px; }
+.dash-pair > .ex-card > .ex-card-body::-webkit-scrollbar { width: 8px; }
+.dash-pair > .ex-card > .ex-card-body::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 999px; }
+.dash-pair > .ex-card > .ex-card-body::-webkit-scrollbar-thumb:hover { background: var(--outline); }
+@media (max-width: 900px) { .dash-pair { grid-template-columns: 1fr; } }
 
-/* Responsive: container breathes on wider screens, section title scales */
+/* Responsive: container breathes on wider screens */
 .container { max-width: min(1440px, 96vw); }
 .dash-banner h1, .view-head h2 { text-wrap: balance; }
 
 /* Dark-mode overrides */
-:root[data-theme="dark"] .dash-banner { box-shadow: 0 1px 2px rgba(0,0,0,.5), 0 12px 30px rgba(0,0,0,.4); }
-:root[data-theme="dark"] #cbUser.cb-user-rich { background: var(--surface-container); border-color: var(--outline-variant); }
-:root[data-theme="dark"] #cbUser.cb-user-rich:hover { background: var(--surface-container-high); }
+:root[data-theme="dark"] #cbUser.cb-user-fixed { background: var(--surface-container-high); border-color: var(--outline-variant); }
+:root[data-theme="dark"] .db-pill { background: var(--surface-container); }
+:root[data-theme="dark"] .db-pill:hover { background: var(--surface-container-high); }
 :root[data-theme="dark"] .kcard2.k-tone-ok   .k-ic { background: rgba(30,122,61,.22); color: #7EDDA1; }
 :root[data-theme="dark"] .kcard2.k-tone-warn .k-ic { background: rgba(179,106,0,.24); color: #F5C177; }
 :root[data-theme="dark"] .kcard2.k-tone-nav  .k-ic { background: rgba(180,197,255,.16); color: #B4C5FF; }

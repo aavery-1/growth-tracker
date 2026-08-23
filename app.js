@@ -793,7 +793,7 @@ function dashboardHtml(list) {
   const rOpen2 = !state.expanded['dash:risks'];
   const upcomingCard = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:priorities"><div class="ex-cardhead-l">${chev(pOpen)}<h3>Key Milestones · Next 90 Days</h3></div><span class="dash-count">${upcoming.length}</span></div>
     <div class="ex-card-body ${pOpen ? '' : 'hide'}">${upcoming.length ? `<div class="ex-list">${upcoming.map(m => exLi(m, m.greenlight ? '◆ ' : m.transition ? '⇄ ' : '')).join('')}</div>` : '<div class="muted ex-empty">Nothing due in the next 90 days.</div>'}</div></section>`;
-  const risksCard = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:risks"><div class="ex-cardhead-l">${chev(rOpen2)}<h3>Overdue</h3></div><span class="dash-count ${stuck.length ? 'bad' : ''}">${stuck.length}</span></div>
+  const risksCard = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:risks"><div class="ex-cardhead-l">${chev(rOpen2)}<h3>Overdue Milestones</h3></div><span class="dash-count ${stuck.length ? 'bad' : ''}">${stuck.length}</span></div>
     <div class="ex-card-body ${rOpen2 ? '' : 'hide'}">${stuck.length ? `<div class="ex-list">${stuck.map(m => exLi(m, m.status === 'blocked' ? '⛔ ' : '')).join('')}</div>` : '<div class="muted ex-empty">Nothing blocked or overdue.</div>'}</div></section>`;
 
   // GROWTH FUNDRAISING
@@ -810,23 +810,32 @@ function dashboardHtml(list) {
   const statusLegend = `<div class="pl-legend pl-legend-sm">${STATUS_ORDER.filter(s => list.some(m => effectiveStatus(m) === s)).map(s => `<span class="pl-leg"><i style="background:${SM(s).color}"></i>${SM(s).label}</span>`).join('')}</div>`;
   const workload = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:workload"><div class="ex-cardhead-l">${chev(wOpen)}<h3>Milestone Workload by Year</h3></div></div><div class="ex-card-body ${wOpen ? '' : 'hide'}">${statusLegend}${columnChart(list)}</div></section>`;
 
-  return `<div class="dash">${greetBanner(list)}${kpiStrip}${hero}${statusPipeline(list)}${readiness}${upcomingCard}<div class="dash-pair"><div class="dash-lstack">${capital}${workload}</div>${risksCard}</div></div>`;
+  // Info hierarchy (thoughtful order for Chiefs/Board):
+  //   1. Banner - orientation
+  //   2. KPI strip - top-line health
+  //   3. Cohort strip - portfolio horizon
+  //   4. Status pipeline - visual distribution
+  //   5. Key Milestones next 90d - actionable near-term (default open)
+  //   6. Readiness grid - full portfolio deep-dive (default open)
+  //   7. Growth Fundraising - capital context (default open)
+  //   8. Workload | Overdue Milestones - side by side, equal height (default open)
+  return `<div class="dash">${greetBanner(list)}${kpiStrip}${hero}${statusPipeline(list)}${upcomingCard}${readiness}${capital}<div class="dash-pair">${workload}${risksCard}</div></div>`;
 }
 
-/* Photo-backed banner: greeting + date. If the signed-in user has open tasks
-   assigned to them, a compact "You have N tasks" pill appears inline. Everything
-   else personal was pruned: Chiefs read this dashboard, they don't manage from it. */
+/* Elegant greeting header - typography only, no photo. The photo lives on
+   the sign-in page where it earns its size. Here we want an executive read:
+   welcome, date, and (only when relevant) an inline pill to your tasks. */
 function greetBanner(list) {
   const name = currentDisplayName();
   const first = (name || '').split(/\s+/)[0];
   const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const myCount = name ? myOpenTasks(list, name).length : 0;
   const pill = myCount ? `<button class="db-pill" data-drillmine="1"><span class="db-pill-n">${myCount}</span>${myCount === 1 ? ' task assigned to you' : ' tasks assigned to you'}<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>` : '';
-  return `<header class="dash-banner"><div class="db-tint"></div><div class="db-inner">
+  return `<header class="dash-banner">
     <div class="db-eyebrow">${esc(dateStr)}</div>
     <h1>${esc(timeGreeting())}${first ? `, <span class="db-name">${esc(first)}</span>` : ''}</h1>
-    ${pill}
-  </div></header>`;
+    ${pill ? `<div class="db-pillrow">${pill}</div>` : ''}
+  </header>`;
 }
 
 /* Tasks assigned to the current user. Exact owner match, then last-name fallback
@@ -1674,8 +1683,9 @@ function updateUserBadge() {
   const name = (p && (p.full_name || p.email)) || lsGet('ngc_author') || '';
   const initials = userInitials(name);
   const role = p ? (p.role || 'viewer') : (name ? 'guest' : '');
-  btn.classList.add('cb-user-rich');
-  btn.innerHTML = `<span class="cb-user-avatar" data-seed="${esc(name || 'anon')}">${esc(initials)}</span>${name ? `<span class="cb-user-info"><b>${esc(name.split(/\s+/)[0])}</b><small>${esc(role)}</small></span>` : `<span class="cb-user-info"><b>Sign in</b><small>Set name</small></span>`}`;
+  // Compact: just the initials circle. Fixed to viewport top-right via CSS.
+  btn.classList.add('cb-user-fixed');
+  btn.innerHTML = `<span class="cb-user-avatar" data-seed="${esc(name || 'anon')}">${esc(initials || '?')}</span>`;
   btn.title = name ? `${name} · ${role}\nClick for menu` : 'Set your name';
   if (p) btn.dataset.authed = '1'; else delete btn.dataset.authed;
   paintAvatars(btn);
