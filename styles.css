@@ -1104,8 +1104,17 @@ body.edit-on .edit-pill { display: inline-flex; }
 .ptag.prio i{width:6px;height:6px;border-radius:50%}
 
 /* ---- shared access gate ---- */
-.gate-screen{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--surface);background-image:radial-gradient(1200px 600px at 50% -10%,color-mix(in srgb,var(--primary) 12%,transparent),transparent)}
-.gate-card{width:min(400px,92vw);background:var(--surface-container-low);border:1px solid var(--outline-variant);border-radius:20px;box-shadow:var(--elev-3);padding:34px 30px;text-align:center}
+.gate-screen{
+  position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:#16357F url('assets/landing-bg.jpg') center/cover no-repeat;
+}
+.gate-screen::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(11,25,68,.72) 0%,rgba(11,25,68,.55) 45%,rgba(22,53,127,.4) 100%);
+  backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);
+}
+.gate-screen > *{position:relative;z-index:1}
+.gate-card{width:min(400px,92vw);background:rgba(255,255,255,.97);border:1px solid rgba(255,255,255,.4);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.35),0 8px 24px rgba(0,0,0,.2);padding:34px 30px;text-align:center;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
 .gate-logo{max-width:min(260px,78%);width:auto;height:auto;margin:0 auto 20px;display:block}
 :root[data-theme="dark"] .gate-logo{filter:brightness(0) invert(1)}
 .gate-card h1{font-size:20px;font-weight:700;margin-bottom:8px;color:var(--on-surface)}
