@@ -1919,6 +1919,22 @@ body.nav-collapsed #navToggle svg { transform: scaleX(-1); }
 /* Legend chips: subordinate labels stay quiet */
 .pl-legend-sm { font-size: 11.5px; margin-bottom: 14px; letter-spacing: .01em; }
 
+/* ---------- Cross-view navigation affordances ---------- */
+.sm-summary { justify-content: space-between; }
+.sm-summary-r { display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.sm-openplan { padding: 4px 10px !important; font-size: 12.5px !important; font-weight: 600 !important; border-radius: 8px !important; }
+.sm-openplan:hover { background: color-mix(in srgb, var(--primary) 8%, transparent) !important; }
+
+.sm-school-links { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 4px 0 10px; font-size: 12.5px; color: var(--on-surface-variant); align-items: center; }
+.sm-school-links::before { content: none; }
+.sm-school-link { background: transparent; border: 1px solid var(--outline-variant); color: var(--primary); font: inherit; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; cursor: pointer; transition: background .12s, border-color .12s; }
+.sm-school-link:hover { background: color-mix(in srgb, var(--primary) 8%, transparent); border-color: var(--primary); }
+
+.cb-app:hover, #cbPage:hover { color: var(--primary); }
+
+.activity-item.activity-clickable { cursor: pointer; transition: background .1s; border-radius: 6px; }
+.activity-item.activity-clickable:hover { background: var(--surface-container-high); }
+
 /* Collapsed-nav brand icon: darker navy so the K reads clearly on the white rail */
 .brand-icon {
   background: #16357F;

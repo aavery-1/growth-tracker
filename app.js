@@ -765,8 +765,7 @@ function refreshResults() { refreshBody(); }
 function addItem() {
   snapshotForUndo('Create new milestone');
   const m = { id: uid(), state: 'NJ', market: 'Paterson', team: teams()[0], functional_area: teams()[0], workstream: 'General', activity: 'New milestone', schools: [], schoolIds: [], targetFY: currentFY(), targetQuarter: '', openingFY: null, due_date: null, status: 'not_started', stage: 'to_do', progress_percent: 0, priority: 'medium', owner: '', dependency: '', keyMilestone: false, greenlight: false, transition: false, notes: '', tags: [] };
-  logActivity('create', 'Created new milestone');
-  M().push(m); autosave(); openModal(m.id);
+  M().push(m); autosave(); logActivity('create', 'Created new milestone', { itemId: m.id }); openModal(m.id);
 }
 
 /* popovers */
@@ -789,13 +788,15 @@ function openModal(id) {
   $('#modalTitle').textContent = 'Milestone details';
   const opt = (arr, val) => arr.map(x => Array.isArray(x) ? `<option value="${x[0]}" ${x[0] === val ? 'selected' : ''}>${esc(x[1])}</option>` : `<option ${x === val ? 'selected' : ''}>${esc(x)}</option>`).join('');
   const schoolChecks = state.data.schools.filter(s => s.market === m.market).map(s => `<label class="field-check"><input type="checkbox" class="m-school" value="${esc(s.id)}" ${(m.schoolIds || []).includes(s.id) ? 'checked' : ''}> ${esc(s.display_label)} <span class="muted">${esc(fyLabel(s.openingFY))}</span></label>`).join('') || '<span class="muted">No schools in this market.</span>';
+  const linked = (m.schoolIds || []).map(id => schoolById(id)).filter(Boolean);
+  const schoolLinks = linked.length ? `<div class="sm-school-links">Linked schools: ${linked.map(s => `<button class="sm-school-link" data-openschool="${esc(s.id)}" title="Open ${esc(s.display_label)}">${esc(s.market)} · ${esc(s.display_label)} →</button>`).join('')}</div>` : '';
   $('#modalBody').innerHTML = `
     <div class="field"><label>Milestone</label><textarea id="mAct">${esc(m.activity)}</textarea></div>
     <div class="field-row"><div class="field"><label>Owner</label><input id="mOwner" list="ownerRoster" value="${esc(m.owner)}" placeholder="Pick from the team or type a name"><datalist id="ownerRoster">${(meta().owners || []).map(o => `<option value="${esc(o.name)}">${esc(o.role || '')}</option>`).join('')}</datalist></div><div class="field"><label>Due date</label><input id="mDue" type="date" value="${esc(m.due_date || '')}"></div></div>
     <div class="field"><label>Status</label><select id="mStatus">${opt(meta().statuses.map(s => [s, SM(s).label]), m.status)}</select>
       <div class="help-text">Overdue or due-this-month milestones flag automatically, even if marked "On track."</div></div>
     <div class="field-row"><div class="field"><label>Market / location</label><select id="mMarket">${opt(markets(), m.market)}</select></div><div class="field"><label>Workstream</label><select id="mTeam">${opt(teams(), m.functional_area)}</select></div></div>
-    <div class="field"><label>School(s) this belongs to</label><div id="mSchools" class="check-box">${schoolChecks}</div></div>
+    <div class="field"><label>School(s) this belongs to</label>${schoolLinks}<div id="mSchools" class="check-box">${schoolChecks}</div></div>
     <div class="field"><label>Notes / next steps</label><textarea id="mNotes">${esc(m.notes)}</textarea></div>
     <details class="sm-details"><summary>More options</summary>
       <div class="field"><label>Detail / sub-workstream</label><input id="mWs" value="${esc(m.workstream)}"></div>
@@ -822,7 +823,7 @@ function saveModal() {
   m.owner = $('#mOwner').value.trim(); m.due_date = $('#mDue').value || null; m.dependency = $('#mDep').value.trim();
   m.notes = $('#mNotes').value.trim(); m.keyMilestone = $('#mKey').checked; m.transition = $('#mTrans').checked;
   const os = m.schoolIds.length ? schoolById(m.schoolIds[0]) : null; if (os) m.openingFY = os.openingFY;
-  logActivity('edit', 'Updated: ' + m.activity);
+  logActivity('edit', 'Updated: ' + m.activity, { itemId: m.id });
   autosave(); closeModal(); rerender(); toast('Saved', 'ok');
 }
 function deleteModal() {
@@ -867,7 +868,8 @@ function openSchoolModal(id) {
   const roll = sm.length ? rollupStatus(sm) : 'not_started';
   const taskList = sm.length ? sm.slice().sort(bySortUrgency).map(m => `<div class="sm-task" data-expand="${m.id}">${statusDot(effectiveStatus(m))}<span class="sm-t-title">${esc(m.activity)}</span><span class="sm-t-team">${esc(m.functional_area || '')}</span><span class="sm-t-due">${dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : '—')}</span></div>`).join('') : '<div class="muted" style="font-size:12.5px">No milestones yet — add the first one below.</div>';
   const summary = isNew ? '' : `<div class="sm-summary">
-    <span><span class="state-badge sm" style="background:${stColor(s.state)}">${esc(s.state)}</span> <b>${esc(s.market)}</b> · Fall ${s.openingFY - 1}</span><span class="muted">${sm.length} milestone${sm.length === 1 ? '' : 's'}</span></div>`;
+    <span><span class="state-badge sm" style="background:${stColor(s.state)}">${esc(s.state)}</span> <b>${esc(s.market)}</b> · Fall ${s.openingFY - 1}</span>
+    <span class="sm-summary-r"><span class="muted">${sm.length} milestone${sm.length === 1 ? '' : 's'}</span>${sm.length ? `<button class="btn btn-text btn-sm sm-openplan" data-openplanschool="${esc(s.id)}" title="See this school's tasks in the Project Plan (filtered)">Open in Project Plan →</button>` : ''}</span></div>`;
   // plain calendar year — a school with openingFY=2028 opens in August 2027, so we show "2027"
   const fyField = `<div class="field"><label>Opens in — August of…</label><select id="sFy">${fyList().map(fy => `<option value="${fy}" ${s.openingFY === fy ? 'selected' : ''}>${fy - 1}</option>`).join('')}</select></div>`;
   const qField = `<div class="field"><label>Opening quarter</label><select id="sQ">${opt(['Q1', 'Q2', 'Q3', 'Q4'], s.openingQuarter || 'Q1')}</select></div>`;
@@ -1178,6 +1180,8 @@ function wireEvents() {
   $('#modalBody').addEventListener('click', e => {
     if (e.target.closest('#noteAdd')) return postNote(e.target.closest('.notes-field'));
     if (e.target.closest('#addTaskForSchool')) { taskReturnSchool = schoolId; return addTaskForSchool(); }
+    const op = e.target.closest('[data-openplanschool]'); if (op) { closeModal(); clearFilters(); state.filters.schoolId = op.dataset.openplanschool; setView('plan'); return; }
+    const os = e.target.closest('[data-openschool]'); if (os) { closeModal(); return openSchoolModal(os.dataset.openschool); }
     const ex = e.target.closest('[data-expand]'); if (ex) { if (modalMode === 'school') taskReturnSchool = schoolId; return openModal(ex.dataset.expand); }
   });
   $('#modalBody').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'noteInput') { e.preventDefault(); postNote(e.target.closest('.notes-field')); } });
@@ -1192,7 +1196,7 @@ function wireEvents() {
   document.addEventListener('dragend', e => { const c = e.target.closest('.kcard'); if (c) c.classList.remove('dragging'); $$('.kcol-body.over').forEach(b => b.classList.remove('over')); });
   document.addEventListener('dragover', e => { const b = e.target.closest('.kcol-body'); if (b) { e.preventDefault(); b.classList.add('over'); } });
   document.addEventListener('dragleave', e => { const b = e.target.closest('.kcol-body'); if (b && !b.contains(e.relatedTarget)) b.classList.remove('over'); });
-  document.addEventListener('drop', e => { const b = e.target.closest('.kcol-body'); if (b) { e.preventDefault(); b.classList.remove('over'); const m = findM(e.dataTransfer.getData('text/plain')); if (m && m.stage !== b.dataset.kstage) { snapshotForUndo('Move task: ' + (m.activity || '').slice(0, 30)); logActivity('move', `Moved "${m.activity}" to ${b.dataset.kstage}`); m.stage = b.dataset.kstage; if (m.stage === 'complete') { m.status = 'complete'; m.progress_percent = 100; } autosave(); refreshResults(); } } });
+  document.addEventListener('drop', e => { const b = e.target.closest('.kcol-body'); if (b) { e.preventDefault(); b.classList.remove('over'); const m = findM(e.dataTransfer.getData('text/plain')); if (m && m.stage !== b.dataset.kstage) { snapshotForUndo('Move task: ' + (m.activity || '').slice(0, 30)); logActivity('move', `Moved "${m.activity}" to ${b.dataset.kstage}`, { itemId: m.id }); m.stage = b.dataset.kstage; if (m.stage === 'complete') { m.status = 'complete'; m.progress_percent = 100; } autosave(); refreshResults(); } } });
 
   $('.container').addEventListener('click', e => {
     const fm = e.target.closest('.fb-menu'); if (fm) return openFilterMenu(fm, fm.dataset.fmenu);
@@ -1348,8 +1352,13 @@ function renderActivityPanel() {
   body.innerHTML = log.map(e => {
     const when = fmtWhen(e.ts);
     const who = e.author ? `<b>${esc(e.author)}</b> · ` : '';
-    return `<div class="activity-item"><span class="activity-ic">${activityIcon(e.action)}</span><div class="activity-detail">${who}<span class="activity-what">${esc(e.detail)}</span><span class="activity-when">${esc(when)}</span></div></div>`;
+    const itemId = e.extra && e.extra.itemId;
+    const stillExists = itemId && findM(itemId);
+    const cls = stillExists ? 'activity-item activity-clickable' : 'activity-item';
+    const attr = stillExists ? ` data-openitem="${esc(itemId)}" title="Open this milestone"` : '';
+    return `<div class="${cls}"${attr}><span class="activity-ic">${activityIcon(e.action)}</span><div class="activity-detail">${who}<span class="activity-what">${esc(e.detail)}</span><span class="activity-when">${esc(when)}</span></div></div>`;
   }).join('');
+  body.onclick = ev => { const it = ev.target.closest('[data-openitem]'); if (it) openModal(it.dataset.openitem); };
 }
 function toggleActivity() {
   const panel = $('#activityPanel'); if (!panel) return;
@@ -1464,6 +1473,10 @@ function initContentBar() {
   }
   const cbSearch = $('#cbSearch');
   if (cbSearch) cbSearch.addEventListener('input', e => { state.filters.search = e.target.value; refreshBody(); });
+  const cbApp = document.querySelector('.cb-app');
+  if (cbApp) { cbApp.style.cursor = 'pointer'; cbApp.title = 'Return to Dashboard (clears filters)'; cbApp.addEventListener('click', () => { clearFilters(); setView('progress'); }); }
+  const cbPage = $('#cbPage');
+  if (cbPage) { cbPage.style.cursor = 'pointer'; cbPage.title = 'Clear active filters on this view'; cbPage.addEventListener('click', () => { if (activeCount()) { clearFilters(); rerender(); toast('Filters cleared', 'ok'); } }); }
 }
 function bootApp() {
   wireEvents();
