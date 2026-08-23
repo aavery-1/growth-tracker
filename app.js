@@ -528,8 +528,10 @@ function renderProgress() {
   const ac = activeCount();
   const filterToggle = `<button class="btn btn-ghost btn-sm fb-toggle ${ac ? 'on' : ''}" id="dashFilterToggle"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>Filters${ac ? ` <span class="fb-count">${ac}</span>` : ''}</button>`;
   const filtersOpen = state.dashFiltersOpen;
+  // No H2 here: the banner ("Good evening, Aden") IS this page's title.
+  // Actions row floats above the banner, right-aligned.
   $('#view-progress').innerHTML = `
-    <div class="view-head"><div><h2>Dashboard</h2></div><div class="vh-actions">${filterToggle}${printBtn}</div></div>
+    <div class="view-actions">${filterToggle}${printBtn}</div>
     <div class="dash-filters ${filtersOpen ? '' : 'hide'}" id="dashFilters">${filterBar(['states', 'markets', 'areas', 'statuses'], { school: true })}${openingYearBar()}</div>
     <div id="viewBody">${progressBodyHtml()}</div>`;
 }
@@ -780,7 +782,7 @@ function dashboardHtml(list) {
     return `<tr class="ex-band"><td colspan="${3 + tms.length}"><span class="state-badge" style="background:${stColor(st.code)}">${st.code}</span> ${esc(st.name)} <span class="muted">· ${rows.length} openings</span></td></tr>${body}`;
   }).join('');
   const rOpen = !state.expanded['dash:readiness'];
-  const readiness = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:readiness"><div class="ex-cardhead-l">${chev(rOpen)}<h3>Readiness by School &amp; Workstream</h3></div><button class="card-more" data-showmore="school">See all →</button></div>
+  const readiness = `<section class="ex-card" data-section="readiness"><div class="ex-card-head toggle" data-toggle="dash:readiness"><div class="ex-cardhead-l">${chev(rOpen)}<h3>Readiness by School &amp; Workstream</h3></div><button class="card-more" data-showmore="school">See all →</button></div>
     <div class="ex-card-body ${rOpen ? '' : 'hide'}"><div class="ex-legend ex-legend-top"><span><i class="rag" style="background:${RAG.none}"></i>Not started</span><span><i class="rag" style="background:${RAG.blue}"></i>On track</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind</span><span><i class="rag" style="background:${RAG.green}"></i>Complete</span></div>
     <div class="ex-grid-wrap"><table class="ex-grid"><thead><tr><th>School</th><th>Opens</th><th>Overall</th>${tms.map(t => `<th class="ex-th-team"><span>${esc(t)}</span></th>`).join('')}</tr></thead><tbody>${grid}</tbody></table></div></div></section>`;
 
@@ -791,15 +793,15 @@ function dashboardHtml(list) {
   const stuck = list.filter(m => (m.status === 'blocked' || timingLevel(m) === 'overdue') && effectiveStatus(m) !== 'complete').sort(bySortUrgency);
   const pOpen = !state.expanded['dash:priorities'];
   const rOpen2 = !state.expanded['dash:risks'];
-  const upcomingCard = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:priorities"><div class="ex-cardhead-l">${chev(pOpen)}<h3>Key Milestones · Next 90 Days</h3></div><span class="dash-count">${upcoming.length}</span></div>
+  const upcomingCard = `<section class="ex-card" data-section="upcoming"><div class="ex-card-head toggle" data-toggle="dash:priorities"><div class="ex-cardhead-l">${chev(pOpen)}<h3>Key Milestones · Next 90 Days</h3></div><span class="dash-count">${upcoming.length}</span></div>
     <div class="ex-card-body ${pOpen ? '' : 'hide'}">${upcoming.length ? `<div class="ex-list">${upcoming.map(m => exLi(m, m.greenlight ? '◆ ' : m.transition ? '⇄ ' : '')).join('')}</div>` : '<div class="muted ex-empty">Nothing due in the next 90 days.</div>'}</div></section>`;
-  const risksCard = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:risks"><div class="ex-cardhead-l">${chev(rOpen2)}<h3>Overdue Milestones</h3></div><span class="dash-count ${stuck.length ? 'bad' : ''}">${stuck.length}</span></div>
+  const risksCard = `<section class="ex-card" data-section="overdue"><div class="ex-card-head toggle" data-toggle="dash:risks"><div class="ex-cardhead-l">${chev(rOpen2)}<h3>Overdue Milestones</h3></div><span class="dash-count ${stuck.length ? 'bad' : ''}">${stuck.length}</span></div>
     <div class="ex-card-body ${rOpen2 ? '' : 'hide'}">${stuck.length ? `<div class="ex-list">${stuck.map(m => exLi(m, m.status === 'blocked' ? '⛔ ' : '')).join('')}</div>` : '<div class="muted ex-empty">Nothing blocked or overdue.</div>'}</div></section>`;
 
   // GROWTH FUNDRAISING
   const camps = (state.data.campaigns || []).filter(c => !state.filters.states.size || state.filters.states.has(c.state));
   const fOpen = !state.expanded['dash:fund'];
-  const capital = camps.length ? `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:fund"><div class="ex-cardhead-l">${chev(fOpen)}<h3>Growth Fundraising</h3></div></div><div class="ex-card-body ${fOpen ? '' : 'hide'}"><div class="ex-caps">${camps.map(c => {
+  const capital = camps.length ? `<section class="ex-card" data-section="capital"><div class="ex-card-head toggle" data-toggle="dash:fund"><div class="ex-cardhead-l">${chev(fOpen)}<h3>Growth Fundraising</h3></div></div><div class="ex-card-body ${fOpen ? '' : 'hide'}"><div class="ex-caps">${camps.map(c => {
     const p = c.target ? Math.min(100, Math.round(100 * c.raised / c.target)) : 0;
     return `<div class="ex-cap"><div class="ex-cap-top"><b>${esc(c.name)}</b><span>${fmtMoney(c.raised)} <span class="muted">/ ${fmtMoney(c.target)}</span></span></div>
       <div class="ex-cap-bar"><span style="width:${p}%"></span></div><div class="ex-cap-foot muted">${p}% raised</div></div>`;
@@ -808,7 +810,7 @@ function dashboardHtml(list) {
   // WORKLOAD - pacing across fiscal years
   const wOpen = !state.expanded['dash:workload'];
   const statusLegend = `<div class="pl-legend pl-legend-sm">${STATUS_ORDER.filter(s => list.some(m => effectiveStatus(m) === s)).map(s => `<span class="pl-leg"><i style="background:${SM(s).color}"></i>${SM(s).label}</span>`).join('')}</div>`;
-  const workload = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:workload"><div class="ex-cardhead-l">${chev(wOpen)}<h3>Milestone Workload by Year</h3></div></div><div class="ex-card-body ${wOpen ? '' : 'hide'}">${statusLegend}${columnChart(list)}</div></section>`;
+  const workload = `<section class="ex-card" data-section="workload"><div class="ex-card-head toggle" data-toggle="dash:workload"><div class="ex-cardhead-l">${chev(wOpen)}<h3>Milestone Workload by Year</h3></div></div><div class="ex-card-body ${wOpen ? '' : 'hide'}">${statusLegend}${columnChart(list)}</div></section>`;
 
   // Info hierarchy (thoughtful order for Chiefs/Board):
   //   1. Banner - orientation

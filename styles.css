@@ -2256,3 +2256,59 @@ button.kcard2:hover .k-ic { transform: scale(1.06); }
 :root[data-theme="dark"] .kcard { box-shadow: 0 1px 2px rgba(0,0,0,.5), 0 4px 10px rgba(0,0,0,.35); }
 :root[data-theme="dark"] .kcard:hover { box-shadow: 0 2px 4px rgba(0,0,0,.55), 0 10px 22px rgba(0,0,0,.45); }
 :root[data-theme="dark"] .kc-team { background: var(--surface-container-high); }
+
+
+/* ============================================================
+   POLISH v4 - Aug 22 2026
+   Section distinctness · popup consistency · view-actions row
+   · search placeholder · nav cleanup
+   ============================================================ */
+
+/* Dashboard section distinctness. Each card gets a 3px semantic left accent
+   in a tone that matches what the section is about. Header meta always
+   right-aligned via space-between on .ex-card-head (already there). */
+/* !important needed - an earlier rule sets .ex-card { border: none !important } */
+.ex-card[data-section]              { border-left: 3px solid transparent !important; transition: border-color .12s; padding-left: 22px !important; }
+.ex-card[data-section="upcoming"]   { border-left-color: #B36A00 !important; }  /* amber - action */
+.ex-card[data-section="readiness"]  { border-left-color: #16357F !important; }  /* navy - portfolio */
+.ex-card[data-section="capital"]    { border-left-color: #C77400 !important; }  /* deep amber - money */
+.ex-card[data-section="workload"]   { border-left-color: #7A3A9B !important; }  /* violet - planning */
+.ex-card[data-section="overdue"]    { border-left-color: #C0341F !important; }  /* red - danger */
+/* Header count/badge always right-aligned inside the header */
+.ex-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ex-cardhead-l { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+.ex-card .dash-count, .ex-card .card-more { margin-left: auto; flex-shrink: 0; }
+.ex-card .dash-count { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; padding: 0 8px; border-radius: 999px; background: var(--surface-container-high); color: var(--on-surface-variant); font-size: 12px; font-weight: 700; }
+.ex-card .dash-count.bad { background: #FDECEA; color: #C0341F; }
+.ex-card[data-section="overdue"] .dash-count { background: #FDECEA; color: #C0341F; }
+.ex-card[data-section="upcoming"] .dash-count { background: #FDF1DF; color: #B36A00; }
+
+/* View-actions row (right-aligned actions above the banner) */
+.view-actions { display: flex; justify-content: flex-end; gap: 8px; margin: 4px 0 8px; }
+
+/* Search placeholder: shorter now (from HTML), tighten input */
+.cb-search input::placeholder { font-size: 14px; opacity: .7; }
+
+/* ==== Popup consistency ====
+   Standardize modal-scale surfaces to 20px radius + unified shadow;
+   popover-scale to 12px. All backdrops use the same scrim opacity. */
+.modal, .confirm-box, .gate-card, .auth-card, .cmdk {
+  border-radius: 20px !important;
+  box-shadow: 0 24px 60px rgba(11,25,68,.25), 0 8px 20px rgba(11,25,68,.16), 0 0 0 1px var(--outline-variant) !important;
+}
+.popover { border-radius: 12px !important; box-shadow: 0 6px 20px rgba(11,25,68,.16), 0 0 0 1px var(--outline-variant) !important; }
+.modal-backdrop, .confirm-backdrop, .cmdk-backdrop { background: rgba(11,25,68,.45) !important; }
+.modal-head { padding: 22px 24px 6px !important; }
+.modal-head h3 { font-size: 20px !important; font-weight: 600 !important; letter-spacing: -.2px; }
+.modal-body { padding: 14px 24px !important; }
+.modal-foot { padding: 16px 24px 22px !important; }
+.confirm-box h3 { font-size: 18px !important; font-weight: 600 !important; }
+.cmdk-head { padding: 14px 18px !important; border-bottom: 1px solid var(--outline-variant) !important; }
+:root[data-theme="dark"] .modal, :root[data-theme="dark"] .confirm-box, :root[data-theme="dark"] .cmdk, :root[data-theme="dark"] .gate-card, :root[data-theme="dark"] .auth-card {
+  box-shadow: 0 24px 60px rgba(0,0,0,.55), 0 8px 20px rgba(0,0,0,.4), 0 0 0 1px var(--outline-variant) !important;
+}
+
+/* Nav: no more WORKSPACE label (removed from HTML). Tighten top spacing. */
+@media (min-width: 1000px) {
+  .app-header .nav-tabs { margin-top: 16px; }
+}
