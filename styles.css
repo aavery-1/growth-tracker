@@ -2693,7 +2693,7 @@ b, strong { font-weight: 600; }
   .plan-group-head,
   .ot-term-h {
     position: sticky !important;
-    top: var(--cb-h, 76px) !important;
+    top: 12px !important;
     z-index: 20 !important;
     background: #F0F2F5 !important;
     box-shadow: 0 6px 8px -6px rgba(16,24,64,.12);
@@ -2750,21 +2750,50 @@ b, strong { font-weight: 600; }
    while search + actions stay put.
    ============================================================ */
 
-/* Grid: greeting | search (breathing room) | actions.
-   The search column can shrink to nothing so it never crowds. */
+/* Robust flex layout: contextual title truncates, search shrinks, actions stay
+   fixed - so nothing ever spills into anything else at any width. The bar sits
+   in normal flow and scrolls away; the floating pill (below) takes over. */
 .content-bar {
-  grid-template-columns: auto minmax(0, 1fr) auto !important;
-  gap: 24px !important;
+  position: static !important;
+  display: flex !important;
+  grid-template-columns: none !important;
+  align-items: center;
+  gap: 20px !important;
+  background: transparent !important;
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+  padding: 18px 0 14px !important;
+  margin-bottom: 8px !important;
 }
+:root[data-theme="dark"] .content-bar { background: transparent !important; }
 
-/* Search: capped, left-aligned in its column, generous inner padding */
+/* Contextual heading (greeting on Dashboard, page title elsewhere) */
+.cb-greeting {
+  flex: 1 1 auto !important; min-width: 0 !important;
+  display: flex !important; flex-direction: column; gap: 1px;
+  max-width: none !important; overflow: hidden;
+}
+.cb-greeting small {
+  order: -1; font-size: 12px; font-weight: 600; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--on-surface-variant); opacity: .7;
+}
+.cb-title, .cb-greeting #cbGreetLine {
+  font-size: 22px !important; font-weight: 700 !important;
+  letter-spacing: -.3px; color: #0d1230 !important; line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+:root[data-theme="dark"] .cb-title { color: var(--on-surface) !important; }
+.cb-title b, .cb-greeting #cbGreetLine b { font-weight: 800; }
+
+/* Search: shrinks gracefully, never crowds the actions */
 .cb-search {
-  justify-self: start !important;
-  width: 100% !important;
-  max-width: 360px !important;
-  height: 42px !important;
+  flex: 0 1 300px !important;
+  justify-self: auto !important;
+  width: auto !important; max-width: 300px !important;
+  height: 42px !important; margin: 0 !important;
 }
 .cb-search input { font-size: 14px !important; }
+.cb-actions { flex: 0 0 auto !important; }
 
 /* Actions cluster: bell + account card */
 .cb-actions { gap: 10px !important; }
@@ -2818,31 +2847,50 @@ b, strong { font-weight: 600; }
   transition: opacity .2s ease, transform .2s ease;
 }
 
-/* --- Scroll state: greeting peels off, profile compacts --- */
-.cb-greeting {
-  transition: max-width .3s cubic-bezier(.2,0,0,1), opacity .22s ease,
-              transform .3s cubic-bezier(.2,0,0,1), margin .3s ease !important;
-  max-width: 340px; overflow: hidden;
+/* ============================================================
+   FLOATING CONTROL PILL - hovers top-right once you scroll.
+   The in-flow content bar scrolls away naturally; this keeps search,
+   notifications, and account one tap away without a heavy sticky bar.
+   ============================================================ */
+.cb-pill {
+  position: fixed; top: 16px; right: 24px; z-index: 60;
+  display: flex; align-items: center; gap: 4px;
+  padding: 5px; border-radius: 999px;
+  background: color-mix(in srgb, var(--card-white, #fff) 80%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
+  border: 1px solid var(--outline-variant);
+  box-shadow: 0 6px 20px rgba(16,24,64,.14), 0 1px 3px rgba(16,24,64,.08);
+  opacity: 0; transform: translateY(-10px) scale(.95); pointer-events: none;
+  transition: opacity .25s ease, transform .3s cubic-bezier(.2,0,0,1);
 }
-.content-bar.scrolled .cb-greeting {
-  max-width: 0 !important; opacity: 0 !important;
-  transform: translateY(-8px) !important; margin: 0 !important;
+:root[data-theme="dark"] .cb-pill { background: color-mix(in srgb, #1b1d27 88%, transparent); }
+body.header-pinned .cb-pill { opacity: 1; transform: none; pointer-events: auto; }
+
+.cb-pill-btn, .cb-pill-avatar {
+  width: 38px; height: 38px; border-radius: 50%; border: 0; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  position: relative; padding: 0; transition: background .12s ease, color .12s ease;
 }
-.content-bar.scrolled .cb-profile .sp-info {
-  max-width: 0 !important; opacity: 0 !important; margin-left: -9px;
+.cb-pill-btn { background: transparent; color: var(--on-surface-variant); }
+.cb-pill-btn:hover { background: var(--surface-container); color: var(--on-surface); }
+.cb-pill-avatar { font-size: 12.5px; font-weight: 700; color: #fff; background: var(--primary); }
+.cb-pill-avatar:hover { filter: brightness(.95); }
+.cb-pill .cb-badge { top: 6px; right: 6px; box-shadow: 0 0 0 2px var(--card-white, #fff); }
+
+/* When the pill is floating top-right, keep sticky section-header counts clear of it. */
+@media (min-width: 1000px) {
+  body.header-pinned .plan-group-head,
+  body.header-pinned .ot-term-h { padding-right: 148px !important; }
 }
-.content-bar.scrolled .cb-profile .sp-chev { opacity: 0; }
-.content-bar.scrolled .cb-profile { padding: 0 6px; }
 
 @media (max-width: 999px) {
-  /* On mobile the greeting is already hidden; keep account card avatar-only */
-  .cb-profile { max-width: 42px; padding: 0 6px; }
+  /* Account card is avatar-only on mobile */
+  .cb-profile { max-width: 44px; padding: 0 6px; }
   .cb-profile .sp-info, .cb-profile .sp-chev { display: none; }
-  .content-bar { grid-template-columns: 1fr auto !important; }
-  .cb-search { max-width: none !important; }
+  /* The mobile top bar (logo + nav tabs) is already sticky, so the floating
+     pill would only overlap it - hide it on small screens. */
+  .cb-pill { display: none !important; }
 }
 
 /* 28. TOP-BAR ICON CONSISTENCY: unify stroke weight (Material outline) */
-.cb-iconbtn svg, .cb-search svg {
-  stroke-width: 1.75 !important;
-}
+.cb-iconbtn svg, .cb-search svg, .cb-pill svg { stroke-width: 1.75 !important; }

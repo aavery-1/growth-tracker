@@ -1429,6 +1429,7 @@ function setView(v, fromPop) {
   $$('.nav-subitem').forEach(x => x.classList.toggle('active', v === 'plan' && (x.dataset.plan === 'focus' ? state.planFocus : (!state.planFocus && state.planGroup === x.dataset.plan))));
   $$('.view').forEach(s => { const on = s.id === 'view-' + v; s.classList.toggle('active', on); if (!on) s.innerHTML = ''; });
   const cbPage = $('#cbPage'); if (cbPage) cbPage.textContent = v === 'progress' ? 'Dashboard' : v === 'timeline' ? 'Openings' : 'Project Plan';
+  updateGreeting();
   rerender();
   if (!fromPop) { try { if (location.hash !== '#' + v) history.pushState({ v }, '', '#' + v); } catch (e) {} }
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1697,6 +1698,15 @@ function updateUserBadge() {
   btn.title = name ? `${name} · ${role}\nClick for menu` : 'Set your name';
   if (p) btn.dataset.authed = '1'; else delete btn.dataset.authed;
   paintAvatars(btn);
+  // Mirror onto the floating pill's avatar (colored directly - it persists
+  // across renders, so we can't rely on paintAvatars' one-shot .painted guard).
+  const pill = $('#cbPillUser');
+  if (pill) {
+    pill.textContent = inits;
+    pill.style.background = avatarColor(name || 'anon');
+    pill.title = name ? `${name} · ${role}` : 'Set your name';
+    if (p) pill.dataset.authed = '1'; else delete pill.dataset.authed;
+  }
   updateGreeting();
 }
 
@@ -1705,9 +1715,23 @@ function updateUserBadge() {
 function updateGreeting() {
   const line = $('#cbGreetLine'), dateEl = $('#cbGreetDate');
   if (!line || !dateEl) return;
-  const first = (currentDisplayName() || '').split(/\s+/)[0];
-  dateEl.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  line.innerHTML = first ? `${esc(timeGreeting())}, <b>${esc(first)}</b>` : `<b>Welcome</b>`;
+  const v = state.view;
+  // Per-page heading: the greeting lives on the Dashboard (where it sets the
+  // day's tone); other pages get a clear title + a live count that earns the space.
+  if (v === 'timeline') {
+    const openings = (state.data && state.data.schools || []).filter(s => s.openingFY);
+    const cohorts = new Set(openings.map(s => s.openingFY)).size;
+    dateEl.textContent = `${openings.length} schools · ${cohorts} cohorts`;
+    line.innerHTML = `<b>Openings</b>`;
+  } else if (v === 'plan') {
+    const n = (state.data && state.data.milestones || []).length;
+    dateEl.textContent = `${n} milestones`;
+    line.innerHTML = `<b>Project Plan</b>`;
+  } else {
+    const first = (currentDisplayName() || '').split(/\s+/)[0];
+    dateEl.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    line.innerHTML = first ? `${esc(timeGreeting())}, <b>${esc(first)}</b>` : `<b>Welcome</b>`;
+  }
 }
 
 function openUserMenu(anchor) {
@@ -1835,11 +1859,12 @@ function logActivity(action, detail, extra) {
   updateActivityDot();
 }
 function updateActivityDot() {
-  const dot = $('#cbActivityDot'); if (!dot) return;
   const log = getActivityLog();
   const seen = Number(lsGet('ngc_activity_seen') || 0);
   const last = log.length ? log[log.length - 1].ts : 0;
-  dot.hidden = !(last > seen);
+  const unseen = last > seen;
+  const dot = $('#cbActivityDot'); if (dot) dot.hidden = !unseen;
+  const pillDot = $('#cbPillDot'); if (pillDot) pillDot.hidden = !unseen;
 }
 /* Material-style single-color glyphs (outlined, 1.75 stroke, 14px). */
 function activityIcon(action) {
@@ -2002,27 +2027,28 @@ function initContentBar() {
       else if (e.key === 'Escape' && e.target.value) { e.target.value = ''; clearTimeout(searchTimer); state.filters.search = ''; refreshBody(); }
     });
   }
-  const contentBar = $('#contentBar');
-  if (contentBar) {
-    // Keep --cb-h in sync with the content bar's live height so sticky section
-    // headers (timeline date, plan group) pin exactly beneath it - no overlap,
-    // no gap - even as it compresses on scroll or reflows on resize.
-    const syncCbHeight = () => document.documentElement.style.setProperty('--cb-h', contentBar.offsetHeight + 'px');
-    syncCbHeight();
-    if (window.ResizeObserver) new ResizeObserver(syncCbHeight).observe(contentBar);
-    window.addEventListener('resize', syncCbHeight, { passive: true });
-    let ticking = false;
-    window.addEventListener('scroll', () => {
-      if (!ticking) {
-        requestAnimationFrame(() => {
-          contentBar.classList.toggle('scrolled', window.scrollY > 40);
-          syncCbHeight();
-          ticking = false;
-        });
-        ticking = true;
-      }
-    }, { passive: true });
-  }
+  // Once the in-flow header scrolls past, reveal the floating control pill.
+  let ticking = false;
+  const onScroll = () => {
+    if (!ticking) {
+      requestAnimationFrame(() => {
+        document.body.classList.toggle('header-pinned', window.scrollY > 60);
+        ticking = false;
+      });
+      ticking = true;
+    }
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  // Floating pill controls mirror the header: search (⌘K), notifications, account.
+  const pillSearch = $('#cbPillSearch'); if (pillSearch) pillSearch.addEventListener('click', () => openCmdk());
+  const pillAct = $('#cbPillActivity'); if (pillAct) pillAct.addEventListener('click', toggleActivity);
+  const pillUser = $('#cbPillUser'); if (pillUser) pillUser.addEventListener('click', () => {
+    if (pillUser.dataset.authed === '1') return openUserMenu(pillUser);
+    const name = prompt('Your name (shown on edits):', lsGet('ngc_author') || '');
+    if (name !== null) { lsSet('ngc_author', name.trim()); updateUserBadge(); }
+  });
   const cbApp = document.querySelector('.cb-app');
   if (cbApp) { cbApp.style.cursor = 'pointer'; cbApp.title = 'Return to Dashboard (clears filters)'; cbApp.addEventListener('click', () => { clearFilters(); setView('progress'); }); }
   const cbPage = $('#cbPage');
