@@ -734,7 +734,7 @@ function dashboardHtml(list) {
   // GROWTH FUNDRAISING
   const camps = (state.data.campaigns || []).filter(c => !state.filters.states.size || state.filters.states.has(c.state));
   const fOpen = !state.expanded['dash:fund'];
-  const capital = camps.length ? `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:fund"><div class="ex-cardhead-l">${chev(fOpen)}<h3>Growth Capital Raised</h3></div></div><div class="ex-card-body ${fOpen ? '' : 'hide'}"><div class="ex-caps">${camps.map(c => {
+  const capital = camps.length ? `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:fund"><div class="ex-cardhead-l">${chev(fOpen)}<h3>Growth Fundraising</h3></div></div><div class="ex-card-body ${fOpen ? '' : 'hide'}"><div class="ex-caps">${camps.map(c => {
     const p = c.target ? Math.min(100, Math.round(100 * c.raised / c.target)) : 0;
     return `<div class="ex-cap"><div class="ex-cap-top"><b>${esc(c.name)}</b><span>${fmtMoney(c.raised)} <span class="muted">/ ${fmtMoney(c.target)}</span></span></div>
       <div class="ex-cap-bar"><span style="width:${p}%"></span></div><div class="ex-cap-foot muted">${p}% raised</div></div>`;
@@ -745,7 +745,7 @@ function dashboardHtml(list) {
   const statusLegend = `<div class="pl-legend pl-legend-sm">${STATUS_ORDER.filter(s => list.some(m => effectiveStatus(m) === s)).map(s => `<span class="pl-leg"><i style="background:${SM(s).color}"></i>${SM(s).label}</span>`).join('')}</div>`;
   const workload = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:workload"><div class="ex-cardhead-l">${chev(wOpen)}<h3>Milestone Workload by Year</h3></div></div><div class="ex-card-body ${wOpen ? '' : 'hide'}">${statusLegend}${columnChart(list)}</div></section>`;
 
-  return `<div class="dash">${hero}${kpiStrip}${statusPipeline(list)}${readiness}<div class="dash-pair">${upcomingCard}${risksCard}</div>${capital}${workload}</div>`;
+  return `<div class="dash">${hero}${kpiStrip}${statusPipeline(list)}${readiness}${upcomingCard}<div class="dash-pair"><div class="dash-lstack">${capital}${workload}</div>${risksCard}</div></div>`;
 }
 function applyDrill(dim, val) {
   if (dim === 'team') state.filters.areas = new Set([val]);
@@ -1151,7 +1151,7 @@ function setView(v, fromPop) {
   const pg = $('#planGroup'); if (pg) pg.classList.toggle('expanded', v === 'plan');
   $$('.nav-subitem').forEach(x => x.classList.toggle('active', v === 'plan' && (x.dataset.plan === 'focus' ? state.planFocus : (!state.planFocus && state.planGroup === x.dataset.plan))));
   $$('.view').forEach(s => { const on = s.id === 'view-' + v; s.classList.toggle('active', on); if (!on) s.innerHTML = ''; });
-  const cbPage = $('#cbPage'); if (cbPage) cbPage.textContent = v === 'progress' ? 'Dashboard' : v === 'timeline' ? 'Timeline' : 'Project Plan';
+  const cbPage = $('#cbPage'); if (cbPage) cbPage.textContent = v === 'progress' ? 'Dashboard' : v === 'timeline' ? 'Openings' : 'Project Plan';
   rerender();
   if (!fromPop) { try { if (location.hash !== '#' + v) history.pushState({ v }, '', '#' + v); } catch (e) {} }
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1163,7 +1163,7 @@ function wireEvents() {
     if (si) { const p = si.dataset.plan; if (p === 'focus') state.planFocus = true; else { state.planGroup = p; state.planFocus = false; } return setView('plan'); }
     const t = e.target.closest('.nav-tab'); if (t) setView(t.dataset.view);
   });
-  const nt = $('#navToggle'); if (nt) nt.addEventListener('click', () => { const on = document.body.classList.toggle('nav-collapsed'); lsSet('ngc_nav', on ? '1' : '0'); nt.title = on ? 'Expand menu' : 'Collapse menu'; });
+  const nt = $('#navToggle'); if (nt) nt.addEventListener('click', () => { const on = document.body.classList.toggle('nav-collapsed'); lsSet('ngc_nav', on ? '1' : '0'); nt.title = on ? 'Expand menu' : 'Collapse menu'; const lbl = nt.querySelector('.nav-util-lbl'); if (lbl) lbl.textContent = on ? 'Expand' : 'Collapse'; });
   const showDrawer = () => { renderDrawer(); $('#drawer').classList.add('open'); $('#drawerBackdrop').classList.add('open'); };
   const openDrawer = () => {
     if (adminOn() && !state.adminUnlocked) return promptPassword({ title: 'Admin settings', message: 'Enter the settings password.', verify: v => pwHash(v) === String(meta().adminHash), onOk: () => { state.adminUnlocked = true; showDrawer(); } });
@@ -1377,7 +1377,7 @@ function buildCmdkItems(q) {
   const items = [];
   items.push({ icon: '📊', name: 'Go to Dashboard', hint: '', kbd: '', action: () => setView('progress') });
   items.push({ icon: '📋', name: 'Go to Project Plan', hint: '', kbd: '', action: () => setView('plan') });
-  items.push({ icon: '📈', name: 'Go to Timeline', hint: '', kbd: '', action: () => setView('timeline') });
+  items.push({ icon: '📈', name: 'Go to Openings', hint: '', kbd: '', action: () => setView('timeline') });
   items.push({ icon: '➕', name: 'New milestone', hint: '', kbd: 'N', action: () => addItem() });
   items.push({ icon: '🏫', name: 'Add school opening', hint: '', kbd: '', action: () => openSchoolModal(null) });
   items.push({ icon: '↩️', name: 'Undo last change', hint: undoStack.length ? undoStack[undoStack.length - 1].label : 'nothing to undo', kbd: '⌘Z', action: () => undo() });
@@ -1443,7 +1443,7 @@ function autosaveWithUndo(label) {
 
 async function init() {
   document.documentElement.setAttribute('data-theme', 'light');
-  if (lsGet('ngc_nav') === '1') { document.body.classList.add('nav-collapsed'); const nt = $('#navToggle'); if (nt) nt.title = 'Expand menu'; }
+  if (lsGet('ngc_nav') === '1') { document.body.classList.add('nav-collapsed'); const nt = $('#navToggle'); if (nt) { nt.title = 'Expand menu'; const lbl = nt.querySelector('.nav-util-lbl'); if (lbl) lbl.textContent = 'Expand'; } }
   const data = await loadData(); if (!data) return; state.data = data;
   state.data.schools.forEach(s => { if (!s.id) s.id = uid(); });
   try { captureTrend(); } catch (e) {}

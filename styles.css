@@ -1411,7 +1411,7 @@ body.edit-on .edit-pill { display: inline-flex; }
   }
   .brand-lockup { padding: 4px 14px 0; }
   .brand-lockup .brand-logo { max-width: 100%; width: auto; height: auto; }
-  .brand-sub { display: block !important; border-left: 0; padding: 0 14px; margin: 10px 0 24px; }
+  .brand-sub { display: block !important; border-left: 0; padding: 0 14px; margin: 10px 0 18px; }
   .brand-sub b { font-size: 13px; font-weight: 600; letter-spacing: .02em; }
   .nav-tabs { flex-direction: column; align-items: stretch; height: auto; gap: 2px; }
   .nav-tab { justify-content: flex-start; text-align: left; height: auto; padding: 11px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; color: var(--on-surface-variant); transition: background .12s, color .12s; }
@@ -1573,11 +1573,12 @@ body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
   .app-header .brand-logo { filter: brightness(0) invert(1); }
   .app-header .brand-sub, .app-header .brand-sub b { color: #fff; }
   .app-header .brand-sub { opacity: .72; font-size: 12px; letter-spacing: .04em; }
-  .app-header .nav-tab { color: rgba(255,255,255,.72); border-radius: 8px; font-size: 14px; font-weight: 500; padding: 10px 14px; }
+  .app-header .nav-tab { color: rgba(255,255,255,.72); border-radius: 10px; font-size: 14px; font-weight: 500; padding: 10px 14px; position: relative; }
   .app-header .nav-tab .nav-ic { opacity: .78; width: 20px; height: 20px; }
   .app-header .nav-tab:hover { background: rgba(255,255,255,.10); color: #fff; }
   .app-header .nav-tab:hover .nav-ic { opacity: 1; }
-  .app-header .nav-tab.active { background: rgba(67,176,230,.18); color: #fff; font-weight: 600; box-shadow: none; border-left: 3px solid #43B0E6; padding-left: 11px; }
+  .app-header .nav-tab.active { background: rgba(67,176,230,.18); color: #fff; font-weight: 600; box-shadow: none; }
+  .app-header .nav-tab.active::after { content: ''; position: absolute; left: 0; right: auto; top: 8px; bottom: 8px; width: 3px; height: auto; border-radius: 0 3px 3px 0; background: #43B0E6; }
   .app-header .nav-tab.active .nav-ic { opacity: 1; color: #43B0E6; }
   .app-header .header-actions { border-top-color: rgba(255,255,255,.12); }
   .app-header .icon-btn { color: rgba(255,255,255,.78); }
@@ -1622,7 +1623,10 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
 .save-state { display: none !important; }
 
 /* ---------- dashboard: compact lower row (Priorities · Advancement · Workload) — less scrolling ---------- */
-.dash-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: start; }
+.dash-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: stretch; }
+.dash-lstack { display: flex; flex-direction: column; gap: 15px; min-width: 0; }
+.dash-lstack > .ex-card { margin: 0 !important; }
+.dash-pair > .ex-card { min-width: 0; }
 @media (max-width: 640px) { .dash-pair { grid-template-columns: 1fr; } }
 .pl-legend-sm { font-size: 11px; margin-bottom: 10px; }
 .pl-legend-sm .pl-leg b { display: none; }
@@ -1631,8 +1635,26 @@ button.kcard2:hover { border-color: var(--outline); box-shadow: 0 2px 10px rgba(
 @media (min-width: 1000px) {
   .app-header .brand-lockup { padding: 2px 14px 0; }
   .app-header .brand-sub { padding: 0 14px; }
-  .app-header .header-actions { padding: 14px 6px 0; flex-direction: row; justify-content: center; gap: 4px; }
+  .app-header .header-actions {
+    padding: 12px 0 0; margin-top: 14px; flex-direction: column; align-items: stretch; gap: 2px;
+    border-top: 1px solid var(--outline-variant);
+  }
+  .app-header .header-actions .icon-btn.nav-util {
+    display: flex; align-items: center; gap: 12px; justify-content: flex-start;
+    width: 100%; height: auto; padding: 10px 14px; border-radius: 10px;
+    color: var(--on-surface-variant); font: inherit; font-size: 14px; font-weight: 500;
+    background: transparent;
+  }
+  .app-header .header-actions .icon-btn.nav-util:hover { background: var(--surface-container); color: var(--on-surface); }
+  .app-header .header-actions .icon-btn.nav-util svg { width: 20px; height: 20px; flex: 0 0 auto; opacity: .78; }
+  .app-header .header-actions .icon-btn.nav-util:hover svg { opacity: 1; }
+  .app-header .header-actions .icon-btn.nav-util::before { display: none; }
+  .app-header .header-actions .nav-util-lbl { position: relative; }
 }
+/* hide the sidebar-specific labels off of desktop */
+.nav-util-lbl { display: none; }
+@media (min-width: 1000px) { .nav-util-lbl { display: inline; } }
+body.nav-collapsed .nav-util-lbl { display: none !important; }
 
 /* ---------- Rubick-inspired polish: soft elevation, cleaner ground, KPI icons ---------- */
 /* clean near-white ground (light only) so white cards float on soft shadows; dark mode keeps its tone */
@@ -1661,7 +1683,7 @@ button.kcard2:hover { box-shadow: 0 2px 4px rgba(16,24,64,.07), 0 10px 26px rgba
 
 /* ---------- collapsible nav rail (desktop) ---------- */
 #navToggle svg { transition: transform .18s ease; }
-body.nav-collapsed #navToggle svg { transform: rotate(180deg); }
+body.nav-collapsed #navToggle svg { transform: scaleX(-1); }
 @media (min-width: 1000px) {
   .app-header { transition: width .18s ease, padding .18s ease; }
   .container { transition: margin-left .18s ease; }
@@ -1671,10 +1693,12 @@ body.nav-collapsed #navToggle svg { transform: rotate(180deg); }
   body.nav-collapsed .brand-icon { display: flex; }
   body.nav-collapsed .brand-sub { display: none !important; }
   body.nav-collapsed .nav-tabs { align-items: center; }
-  body.nav-collapsed .nav-tab { justify-content: center; gap: 0; padding: 11px; width: 44px; border-radius: 10px; border-left: 0 !important; padding-left: 11px !important; }
+  body.nav-collapsed .nav-tab { justify-content: center; gap: 0; padding: 11px; width: 44px; border-radius: 10px; }
+  body.nav-collapsed .nav-tab.active::after { left: -10px; }
   body.nav-collapsed .nav-tab span { display: none; }
   body.nav-collapsed .container { margin-left: 68px; }
-  body.nav-collapsed .header-actions { justify-content: center; padding-left: 0; }
+  body.nav-collapsed .app-header .header-actions { align-items: center; padding-top: 10px; }
+  body.nav-collapsed .app-header .header-actions .icon-btn.nav-util { width: 44px; justify-content: center; padding: 11px; gap: 0; }
 }
 
 /* ---------- collapsed nav brand icon (K mark) ---------- */
@@ -1738,7 +1762,8 @@ body.nav-collapsed #navToggle svg { transform: rotate(180deg); }
   .app-header .nav-tab:hover { background: var(--surface-container); color: var(--on-surface); }
   .app-header .nav-tab:hover .nav-ic { opacity: 1; }
   .app-header .nav-tab.active { background: var(--primary-container); color: var(--on-primary-container); font-weight: 700; box-shadow: none; }
-  .app-header .nav-tab.active .nav-ic { opacity: 1; }
+  .app-header .nav-tab.active::after { background: var(--primary); }
+  .app-header .nav-tab.active .nav-ic { opacity: 1; color: var(--primary); }
   .app-header .nav-chev { opacity: .5; }
   .app-header .nav-subitem { color: var(--on-surface-variant); }
   .app-header .nav-subitem:hover { background: var(--surface-container); color: var(--on-surface); }
