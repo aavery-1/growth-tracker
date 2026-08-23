@@ -121,11 +121,39 @@ function dueBadge(m) {
 }
 
 /* ---------- data load / save ---------- */
+// Per-version migrations. Each runs when upgrading TO that version from anything lower.
+// Mutate the cached user data in place; `base` is the fresh data.json (read-only reference).
+// This preserves user edits across version bumps — only the targeted fields change.
+const DATA_MIGRATIONS = {
+  16: (data /* , base */) => {
+    // Fix "complete" status color: #79A81E failed WCAG AA contrast with white text (~2.9:1).
+    // Only override if the cached value is the known-bad one (respects user customization).
+    const sm = data.meta && data.meta.statusMeta;
+    if (sm && sm.complete && sm.complete.color === '#79A81E') sm.complete.color = '#4A8C1F';
+  }
+};
 async function loadData() {
   let base;
   if (window.__EMBEDDED_DATA__) base = JSON.parse(JSON.stringify(window.__EMBEDDED_DATA__));
   else { try { base = await (await fetch('data.json', { cache: 'no-store' })).json(); } catch (e) { $('.container').innerHTML = '<div class="empty-state">Could not load <span class="mono">data.json</span>. Run a local server (see README).</div>'; return null; } }
-  try { const s = JSON.parse(lsGet(LS.data) || 'null'); if (s && s.milestones && s.__baseVersion === (base.meta && base.meta.version)) base = s; } catch (e) {}
+  try {
+    const s = JSON.parse(lsGet(LS.data) || 'null');
+    if (s && s.milestones) {
+      const baseV = (base.meta && base.meta.version) || 0;
+      const cachedV = s.__baseVersion || 0;
+      if (cachedV === baseV) return s;                 // versions match — use cache as-is
+      if (cachedV < baseV) {                            // upgrade path — migrate in place, keep user data
+        for (let v = cachedV + 1; v <= baseV; v++) {
+          const fn = DATA_MIGRATIONS[v];
+          if (fn) { try { fn(s, base); } catch (e) { console.warn('data migration v' + v + ' failed:', e); } }
+        }
+        s.__baseVersion = baseV;
+        try { lsSet(LS.data, JSON.stringify(s)); } catch (e) {}   // persist the migrated cache
+        return s;
+      }
+      return s;                                         // cached ahead of shipped (unexpected) — trust cache
+    }
+  } catch (e) {}
   return base;
 }
 let saveTimer = null;
@@ -667,7 +695,7 @@ function dashboardHtml(list) {
   const cohortCard = c => {
     const active = c.mo <= 24;
     const sum = c.ms.length === 0 ? 'Not yet scoped'
-      : active ? `${c.prep}% of pre-opening work cleared`
+      : active ? `${c.prep}% of pre-opening milestones cleared`
       : `On the roadmap · prep begins ~${c.fy - 3}`;
     const bar = active && c.ms.length ? `<div class="dash-cohort-bar"><span style="width:${c.prep}%"></span></div>` : '';
     return `<div class="dash-cohort drill ${active ? '' : 'is-roadmap'}" data-drilldim="year" data-drillval="${c.fy}" title="See Fall ${c.fy - 1} openings">
