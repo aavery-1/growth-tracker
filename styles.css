@@ -2623,3 +2623,165 @@ h1, h2, h3, h4, .k-num, .dash-count { color: #1a1a24; letter-spacing: -.2px; }
 
 /* Dashboard mypill row (personal shortcut when the greeting moved up) */
 .dash-mypill { display: flex; margin: 0 0 6px; }
+
+
+/* ============================================================
+   OPENINGS card v2 - Aug 22 2026
+   Clean, no decorative thumbnail, semantic readiness bar.
+   Matches the app's white-card / dark-text system.
+   ============================================================ */
+
+/* Reset old ot-card structure (thumbnail + body flex) so v2 renders clean */
+.ot-card {
+  display: block !important;
+  padding: 18px 20px !important;
+  border-left: 0 !important;
+  min-height: 0;
+}
+.ot-card .ot-thumb, .ot-card .ot-body,
+.ot-card .ot-card-h, .ot-card .ot-card-f { display: none !important; }
+
+/* v2 layout */
+.ot-card-top {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-bottom: 10px;
+}
+.ot-mkt {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12px; font-weight: 600; color: var(--on-surface-variant);
+  text-transform: uppercase; letter-spacing: .05em;
+}
+.ot-mkt i {
+  width: 8px; height: 8px; border-radius: 50%;
+  flex-shrink: 0; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08);
+}
+.ot-status {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 700;
+  color: var(--on-surface-variant);
+  padding: 3px 9px; border-radius: 999px;
+  background: var(--surface-container);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.ot-status i {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+}
+.ot-status[data-rag="red"]    { background: #FDECEA; color: #C0341F; }
+.ot-status[data-rag="yellow"] { background: #FDF1DF; color: #A85F00; }
+.ot-status[data-rag="blue"]   { background: #E7EDFF; color: #16357F; }
+.ot-status[data-rag="green"]  { background: #E4F6EA; color: #1E7A3D; }
+.ot-status[data-rag="none"]   { background: var(--surface-container-high); color: var(--on-surface-variant); }
+
+.ot-title {
+  font-size: 20px; font-weight: 700; letter-spacing: -.3px;
+  color: #0d1230; margin: 0 0 6px; line-height: 1.2;
+}
+.ot-when {
+  margin: 0 0 14px; font-size: 12.5px; font-weight: 500;
+  color: var(--on-surface-variant);
+}
+
+.ot-prog { display: flex; flex-direction: column; gap: 7px; }
+.ot-prog-bar {
+  height: 6px; border-radius: 999px; overflow: hidden;
+  background: var(--surface-container-high);
+}
+.ot-prog-bar span {
+  display: block; height: 100%; border-radius: 999px;
+  transition: width .3s var(--motion-standard, ease);
+}
+.ot-prog-lbl {
+  font-size: 12px; font-weight: 500; color: var(--on-surface);
+}
+.ot-prog-lbl b { font-weight: 700; color: #0d1230; }
+.ot-prog-empty {
+  font-size: 12px; font-weight: 500; color: var(--on-surface-variant); font-style: italic;
+}
+
+/* Hover: subtle lift (already applied via .ex-card hover; ot-card gets same) */
+.ot-card { transition: box-shadow .15s, transform .12s; }
+.ot-card:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(16,24,64,.06), 0 10px 24px rgba(16,24,64,.08) !important; }
+
+
+/* ============================================================
+   POLISH v8 - Aug 22 2026
+   "Crisper Material" pass. Snap to Material 3 tokens for radius
+   (4/8/12/16/28), elevation, spacing, typography. Kill decorative
+   glyphs and doohickies. One icon family, one stroke weight.
+   ============================================================ */
+
+/* Material 3 corner shape: snap the non-token radii I've accumulated to
+   the nearest official value. Sharper, more disciplined. */
+.dash-banner, .dash-mypill { border-radius: 0; }
+.ex-card { border-radius: 16px !important; }
+.kcard2, .ot-card, .kcard { border-radius: 12px !important; }
+.dash-mytasks, .dash-activity { border-radius: 16px !important; }
+.cb-iconbtn { border-radius: 8px !important; }
+.cb-search { border-radius: 8px !important; }
+.db-pill { border-radius: 999px; }
+.modal, .confirm-box, .gate-card, .auth-card, .cmdk { border-radius: 16px !important; }
+.sidebar-profile { border-radius: 12px; margin: 6px 4px 4px; padding: 10px !important; }
+
+/* Kill the "Growth Hub" ghost text (was hidden but still parsed) */
+.cb-crumb, .cb-app, .cb-sep, .cb-page { display: none !important; }
+
+/* Nav utility icons: sidebar column doesn't need labels next to the icons */
+@media (min-width: 1000px) {
+  .app-header .header-actions { flex-direction: column; align-items: stretch; gap: 4px; padding: 4px 6px !important; }
+  .app-header .header-actions .icon-btn.nav-util { justify-content: flex-start; padding: 8px 10px; border-radius: 8px; height: 40px; width: 100%; }
+  .app-header .header-actions .icon-btn.nav-util .nav-util-lbl { display: none; }   /* icon-only */
+}
+
+/* Section semantic dot in card header - keep, but crisper (2px smaller, 2px inset) */
+.ex-card[data-section] .ex-cardhead-l::before { width: 6px !important; height: 6px !important; }
+.ex-card h3 { font-size: 16px !important; letter-spacing: 0 !important; font-weight: 600 !important; }
+.dash-count { font-weight: 600 !important; font-size: 11.5px !important; letter-spacing: .02em; padding: 2px 8px !important; min-width: 22px !important; height: 20px !important; }
+
+/* Priority/status flags in the priorities/risks lists (replaced from emoji glyphs) */
+.ex-flag {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  vertical-align: middle; margin-right: 6px; flex-shrink: 0;
+}
+.ex-flag-green { background: #1E7A3D; }
+.ex-flag-trans { background: #7A3A9B; }
+.ex-flag-block { background: #C0341F; }
+
+/* Activity log rows: unified icon slot, no emoji */
+.activity-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; border-radius: 8px; }
+.activity-ic { flex-shrink: 0; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; background: var(--surface-container); color: var(--on-surface-variant); }
+.activity-ic .act-ic { display: block; }
+.activity-detail { min-width: 0; }
+
+/* Cmd+K item rows: bigger, cleaner, icon in a small chip */
+.cmdk-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; }
+.cmdk-item.active { background: var(--surface-container); }
+.cmdk-ic { flex-shrink: 0; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--surface-container-low); color: var(--on-surface-variant); }
+.cmdk-item.active .cmdk-ic { background: var(--primary-container); color: var(--on-primary-container); }
+.cmdk-name { font-size: 14px; font-weight: 500; color: var(--on-surface); }
+.cmdk-hint { display: block; font-size: 12px; color: var(--on-surface-variant); margin-top: 2px; }
+.cmdk-kbd { font-family: inherit; font-size: 11px; font-weight: 600; padding: 3px 7px; border-radius: 6px; background: var(--surface-container-high); color: var(--on-surface-variant); border: 1px solid var(--outline-variant); }
+
+/* KPI numbers: snap to Material Display Small (36px) treatment */
+.k-num { font-size: 34px !important; line-height: 1.05 !important; letter-spacing: -.5px !important; }
+.k-lbl { font-size: 12.5px !important; text-transform: none !important; letter-spacing: 0 !important; font-weight: 600 !important; }
+.k-sub { font-size: 11.5px !important; font-weight: 500 !important; letter-spacing: 0 !important; }
+
+/* Typography discipline: only 400/500/600/700 weights are used */
+body { font-weight: 400; }
+h1, h2, .dash-banner h1 { font-weight: 700; }
+h3, h4 { font-weight: 600; }
+b, strong { font-weight: 600; }
+
+/* State layer polish - one hover treatment for all interactive cards */
+.kcard, .ot-card, .ex-card, .kcard2, .db-pill, .cb-iconbtn, .sidebar-profile {
+  transition: background var(--dur-short, 150ms) var(--motion-standard, ease),
+              box-shadow var(--dur-short, 150ms) var(--motion-standard, ease),
+              transform var(--dur-short, 150ms) var(--motion-standard, ease);
+}
+
+/* Trim ex-card head/body spacing to Material's 4dp grid */
+.ex-card-body { padding: 0 !important; }
+.ex-card-head { margin-bottom: 16px !important; }
+
+/* Cards should not double-border in dark mode either */
+:root[data-theme="dark"] .ex-card { border: 1px solid var(--outline-variant) !important; }

@@ -115,7 +115,7 @@ function effectiveStatus(m) {
 }
 function dueBadge(m) {
   const t = timingLevel(m), d = daysUntil(m.due_date);
-  if (t === 'overdue') return `<span class="due-badge overdue">⚑ Overdue ${Math.abs(d)}d</span>`;
+  if (t === 'overdue') return `<span class="due-badge overdue">Overdue ${Math.abs(d)}d</span>`;
   if (t === 'this_month') return `<span class="due-badge month">⏰ Due this month</span>`;
   if (t === 'soon') return `<span class="due-badge soon">In ${d}d</span>`;
   return '';
@@ -350,20 +350,26 @@ function updateMenuBadge(key) {
 function refreshBody() { const sec = $('#view-' + state.view); const b = sec ? sec.querySelector('#viewBody') : $('#viewBody'); if (!b) return rerender(); if (state.view === 'progress') b.innerHTML = progressBodyHtml(); else if (state.view === 'timeline') b.innerHTML = ganttBodyHtml(); else b.innerHTML = planBodyHtml(); if (typeof paintAvatars === 'function') requestAnimationFrame(() => paintAvatars(b)); }
 function otCard(s) {
   const sm = schoolMs(s), r = ragReady(sm), n = sm.length;
+  const done = sm.filter(m => effectiveStatus(m) === 'complete').length;
+  const pct = n ? Math.round(100 * done / n) : 0;
   const mk = mkColor(s.market);
-  // Photo-tile thumbnail. Placeholder today: market-colored gradient with a
-  // school code. Ready for real school photos: set s.photo to a URL and it
-  // takes over (see the img branch).
-  const abbr = esc((s.code || s.display_label || '?').replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase());
-  const thumb = s.photo
-    ? `<div class="ot-thumb"><img src="${esc(s.photo)}" alt="" loading="lazy"></div>`
-    : `<div class="ot-thumb" style="--mk:${mk};background:linear-gradient(135deg,${mk},color-mix(in srgb,${mk} 65%,#000))"><span>${abbr}</span></div>`;
-  return `<article class="ot-card" data-drillschool="${esc(s.id)}" style="--mk:${mk}" title="${esc(s.state)} · ${esc(s.market)} · ${esc(s.display_label)}">
-      ${thumb}
-      <div class="ot-body">
-        <div class="ot-card-h"><span class="state-badge sm" style="background:${stColor(s.state)}">${esc(s.state)}</span><b>${esc(s.market)}</b><span class="ot-rag" style="background:${r.color}" title="${esc(r.label)}"></span></div>
-        <div class="ot-card-f"><span>Fall ${s.openingFY - 1} · ${esc(s.display_label)}</span><span class="muted">${n} milestone${n === 1 ? '' : 's'}</span></div>
+  const now = Date.now();
+  const opens = s.opening_date ? parseDate(s.opening_date) : null;
+  const mo = opens ? Math.max(0, Math.round((opens - now) / 2.63e9)) : null;
+  const when = s.openingFY ? `Opens Fall ${s.openingFY - 1}${mo != null ? ` · ${mo <= 0 ? 'now' : mo + ' mo out'}` : ''}` : 'Opening not scheduled';
+  // Status text is authoritative here; the tooltip repeat is dropped.
+  const statusLbl = n === 0 ? 'Not yet scoped' : r.label.split(' · ')[0];   // "On track" / "At risk" / "Behind" / "Complete" / "Not started"
+  return `<article class="ot-card" data-drillschool="${esc(s.id)}" style="--mk:${mk}">
+      <div class="ot-card-top">
+        <span class="ot-mkt"><i style="background:${mk}"></i>${esc(s.market)}</span>
+        <span class="ot-status" data-rag="${r.key}"><i style="background:${r.color}"></i>${esc(statusLbl)}</span>
       </div>
+      <h4 class="ot-title">${esc(s.display_label)}</h4>
+      <p class="ot-when">${esc(when)}</p>
+      ${n ? `<div class="ot-prog">
+        <div class="ot-prog-bar"><span style="width:${pct}%;background:${r.color}"></span></div>
+        <div class="ot-prog-lbl"><b>${done}/${n}</b> milestones cleared<span class="muted"> · ${pct}%</span></div>
+      </div>` : `<div class="ot-prog"><div class="ot-prog-empty">No milestones yet</div></div>`}
     </article>`;
 }
 function ganttBodyHtml() {
@@ -787,9 +793,9 @@ function dashboardHtml(list) {
   const pOpen = !state.expanded['dash:priorities'];
   const rOpen2 = !state.expanded['dash:risks'];
   const upcomingCard = `<section class="ex-card" data-section="upcoming"><div class="ex-card-head toggle" data-toggle="dash:priorities"><div class="ex-cardhead-l">${chev(pOpen)}<h3>Key Milestones · Next 90 Days</h3></div><span class="dash-count">${upcoming.length}</span></div>
-    <div class="ex-card-body ${pOpen ? '' : 'hide'}">${upcoming.length ? `<div class="ex-list">${upcoming.map(m => exLi(m, m.greenlight ? '◆ ' : m.transition ? '⇄ ' : '')).join('')}</div>` : '<div class="muted ex-empty">Nothing due in the next 90 days.</div>'}</div></section>`;
+    <div class="ex-card-body ${pOpen ? '' : 'hide'}">${upcoming.length ? `<div class="ex-list">${upcoming.map(m => exLi(m, m.greenlight ? '<span class="ex-flag ex-flag-green" title="Greenlight decision"></span>' : m.transition ? '<span class="ex-flag ex-flag-trans" title="Transition to Regional Ops"></span>' : '')).join('')}</div>` : '<div class="muted ex-empty">Nothing due in the next 90 days.</div>'}</div></section>`;
   const risksCard = `<section class="ex-card" data-section="overdue"><div class="ex-card-head toggle" data-toggle="dash:risks"><div class="ex-cardhead-l">${chev(rOpen2)}<h3>Overdue Milestones</h3></div><span class="dash-count ${stuck.length ? 'bad' : ''}">${stuck.length}</span></div>
-    <div class="ex-card-body ${rOpen2 ? '' : 'hide'}">${stuck.length ? `<div class="ex-list">${stuck.map(m => exLi(m, m.status === 'blocked' ? '⛔ ' : '')).join('')}</div>` : '<div class="muted ex-empty">Nothing blocked or overdue.</div>'}</div></section>`;
+    <div class="ex-card-body ${rOpen2 ? '' : 'hide'}">${stuck.length ? `<div class="ex-list">${stuck.map(m => exLi(m, m.status === 'blocked' ? '<span class="ex-flag ex-flag-block" title="Blocked"></span>' : '')).join('')}</div>` : '<div class="muted ex-empty">Nothing blocked or overdue.</div>'}</div></section>`;
 
   // GROWTH FUNDRAISING
   const camps = (state.data.campaigns || []).filter(c => !state.filters.states.size || state.filters.states.has(c.state));
@@ -898,7 +904,7 @@ function openModal(id) {
       <div class="field-row"><div class="field"><label>Target fiscal year</label><select id="mFy"><option value="">-</option>${fyList().map(fy => `<option value="${fy}" ${m.targetFY === fy ? 'selected' : ''}>${fyLabel(fy)}</option>`).join('')}</select></div><div class="field"><label>Quarter</label><select id="mQ">${opt(['', 'Q1', 'Q2', 'Q3', 'Q4'], m.targetQuarter)}</select></div></div>
       <div class="field"><label>Stage (Kanban)</label><select id="mStage">${opt(meta().stages, m.stage || 'to_do')}</select></div>
       <div class="field"><label>Dependency / blockers</label><input id="mDep" value="${esc(m.dependency)}"></div>
-      <div class="field-row"><label class="field-check"><input type="checkbox" id="mKey" ${m.keyMilestone ? 'checked' : ''}> ★ Key milestone</label><label class="field-check"><input type="checkbox" id="mTrans" ${m.transition ? 'checked' : ''}> ⇄ Transition to Regional Ops</label></div>
+      <div class="field-row"><label class="field-check"><input type="checkbox" id="mKey" ${m.keyMilestone ? 'checked' : ''}> Key milestone</label><label class="field-check"><input type="checkbox" id="mTrans" ${m.transition ? 'checked' : ''}> Transition to Regional Ops</label></div>
     </details>
     ${notesSection('task', m.id, m.noteLog)}`;
   $('#modalBackdrop').classList.add('open');
@@ -1827,9 +1833,18 @@ function logActivity(action, detail, extra) {
   try { lsSet('ngc_activity', JSON.stringify(log)); } catch (e) {}
   renderActivityPanel();
 }
+/* Material-style single-color glyphs (outlined, 1.75 stroke, 14px). */
 function activityIcon(action) {
-  const icons = { edit: '✏️', create: '➕', delete: '🗑️', status: '🔄', undo: '↩️', move: '↔️' };
-  return icons[action] || '•';
+  const paths = {
+    edit:   '<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>',
+    create: '<path d="M12 5v14M5 12h14"/>',
+    delete: '<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"/>',
+    status: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>',
+    undo:   '<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-4"/>',
+    move:   '<path d="M5 12h14M12 5l7 7-7 7"/>'
+  };
+  const p = paths[action] || '<circle cx="12" cy="12" r="2"/>';
+  return `<svg class="act-ic" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
 }
 function renderActivityPanel() {
   const body = $('#activityBody'); if (!body) return;
@@ -1870,21 +1885,23 @@ function renderCmdkResults(q) {
   body.innerHTML = cmdkItems.map((item, i) => `<div class="cmdk-item ${i === cmdkIdx ? 'active' : ''}" data-cmdk="${i}"><span class="cmdk-ic">${item.icon}</span><div class="cmdk-label"><span class="cmdk-name">${esc(item.name)}</span>${item.hint ? `<span class="cmdk-hint">${esc(item.hint)}</span>` : ''}</div>${item.kbd ? `<kbd class="cmdk-kbd">${item.kbd}</kbd>` : ''}</div>`).join('') || '<div class="cmdk-empty">No results</div>';
 }
 function buildCmdkItems(q) {
+  // Uniform Material outlined SVG icons (1.75 stroke, 18px). No emojis.
+  const ic = (p) => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
   const items = [];
-  items.push({ icon: '📊', name: 'Go to Dashboard', hint: '', kbd: '', action: () => setView('progress') });
-  items.push({ icon: '📋', name: 'Go to Project Plan', hint: '', kbd: '', action: () => setView('plan') });
-  items.push({ icon: '📈', name: 'Go to Openings', hint: '', kbd: '', action: () => setView('timeline') });
-  items.push({ icon: '➕', name: 'New milestone', hint: '', kbd: 'N', action: () => addItem() });
-  items.push({ icon: '🏫', name: 'Add school opening', hint: '', kbd: '', action: () => openSchoolModal(null) });
-  items.push({ icon: '↩️', name: 'Undo last change', hint: undoStack.length ? undoStack[undoStack.length - 1].label : 'nothing to undo', kbd: '⌘Z', action: () => undo() });
-  items.push({ icon: '📄', name: 'Print / PDF', hint: '', kbd: '', action: () => window.print() });
-  items.push({ icon: '⚙️', name: 'Open settings', hint: '', kbd: '', action: () => { const s = $('#settingsBtn'); if (s) s.click(); } });
-  items.push({ icon: '📜', name: 'Activity log', hint: '', kbd: '⌃⇧A', action: () => toggleActivity() });
+  items.push({ icon: ic('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>'), name: 'Go to Dashboard', hint: '', kbd: '', action: () => setView('progress') });
+  items.push({ icon: ic('<rect x="3" y="3" width="5.5" height="18" rx="1.5"/><rect x="10.25" y="3" width="5.5" height="11" rx="1.5"/><rect x="17.5" y="3" width="3.5" height="15" rx="1.5"/>'), name: 'Go to Project Plan', hint: '', kbd: '', action: () => setView('plan') });
+  items.push({ icon: ic('<rect x="3" y="4.5" width="18" height="17" rx="2"/><path d="M8 2.5v4M16 2.5v4M3 10h18"/>'), name: 'Go to Openings', hint: '', kbd: '', action: () => setView('timeline') });
+  items.push({ icon: ic('<path d="M12 5v14M5 12h14"/>'), name: 'New milestone', hint: '', kbd: 'N', action: () => addItem() });
+  items.push({ icon: ic('<path d="M3 21V9l9-7 9 7v12h-6v-6h-6v6H3z"/>'), name: 'Add school opening', hint: '', kbd: '', action: () => openSchoolModal(null) });
+  items.push({ icon: ic('<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-4"/>'), name: 'Undo last change', hint: undoStack.length ? undoStack[undoStack.length - 1].label : 'nothing to undo', kbd: '⌘Z', action: () => undo() });
+  items.push({ icon: ic('<path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/>'), name: 'Print / PDF', hint: '', kbd: '', action: () => window.print() });
+  items.push({ icon: ic('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'), name: 'Open settings', hint: '', kbd: '', action: () => { const s = $('#settingsBtn'); if (s) s.click(); } });
+  items.push({ icon: ic('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>'), name: 'Activity log', hint: '', kbd: '⌃⇧A', action: () => toggleActivity() });
   if (state.data && state.data.milestones) {
     const q2 = (q || '').toLowerCase();
     if (q2.length >= 2) {
       M().filter(m => `${m.activity} ${m.owner} ${m.market} ${m.functional_area}`.toLowerCase().includes(q2)).slice(0, 8).forEach(m => {
-        items.push({ icon: '📌', name: m.activity, hint: `${m.market} · ${m.functional_area}`, kbd: '', action: () => openModal(m.id) });
+        items.push({ icon: ic('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'), name: m.activity, hint: `${m.market} · ${m.functional_area}`, kbd: '', action: () => openModal(m.id) });
       });
     }
   }
