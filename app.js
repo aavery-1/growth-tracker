@@ -329,9 +329,20 @@ function updateMenuBadge(key) {
 function refreshBody() { const sec = $('#view-' + state.view); const b = sec ? sec.querySelector('#viewBody') : $('#viewBody'); if (!b) return rerender(); if (state.view === 'progress') b.innerHTML = progressBodyHtml(); else if (state.view === 'timeline') b.innerHTML = ganttBodyHtml(); else b.innerHTML = planBodyHtml(); if (typeof paintAvatars === 'function') requestAnimationFrame(() => paintAvatars(b)); }
 function otCard(s) {
   const sm = schoolMs(s), r = ragReady(sm), n = sm.length;
-  return `<article class="ot-card" data-drillschool="${esc(s.id)}" style="--mk:${mkColor(s.market)}" title="${esc(s.state)} · ${esc(s.market)} · ${esc(s.display_label)}">
-      <div class="ot-card-h"><span class="state-badge sm" style="background:${stColor(s.state)}">${esc(s.state)}</span><b>${esc(s.market)}</b><span class="ot-rag" style="background:${r.color}" title="${esc(r.label)}"></span></div>
-      <div class="ot-card-f"><span>Fall ${s.openingFY - 1} · ${esc(s.display_label)}</span><span class="muted">${n} milestone${n === 1 ? '' : 's'}</span></div>
+  const mk = mkColor(s.market);
+  // Photo-tile thumbnail. Placeholder today: market-colored gradient with a
+  // school code. Ready for real school photos: set s.photo to a URL and it
+  // takes over (see the img branch).
+  const abbr = esc((s.code || s.display_label || '?').replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase());
+  const thumb = s.photo
+    ? `<div class="ot-thumb"><img src="${esc(s.photo)}" alt="" loading="lazy"></div>`
+    : `<div class="ot-thumb" style="--mk:${mk};background:linear-gradient(135deg,${mk},color-mix(in srgb,${mk} 65%,#000))"><span>${abbr}</span></div>`;
+  return `<article class="ot-card" data-drillschool="${esc(s.id)}" style="--mk:${mk}" title="${esc(s.state)} · ${esc(s.market)} · ${esc(s.display_label)}">
+      ${thumb}
+      <div class="ot-body">
+        <div class="ot-card-h"><span class="state-badge sm" style="background:${stColor(s.state)}">${esc(s.state)}</span><b>${esc(s.market)}</b><span class="ot-rag" style="background:${r.color}" title="${esc(r.label)}"></span></div>
+        <div class="ot-card-f"><span>Fall ${s.openingFY - 1} · ${esc(s.display_label)}</span><span class="muted">${n} milestone${n === 1 ? '' : 's'}</span></div>
+      </div>
     </article>`;
 }
 function ganttBodyHtml() {
@@ -530,9 +541,16 @@ function planCard(m) {
   const es = effectiveStatus(m), t = timingLevel(m), scol = SM(es).color;
   const urgent = t === 'overdue' || t === 'this_month';
   const nc = (m.noteLog || []).length;
+  // Context chip: shows the market (which sets the color) and the workstream,
+  // so a card read out of context still tells you where it lives.
+  const mk = m.market ? mkColor(m.market) : '';
+  const ctx = (m.market || m.functional_area) ? `<div class="kc-ctx">${m.market ? `<span class="kc-mkdot" style="background:${mk}"></span><span class="kc-mk">${esc(m.market)}</span>` : ''}${m.functional_area ? `<span class="kc-team">${esc(m.functional_area)}</span>` : ''}</div>` : '';
+  const prio = (m.priority && m.priority !== 'medium') ? `<span class="kc-prio kc-prio-${esc(m.priority)}" title="${esc(m.priority)} priority"></span>` : '';
+  const due = dueBadge(m) || (m.due_date ? `<span class="kc-due">${fmtDate(m.due_date)}</span>` : '');
   return `<div class="kcard ${urgent ? 'urgent' : ''}" draggable="true" data-id="${m.id}" style="border-left-color:${scol}">
-    <div class="kc-top"><span class="kc-title" data-expand="${m.id}">${esc(m.activity)}</span></div>
-    <div class="kc-foot">${personChip(m.owner)}<span class="kc-foot-r">${nc ? `<span class="kc-notes" title="${nc} note${nc === 1 ? '' : 's'}">💬 ${nc}</span>` : ''}<span class="kc-due">${dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : '')}</span></span></div>
+    ${ctx}
+    <div class="kc-top"><span class="kc-title" data-expand="${m.id}">${prio}${esc(m.activity)}</span></div>
+    <div class="kc-foot">${personChip(m.owner)}<span class="kc-foot-r">${nc ? `<span class="kc-notes" title="${nc} note${nc === 1 ? '' : 's'}">💬 ${nc}</span>` : ''}${due}</span></div>
   </div>`;
 }
 function planFocusHtml() {

@@ -2217,3 +2217,51 @@ button.kcard2:hover .k-ic { transform: scale(1.06); }
 :root[data-theme="dark"] .kcard2.k-tone-warn .k-ic { background: rgba(179,106,0,.24); color: #F5C177; }
 :root[data-theme="dark"] .kcard2.k-tone-nav  .k-ic { background: rgba(180,197,255,.16); color: #B4C5FF; }
 :root[data-theme="dark"] .kcard2.k-tone-err  .k-ic { background: rgba(192,52,31,.22); color: #F79D8F; }
+
+
+/* ============================================================
+   OPENINGS + PROJECT PLAN polish (Aug 22 2026)
+   Photo thumbnail on Openings cards, richer Kanban cards.
+   Kept the same shadow/radius tokens as the Dashboard cards
+   so the whole app reads as one family.
+   ============================================================ */
+
+/* Openings card: restructure into thumbnail + body row */
+.ot-card { display: flex; gap: 14px; align-items: stretch; padding: 12px; border-left-width: 4px; }
+.ot-card .ot-body { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+.ot-thumb {
+  flex-shrink: 0; width: 60px; height: 60px; border-radius: 12px;
+  overflow: hidden; position: relative;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 -20px 30px rgba(0,0,0,.18), inset 0 0 0 1px rgba(255,255,255,.10);
+}
+.ot-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ot-thumb > span {
+  color: #fff; font-weight: 800; font-size: 15px; letter-spacing: .04em;
+  text-shadow: 0 1px 2px rgba(0,0,0,.35);
+}
+@media (max-width: 520px) { .ot-thumb { width: 48px; height: 48px; } .ot-thumb > span { font-size: 13px; } }
+
+/* Kanban card v2: cleaner spacing, context chip, priority dot */
+.kcard { padding: 12px 14px; border-radius: 12px; box-shadow: 0 1px 2px rgba(16,24,64,.05), 0 4px 10px rgba(16,24,64,.06); border-left-width: 4px; }
+.kcard:hover { box-shadow: 0 2px 4px rgba(16,24,64,.08), 0 10px 22px rgba(16,24,64,.10); transform: translateY(-1px); }
+.kcard.urgent { box-shadow: 0 0 0 1px rgba(192,52,31,.25), 0 1px 2px rgba(16,24,64,.05), 0 4px 10px rgba(16,24,64,.06); }
+.kc-ctx { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; color: var(--on-surface-variant); margin-bottom: 6px; flex-wrap: wrap; }
+.kc-mkdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.kc-mk { color: var(--on-surface); font-weight: 700; }
+.kc-team { padding: 1px 8px; border-radius: 999px; background: var(--surface-container); font-weight: 500; text-transform: none; letter-spacing: 0; }
+.kc-title { font-size: 13.5px; font-weight: 600; line-height: 1.35; display: inline-flex; align-items: baseline; gap: 6px; }
+.kc-prio { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; position: relative; top: -1px; }
+.kc-prio-high { background: #C0341F; box-shadow: 0 0 0 2px rgba(192,52,31,.18); }
+.kc-prio-low { background: var(--outline-variant); }
+.kc-foot { margin-top: 10px; }
+
+/* Kanban column header: reads more like a "list section" than a chunky bar */
+.kcol-head { padding: 10px 12px; border-radius: 10px 10px 0 0; }
+.kcol-name { font-weight: 700; letter-spacing: .02em; }
+.kcount { font-weight: 700; }
+
+/* Dark-mode: keep shadows subtle */
+:root[data-theme="dark"] .kcard { box-shadow: 0 1px 2px rgba(0,0,0,.5), 0 4px 10px rgba(0,0,0,.35); }
+:root[data-theme="dark"] .kcard:hover { box-shadow: 0 2px 4px rgba(0,0,0,.55), 0 10px 22px rgba(0,0,0,.45); }
+:root[data-theme="dark"] .kc-team { background: var(--surface-container-high); }
