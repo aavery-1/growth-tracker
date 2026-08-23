@@ -224,7 +224,13 @@ function clearFilters() { ['states', 'fys', 'types', 'areas', 'markets', 'status
 /* which opening cohorts (fiscal years) to display — empty = show all */
 function openingYears() { return [...new Set(state.data.schools.filter(s => s.openingFY).map(s => s.openingFY))].sort((a, b) => a - b); }
 function oyShown(fy) { return !state.filters.openingFYs.size || state.filters.openingFYs.has(fy); }
-function toggleOpeningYear(fy) { const all = openingYears(), f = state.filters.openingFYs; if (!f.size) all.forEach(y => f.add(y)); f.has(fy) ? f.delete(fy) : f.add(fy); if (f.size === all.length) f.clear(); }
+function toggleOpeningYear(fy) {
+  // Additive: no selection = show all; click a year to add it to the filter; click again to remove.
+  // No more "seed all then subtract" trick — that made the first click read as "delete this year."
+  const f = state.filters.openingFYs;
+  f.has(fy) ? f.delete(fy) : f.add(fy);
+  if (f.size === openingYears().length) f.clear();   // selecting every year is equivalent to no filter
+}
 
 /* ============================================================
    TAB 1 — SCHOOL OPENING TIMELINE (Gantt)
@@ -287,10 +293,11 @@ function filterOpts(key) {
 }
 function activeCount() { let n = 0; ['states', 'types', 'markets', 'fys', 'areas', 'statuses', 'priorities', 'openingFYs'].forEach(k => n += state.filters[k].size); if (state.filters.schoolId) n++; if (state.filters.search) n++; if (state.filters.timing) n++; return n; }
 function filterBar(menus, opts = {}) {
-  const search = opts.search ? `<div class="fb-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input id="fSearch" autocomplete="off" placeholder="Search…" value="${esc(state.filters.search)}"></div>` : '';
+  // #fSearch removed — #cbSearch in the header content-bar is the single, wired search across every view
+  const search = '';
   const btns = menus.map(k => { const n = state.filters[k].size; return `<button class="fb-menu ${n ? 'on' : ''}" data-fmenu="${k}"><span>${FILTER_LABEL[k]}</span>${n ? `<span class="fb-count">${n}</span>` : ''}<svg class="fb-chev" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg></button>`; }).join('');
   const school = opts.school ? `<select id="dashSchool" class="fb-select"><option value="">All schools</option>${state.data.schools.filter(s => s.openingFY && schoolFacetPass(s, null) && (!state.filters.fys.size || state.filters.fys.has(s.openingFY))).sort((a, b) => (a.openingFY - b.openingFY) || a.market.localeCompare(b.market)).map(s => `<option value="${s.id}" ${state.filters.schoolId === s.id ? 'selected' : ''}>${esc(s.market)} · ${esc(s.display_label)}</option>`).join('')}</select>` : '';
-  return `<div class="filterbar" id="filterbar"><span class="fb-label">Filters</span>${search}${btns}${school}<button class="fb-clear ${activeCount() ? '' : 'hide'}" id="clearFilters">Clear all</button><span class="fb-spacer"></span>${opts.right || ''}</div>`;
+  return `<div class="filterbar" id="filterbar"><span class="fb-label">Filters</span>${search}${btns}${school}<button class="fb-clear ${activeCount() ? '' : 'is-empty'}" id="clearFilters"${activeCount() ? '' : ' disabled'}>Clear all</button><span class="fb-spacer"></span>${opts.right || ''}</div>`;
 }
 /* toggle chips to show / hide opening-year cohorts */
 function openingYearBar() {
@@ -1668,7 +1675,23 @@ function initContentBar() {
     });
   }
   const cbSearch = $('#cbSearch');
-  if (cbSearch) cbSearch.addEventListener('input', e => { state.filters.search = e.target.value; refreshBody(); });
+  if (cbSearch) {
+    let searchTimer = null;
+    cbSearch.addEventListener('input', e => {
+      const v = e.target.value;
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        if (state.filters.search === v) return;
+        state.filters.search = v;
+        refreshBody();
+      }, 180);   // debounce: 156 milestones × complex render = noticeable per-keystroke lag
+    });
+    // Enter fires immediately (no wait); Escape clears
+    cbSearch.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { clearTimeout(searchTimer); state.filters.search = e.target.value; refreshBody(); }
+      else if (e.key === 'Escape' && e.target.value) { e.target.value = ''; clearTimeout(searchTimer); state.filters.search = ''; refreshBody(); }
+    });
+  }
   const cbApp = document.querySelector('.cb-app');
   if (cbApp) { cbApp.style.cursor = 'pointer'; cbApp.title = 'Return to Dashboard (clears filters)'; cbApp.addEventListener('click', () => { clearFilters(); setView('progress'); }); }
   const cbPage = $('#cbPage');
