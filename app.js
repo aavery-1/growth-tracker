@@ -27,9 +27,10 @@ const state = {
 };
 
 /* ---------- palette (spec colors) ---------- */
-const STATE_COLOR = { NJ: '#16357F', FL: '#1B6EA5' };
-// KIPP brand palette: navy #16357F · sky #43B0E6 · green #A6CE3A · orange #F6A11C · red #E63E2F
-const MARKET_COLOR = { Paterson: '#E63E2F', 'Miami-Dade': '#F6A11C', Broward: '#C9852A', Newark: '#43B0E6', Orange: '#16357F', Orlando: '#16357F', Camden: '#A6CE3A' };
+const STATE_COLOR = { NJ: '#16357F', FL: '#0F766E' };
+// KIPP brand palette: navy #16357F · sky #43B0E6 (reserved for status "on track") · green #4A8C1F · orange #F6A11C · red #E63E2F
+// Market palette: distinct hues, deliberately non-overlapping with status colors
+const MARKET_COLOR = { Paterson: '#6D28D9', 'Miami-Dade': '#BE185D', Broward: '#7C3F5C', Newark: '#0E7490', Orange: '#065F46', Orlando: '#065F46', Camden: '#B45309' };
 const TYPE_COLOR = { ES: '#1B6EA5', MS: '#C77400', HS: '#5F3DC4' };
 const mkColor = m => MARKET_COLOR[m] || '#5A6B8C';
 const stColor = s => STATE_COLOR[s] || '#5A6B8C';
@@ -570,7 +571,7 @@ function ragDot(st, title) { const c = st === 'x' ? '#C9CDD6' : SM(st).color; re
 /* greenlight/gating status per domain — deliberately distinct from market brand colors.
    grey = not started · blue = in progress · green = cleared (gate met) · amber/red = off-track */
 // status palette drawn from the KIPP brand: green=complete, sky=on track, orange=at risk, red=behind
-const RAG = { green: '#79A81E', blue: '#43B0E6', yellow: '#F6A11C', red: '#E63E2F', none: '#C7CCD6' };
+const RAG = { green: '#4A8C1F', blue: '#43B0E6', yellow: '#F6A11C', red: '#E63E2F', none: '#C7CCD6' };
 function ragProgress(list) {
   if (!list.length) return { key: 'none', color: RAG.none, label: 'No milestones yet', pct: null };
   const done = list.filter(m => effectiveStatus(m) === 'complete').length, pctc = Math.round(100 * done / list.length);
@@ -684,21 +685,21 @@ function dashboardHtml(list) {
   const b = cnt('blue'), attention = r + y, onTrack = total - attention;
   const overdue = list.filter(m => timingLevel(m) === 'overdue').length;
   const KPI_IC = {
-    school: 'M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z',
-    warning: 'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z',
-    event: 'M20 3h-1V1h-2v2H7V1H5v2H4c-1.11 0-1.99.9-1.99 2L2 21c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z',
-    schedule: 'M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z'
+    school: '<path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/>',
+    warning: '<path d="m10.29 3.86-8.47 14.14a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+    flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>',
+    alarm: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/><path d="M6.38 18.7 4 21"/><path d="M17.64 18.67 20 21"/>'
   };
   // month-over-month trend (portfolio-wide; only shown when no filters are applied)
   const unfiltered = !state.filters.states.size && !state.filters.markets.size && !state.filters.areas.size && !state.filters.statuses.size && !state.filters.openingFYs.size && !state.filters.schoolId && !state.filters.search && !state.filters.timing;
   const tp = unfiltered ? trendPrev() : null;
   const dChip = (cur, key, goodUp) => { if (!tp || typeof tp[key] !== 'number') return ''; const d = cur - tp[key]; if (!d) return ''; const up = d > 0; const good = up === goodUp; return `<span class="k-delta ${good ? 'good' : 'bad'}">${up ? '▲' : '▼'} ${Math.abs(d)}<span class="k-delta-lbl"> vs last month</span></span>`; };
-  const kpi = (icon, num, den, lbl, sub, cls, drill, delta) => `<${drill ? 'button' : 'div'} class="kcard2 ${cls || ''} ${drill ? 'drill' : ''}" ${drill || ''}><span class="k-ic"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="${KPI_IC[icon]}"/></svg></span><div class="k-num">${num}${den ? `<span class="k-den">${den}</span>` : ''}</div><div class="k-lbl">${lbl}</div><div class="k-sub">${sub}</div>${delta || ''}</${drill ? 'button' : 'div'}>`;
+  const kpi = (icon, num, den, lbl, sub, cls, drill, delta) => `<${drill ? 'button' : 'div'} class="kcard2 ${cls || ''} ${drill ? 'drill' : ''}" ${drill || ''}><span class="k-ic"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${KPI_IC[icon]}</svg></span><div class="k-num">${num}${den ? `<span class="k-den">${den}</span>` : ''}</div><div class="k-lbl">${lbl}</div><div class="k-sub">${sub}</div>${delta || ''}</${drill ? 'button' : 'div'}>`;
   const kpiStrip = `<section class="kpi-strip">
     ${kpi('school', onTrack, `/ ${total}`, 'Schools on track', '', '', '', dChip(onTrack, 'onTrack', true))}
     ${kpi('warning', attention, '', 'Need attention', '', attention ? 'k-alert' : '', attention ? 'data-drilldim="riskbehind" data-drillval=""' : '', dChip(attention, 'attention', false))}
-    ${nextC ? kpi('event', nextC.mo <= 0 ? 'Now' : nextC.mo, nextC.mo <= 0 ? '' : ' mo', 'Next opening', `Fall ${nextC.fy - 1} · ${esc(nextC.mkts.join(' · '))}`, '', `data-drilldim="year" data-drillval="${nextC.fy}"`) : ''}
-    ${kpi('schedule', overdue, '', 'Milestones overdue', '', overdue ? 'k-alert' : '', overdue ? 'data-drilldim="timing" data-drillval="overdue"' : '', dChip(overdue, 'overdue', false))}
+    ${nextC ? kpi('flag', nextC.mo <= 0 ? 'Now' : nextC.mo, nextC.mo <= 0 ? '' : ' mo', 'Next opening', `Fall ${nextC.fy - 1} · ${esc(nextC.mkts.join(' · '))}`, '', `data-drilldim="year" data-drillval="${nextC.fy}"`) : ''}
+    ${kpi('alarm', overdue, '', 'Milestones overdue', '', overdue ? 'k-alert' : '', overdue ? 'data-drilldim="timing" data-drillval="overdue"' : '', dChip(overdue, 'overdue', false))}
   </section>`;
 
 

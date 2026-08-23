@@ -4,8 +4,8 @@
    into M3 color roles.
    ============================================================ */
 
-/* ---- General Sans (Fontshare) — geometric-humanist, non-overused; system fallback if CDN blocked ---- */
-@import url('https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap');
+/* ---- Open Sans (Google Fonts) — clean, legible, widely-supported ---- */
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap');
 
 :root {
   /* ---------- Brand seeds (KIPP NJ style guide) ---------- */
@@ -74,7 +74,7 @@
   --r-xs: 4px; --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 28px; --r-full: 999px;
 
   /* ---------- Type ---------- */
-  --font: "General Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+  --font: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
 
   --maxw: 100%;
   --appbar-h: 64px;
