@@ -1635,7 +1635,8 @@ async function gateStart() {
   if (authModeOn()) {
     // Supabase auth mode — needs an active session, not a shared password.
     // sbConnect (from saved cfg) is fired async by bootApp normally; here we need it BEFORE gating.
-    const sc = sbSavedCfg();
+    let sc = sbSavedCfg();
+    if ((!sc || !sc.url || !sc.key) && SB_DEFAULT.url && SB_DEFAULT.key) sc = SB_DEFAULT;
     if (!sc || !sc.url || !sc.key) return showAuthConfigNeeded();
     if (!state.sb.connected) { await sbConnect(sc.url, sc.key, true); }
     // bootstrapAuth (called from sbConnect on success) has now populated state.auth if there's a session
