@@ -130,6 +130,12 @@ const DATA_MIGRATIONS = {
     // Only override if the cached value is the known-bad one (respects user customization).
     const sm = data.meta && data.meta.statusMeta;
     if (sm && sm.complete && sm.complete.color === '#79A81E') sm.complete.color = '#4A8C1F';
+  },
+  17: (data, base) => {
+    // Seed the milestone template library into caches that predate it (respects existing customizations).
+    if (data.meta && base.meta && base.meta.milestoneTemplates && !data.meta.milestoneTemplates) {
+      data.meta.milestoneTemplates = JSON.parse(JSON.stringify(base.meta.milestoneTemplates));
+    }
   }
 };
 async function loadData() {
@@ -812,7 +818,7 @@ function openPopover(anchor, html) {
 /* detail modal */
 let modalId = null, modalMode = 'task', schoolId = null;
 function openModal(id) {
-  modalMode = 'task'; modalId = id; const m = findM(id); if (!m) return;
+  modalMode = 'task'; modalId = id; modalDirty = false; const m = findM(id); if (!m) return;
   $('#modalTitle').textContent = 'Milestone details';
   const opt = (arr, val) => arr.map(x => Array.isArray(x) ? `<option value="${x[0]}" ${x[0] === val ? 'selected' : ''}>${esc(x[1])}</option>` : `<option ${x === val ? 'selected' : ''}>${esc(x)}</option>`).join('');
   const schoolChecks = state.data.schools.filter(s => s.market === m.market).map(s => `<label class="field-check"><input type="checkbox" class="m-school" value="${esc(s.id)}" ${(m.schoolIds || []).includes(s.id) ? 'checked' : ''}> ${esc(s.display_label)} <span class="muted">${esc(fyLabel(s.openingFY))}</span></label>`).join('') || '<span class="muted">No schools in this market.</span>';
@@ -860,7 +866,18 @@ function deleteModal() {
   confirmDialog({ title: 'Delete this task?', message: `"${esc(m ? m.activity : 'this task')}" will be permanently removed.`, confirmLabel: 'Delete task', danger: true, onConfirm: () => { snapshotForUndo('Delete task: ' + (m ? m.activity : '')); logActivity('delete', 'Deleted: ' + (m ? m.activity : 'task')); state.data.milestones = M().filter(x => x.id !== id); autosave(); closeModal(); rerender(); toast('Task deleted', 'ok'); } });
 }
 let taskReturnSchool = null;
-function closeModal() { $('#modalBackdrop').classList.remove('open'); modalId = null; const ret = taskReturnSchool; taskReturnSchool = null; if (ret) setTimeout(() => openSchoolModal(ret), 0); }
+let modalDirty = false;
+function closeModal() { modalDirty = false; $('#modalBackdrop').classList.remove('open'); modalId = null; const ret = taskReturnSchool; taskReturnSchool = null; if (ret) setTimeout(() => openSchoolModal(ret), 0); }
+function attemptCloseModal() {
+  if (!modalDirty) return closeModal();
+  confirmDialog({
+    title: 'Discard unsaved changes?',
+    message: `You have unsaved edits in this ${modalMode === 'school' ? 'school' : 'milestone'}. Close without saving?`,
+    confirmLabel: 'Discard',
+    danger: true,
+    onConfirm: () => closeModal()
+  });
+}
 
 /* reusable confirmation popup (native confirm() is blocked in sandboxed iframes) */
 function closeConfirm() { const w = $('#confirmBackdrop'); if (w) w.remove(); }
@@ -868,16 +885,23 @@ function confirmDialog(opts) {
   closeConfirm();
   const shared = state.sb && state.sb.connected;
   const w = document.createElement('div'); w.className = 'confirm-backdrop'; w.id = 'confirmBackdrop';
+  const typedBlock = opts.requireTyped ? `<div class="confirm-typed"><label>Type <span class="mono">${esc(opts.requireTyped)}</span> to confirm</label><input id="cfgTyped" class="mono" autocomplete="off" placeholder="${esc(opts.requireTyped)}"></div>` : '';
   w.innerHTML = `<div class="confirm-box">
     <div class="confirm-ic ${opts.danger ? 'danger' : ''}">${opts.danger ? '⚠' : '?'}</div>
     <h3>${esc(opts.title)}</h3>
     <div class="confirm-msg">${opts.message}</div>
     ${opts.danger ? `<div class="confirm-shared">${shared ? 'This deletes it for <b>everyone</b> on the shared board' : 'This cannot be undone'} — please confirm.</div>` : ''}
-    <div class="confirm-actions"><button class="btn btn-tonal" id="cfgCancel">Cancel</button><button class="btn ${opts.danger ? 'btn-danger-solid' : 'btn-filled'}" id="cfgOk">${esc(opts.confirmLabel || 'Confirm')}</button></div>
+    ${typedBlock}
+    <div class="confirm-actions"><button class="btn btn-tonal" id="cfgCancel">Cancel</button><button class="btn ${opts.danger ? 'btn-danger-solid' : 'btn-filled'}" id="cfgOk"${opts.requireTyped ? ' disabled' : ''}>${esc(opts.confirmLabel || 'Confirm')}</button></div>
   </div>`;
   document.body.appendChild(w);
+  if (opts.requireTyped) {
+    const inp = w.querySelector('#cfgTyped'), okBtn = w.querySelector('#cfgOk');
+    inp.addEventListener('input', () => { okBtn.disabled = (inp.value !== opts.requireTyped); });
+    setTimeout(() => inp.focus(), 30);
+  }
   const done = ok => { closeConfirm(); if (ok && opts.onConfirm) opts.onConfirm(); };
-  w.addEventListener('click', e => { if (e.target === w || e.target.id === 'cfgCancel') done(false); else if (e.target.id === 'cfgOk') done(true); });
+  w.addEventListener('click', e => { if (e.target === w || e.target.id === 'cfgCancel') done(false); else if (e.target.id === 'cfgOk' && !e.target.disabled) done(true); });
   setTimeout(() => { const btn = $('#cfgOk'); if (btn) btn.focus(); }, 0);
 }
 
@@ -887,7 +911,7 @@ function confirmDialog(opts) {
 function schoolById(id) { return state.data.schools.find(s => s.id === id); }
 function typeFromCode(code) { const m = /^([A-Za-z]+)(\d+)?/.exec(code || ''); const t = (m ? m[1] : '').toUpperCase(); return t === 'HS' ? 'HS' : t === 'ES' ? 'ES' : 'MS'; }
 function openSchoolModal(id) {
-  modalMode = 'school'; schoolId = id;
+  modalMode = 'school'; schoolId = id; modalDirty = false;
   const isNew = !id;
   const s = id ? schoolById(id) : { id: uid(), display_label: '', code: '', school_type: 'ES', pod_number: null, market: markets()[0], state: stateOfMarket(markets()[0]), openingFY: currentFY() + 1, openingQuarter: 'Q1', priority: false, confirmed: true, _new: true };
   $('#modalTitle').textContent = isNew ? 'Add a school opening' : `${s.market} ${s.display_label} — Milestones`;
@@ -899,21 +923,25 @@ function openSchoolModal(id) {
     <span><span class="state-badge sm" style="background:${stColor(s.state)}">${esc(s.state)}</span> <b>${esc(s.market)}</b> · Fall ${s.openingFY - 1}</span>
     <span class="sm-summary-r"><span class="muted">${sm.length} milestone${sm.length === 1 ? '' : 's'}</span>${sm.length ? `<button class="btn btn-text btn-sm sm-openplan" data-openplanschool="${esc(s.id)}" title="See this school's tasks in the Project Plan (filtered)">Open in Project Plan →</button>` : ''}</span></div>`;
   // plain calendar year — a school with openingFY=2028 opens in August 2027, so we show "2027"
-  const fyField = `<div class="field"><label>Opens in — August of…</label><select id="sFy">${fyList().map(fy => `<option value="${fy}" ${s.openingFY === fy ? 'selected' : ''}>${fy - 1}</option>`).join('')}</select></div>`;
+  const fyField = `<div class="field"><label>Opens in — August of… <span class="req">*</span></label><select id="sFy">${fyList().map(fy => `<option value="${fy}" ${s.openingFY === fy ? 'selected' : ''}>${fy - 1}</option>`).join('')}</select></div>`;
   const qField = `<div class="field"><label>Opening quarter</label><select id="sQ">${opt(['Q1', 'Q2', 'Q3', 'Q4'], s.openingQuarter || 'Q1')}</select></div>`;
-  const marketOnly = `<div class="field"><label>Market / location</label><select id="sMarket">${opt(markets(), s.market)}</select></div>`;
-  const labelField = `<div class="field-row"><div class="field"><label>Label (e.g., ES4)</label><input id="sLabel" value="${esc(s.display_label || s.code || '')}" placeholder="ES4"></div><div class="field"><label>School type</label><select id="sType">${opt([['ES', 'Elementary (ES)'], ['MS', 'Middle (MS)'], ['HS', 'High (HS)']], s.school_type)}</select></div></div>`;
+  const marketOnly = `<div class="field"><label>Market / location <span class="req">*</span></label><select id="sMarket">${opt(markets(), s.market)}</select></div>`;
+  const labelField = `<div class="field-row"><div class="field"><label>Label <span class="req">*</span></label><input id="sLabel" value="${esc(s.display_label || s.code || '')}" placeholder="ES4"><div class="help-text">Short identifier, e.g. <span class="mono">ES4</span> for the 4th Elementary or <span class="mono">MS2</span> for the 2nd Middle.</div></div><div class="field"><label>School type</label><select id="sType">${opt([['ES', 'Elementary (ES)'], ['MS', 'Middle (MS)'], ['HS', 'High (HS)']], s.school_type)}</select></div></div>`;
   const marketField = `<div class="field-row"><div class="field"><label>Market / location</label><select id="sMarket">${opt(markets(), s.market)}</select></div><div class="field"><label>Pod #</label><input id="sPod" type="number" min="1" value="${s.pod_number || ''}" placeholder="4"></div></div>`;
   const confField = `<label class="field-check"><input type="checkbox" id="sConf" ${s.confirmed !== false ? 'checked' : ''}> Opening confirmed</label>`;
   $('#modalBody').innerHTML = isNew ? `
+    <div class="add-school-intro">
+      <div class="asi-step"><span class="asi-num">1</span><div><b>Set up the school opening</b><span class="muted"> — market, opening year, label</span></div></div>
+      <div class="asi-step"><span class="asi-num">2</span><div><b>Save</b><span class="muted"> — you'll return to this school with a task list</span></div></div>
+      <div class="asi-step"><span class="asi-num">3</span><div><b>Load starter milestones or add your own</b><span class="muted"> — assign owners and deadlines</span></div></div>
+    </div>
     ${labelField}
     ${marketOnly}
     ${fyField}
     <div class="field-row">${confField}</div>
     <details class="sm-details"><summary>More details</summary>
       <div class="field-row"><div class="field"><label>Pod #</label><input id="sPod" type="number" min="1" value="${s.pod_number || ''}" placeholder="4"></div>${qField}</div>
-    </details>
-    <div class="help-text">Save the school first, then add milestones, deadlines &amp; owners.</div>`
+    </details>`
     : `
     ${summary}
     <div class="reschedule">
@@ -922,7 +950,7 @@ function openSchoolModal(id) {
       <label class="field-check"><input type="checkbox" id="sShift" checked> Also move this school's ${sm.length} milestone deadline${sm.length === 1 ? '' : 's'} by the same shift</label>
     </div>
     <div class="field"><label>Milestones — click any to open</label><div class="sm-tasks">${taskList}</div>
-      <button class="btn btn-tonal btn-sm" id="addTaskForSchool" style="margin-top:8px">+ Add milestone</button></div>
+      <div class="sm-task-actions"><button class="btn btn-tonal btn-sm" id="addTaskForSchool">+ Add milestone</button>${templatesButton(s)}</div>${templatesPanel(s)}</div>
     <details class="sm-details"><summary>More school details</summary>
       ${labelField}
       ${marketField}
@@ -976,6 +1004,84 @@ function deleteSchool() {
     autosave(); closeModal(); rerender(); toast('School removed', 'ok');
   } });
 }
+/* ---------- milestone templates: quick-add starter pre-opening milestones ---------- */
+function milestoneTemplates() { return (meta().milestoneTemplates || []); }
+function templatesButton(s) {
+  const tpls = milestoneTemplates(); if (!tpls.length) return '';
+  return `<button class="btn btn-tonal btn-sm" id="tplToggle" title="Add one or more standard pre-opening milestones">+ Load starter milestones (${tpls.length})</button>`;
+}
+function templatesPanel(s) {
+  const tpls = milestoneTemplates(); if (!tpls.length) return '';
+  const byWs = {};
+  tpls.forEach(t => { (byWs[t.workstream] = byWs[t.workstream] || []).push(t); });
+  const already = new Set(schoolMs(s).map(m => (m.activity || '').trim().toLowerCase()));
+  const groups = Object.keys(byWs).map(ws => `
+    <div class="tpl-group">
+      <div class="tpl-group-h">${esc(ws)}</div>
+      ${byWs[ws].map(t => {
+        const dup = already.has(t.activity.trim().toLowerCase());
+        const due = s.openingFY ? offsetDateISO(`${s.openingFY - 1}-08-01`, -(t.monthsBefore || 0)) : '';
+        const flags = [t.keyMilestone && '★', t.greenlight && '◆', t.transition && '⇄'].filter(Boolean).join(' ');
+        return `<label class="tpl-item ${dup ? 'is-dup' : ''}" title="${dup ? 'A milestone with this name already exists on this school' : `Due ${due} (${t.monthsBefore} mo before opening)`}">
+          <input type="checkbox" class="tpl-check" data-tplid="${esc(t.id)}" ${dup ? 'disabled' : ''}>
+          <span class="tpl-act">${esc(t.activity)}${flags ? ` <span class="tpl-flags">${flags}</span>` : ''}</span>
+          <span class="tpl-when">${t.monthsBefore} mo before</span>
+        </label>`;
+      }).join('')}
+    </div>`).join('');
+  return `<div class="tpl-panel hide" id="tplPanel">
+    <div class="tpl-help">Check the milestones to add. Due dates are calculated from this school's opening (Fall ${s.openingFY - 1}). Milestones you already have are dimmed.</div>
+    <div class="tpl-groups">${groups}</div>
+    <div class="tpl-actions">
+      <label class="tpl-selectall"><input type="checkbox" id="tplAll"> Select all available</label>
+      <span class="tpl-count" id="tplCount">0 selected</span>
+      <button class="btn btn-filled btn-sm" id="tplApply" disabled>Add selected</button>
+    </div>
+  </div>`;
+}
+function offsetDateISO(iso, monthDelta) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); if (!m) return iso;
+  const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  d.setMonth(d.getMonth() + monthDelta);
+  const y = d.getFullYear(), mo = String(d.getMonth() + 1).padStart(2, '0'), da = String(d.getDate()).padStart(2, '0');
+  return `${y}-${mo}-${da}`;
+}
+function toggleTemplatesPanel() {
+  const p = document.getElementById('tplPanel'); if (!p) return;
+  p.classList.toggle('hide');
+}
+function updateTplSelection() {
+  const checks = Array.from(document.querySelectorAll('#tplPanel .tpl-check:checked'));
+  const cnt = document.getElementById('tplCount'), btn = document.getElementById('tplApply');
+  if (cnt) cnt.textContent = `${checks.length} selected`;
+  if (btn) btn.disabled = checks.length === 0;
+}
+function applyTemplatesToSchool() {
+  const s = schoolById(schoolId); if (!s) return;
+  const picked = Array.from(document.querySelectorAll('#tplPanel .tpl-check:checked')).map(c => c.dataset.tplid);
+  if (!picked.length) return;
+  const tpls = milestoneTemplates().filter(t => picked.includes(t.id));
+  snapshotForUndo(`Add ${tpls.length} starter milestone${tpls.length === 1 ? '' : 's'} for ${s.display_label}`);
+  tpls.forEach(t => {
+    const due = s.openingFY ? offsetDateISO(`${s.openingFY - 1}-08-01`, -(t.monthsBefore || 0)) : null;
+    const m = {
+      id: uid(), state: s.state, market: s.market, team: t.workstream, functional_area: t.workstream,
+      workstream: 'General', activity: t.activity, schools: [s.code], schoolIds: [s.id],
+      targetFY: s.openingFY, targetQuarter: '', openingFY: s.openingFY, due_date: due,
+      status: 'not_started', stage: 'to_do', progress_percent: 0, priority: s.priority ? 'high' : 'medium',
+      owner: '', dependency: '', keyMilestone: !!t.keyMilestone, greenlight: !!t.greenlight, transition: !!t.transition,
+      notes: '', tags: [s.state, s.code, 'FY' + String(s.openingFY).slice(-2)]
+    };
+    M().push(m);
+  });
+  logActivity('create', `Added ${tpls.length} starter milestone${tpls.length === 1 ? '' : 's'} to ${s.market} · ${s.display_label}`);
+  autosave();
+  toast(`Added ${tpls.length} milestone${tpls.length === 1 ? '' : 's'}`, 'ok');
+  const reopenId = s.id;
+  closeModal();
+  setTimeout(() => openSchoolModal(reopenId), 60);
+}
+
 function addTaskForSchool() {
   const s = schoolById(schoolId); if (!s) return;
   const m = { id: uid(), state: s.state, market: s.market, team: teams()[0], functional_area: teams()[0], workstream: 'General', activity: 'New milestone', schools: [s.code], schoolIds: [s.id], targetFY: s.openingFY, targetQuarter: '', openingFY: s.openingFY, due_date: null, status: 'not_started', stage: 'to_do', progress_percent: 0, priority: s.priority ? 'high' : 'medium', owner: '', dependency: '', keyMilestone: false, greenlight: false, transition: false, notes: '', tags: [s.state, s.code, 'FY' + String(s.openingFY).slice(-2)] };
@@ -1093,12 +1199,64 @@ function renderDrawer() {
       ${czOwners()}
     </details>
 
-    <details class="dw-sec dw-fold"><summary><span class="dw-num">4</span>Back Up &amp; Restore Data</summary>
+    <details class="dw-sec dw-fold"><summary><span class="dw-num">4</span>Manage School Openings</summary>
+      <p class="dw-help">Every school opening in your portfolio. Use for bulk cleanup at the start of a planning cycle.</p>
+      ${schoolsPanel()}
+      <div class="ms-bulk">
+        <div class="ms-bulk-warn">Bulk delete removes every school opening <b>and</b> every milestone tied to those schools. Milestones with no school attached remain untouched.</div>
+        <button class="btn btn-danger-solid" id="msDeleteAll" ${state.data.schools.length ? '' : 'disabled'}>Delete ALL school openings</button>
+      </div>
+    </details>
+
+    <details class="dw-sec dw-fold"><summary><span class="dw-num">5</span>Back Up &amp; Restore Data</summary>
       <p class="dw-help">Download a copy of everything, or load one back in.</p>
       <div class="dw-btns"><button class="btn" id="expBtn">Export data.json</button><button class="btn" id="impBtn">Import</button><input type="file" id="impFile" accept="application/json" class="hide"></div>
     </details>
 
     <div class="dw-about">Network Growth Hub · ${M().length} milestones · ${state.data.schools.length} schools · v${meta().version || 1}</div>`;
+}
+
+/* ---------- schools management panel (drawer section 4) ---------- */
+function schoolsPanel() {
+  const schools = state.data.schools.slice().sort((a, b) => (a.openingFY || 0) - (b.openingFY || 0) || a.market.localeCompare(b.market) || a.display_label.localeCompare(b.display_label));
+  if (!schools.length) return '<div class="ms-empty">No school openings yet. Add one from the Openings tab.</div>';
+  const rows = schools.map(s => {
+    const taskCount = schoolMs(s).length;
+    return `<div class="ms-row">
+      <span class="ms-badge" style="background:${stColor(s.state)}">${esc(s.state)}</span>
+      <div class="ms-info"><b>${esc(s.market)}</b> · ${esc(s.display_label)}<span class="muted"> · Fall ${s.openingFY - 1}</span></div>
+      <span class="ms-count" title="${taskCount} milestone${taskCount === 1 ? '' : 's'} tied to this school">${taskCount}</span>
+      <button class="btn btn-text btn-sm" data-msedit="${esc(s.id)}" title="Edit school">Edit</button>
+      <button class="btn btn-text btn-sm ms-del-btn" data-msdel="${esc(s.id)}" title="Remove school">Remove</button>
+    </div>`;
+  }).join('');
+  return `<div class="ms-list">${rows}</div>`;
+}
+function bulkDeleteAllSchools() {
+  const n = state.data.schools.length;
+  const nTasks = M().filter(m => (m.schoolIds || []).length).length;
+  if (!n) return;
+  confirmDialog({
+    title: 'Delete every school opening?',
+    danger: true,
+    confirmLabel: 'Delete ALL',
+    requireTyped: 'DELETE ALL',
+    message: `This removes <b>${n} school opening${n === 1 ? '' : 's'}</b> and every milestone tied to them (roughly <b>${nTasks} task${nTasks === 1 ? '' : 's'}</b>). Milestones with no school attached remain.`,
+    onConfirm: () => {
+      snapshotForUndo('Bulk delete all schools');
+      const sids = new Set(state.data.schools.map(s => s.id));
+      state.data.schools = [];
+      state.data.milestones = M().filter(m => {
+        if (!(m.schoolIds || []).some(id => sids.has(id))) return true;
+        m.schoolIds = (m.schoolIds || []).filter(id => !sids.has(id));
+        m.schools = [];
+        return m.schoolIds.length > 0;
+      });
+      logActivity('delete', `Bulk deleted ${n} school openings`);
+      autosave(); rerender(); renderDrawer();
+      toast(`${n} school${n === 1 ? '' : 's'} removed`, 'ok');
+    }
+  });
 }
 
 /* ---------- customize (markets / teams / owners) ---------- */
@@ -1202,18 +1360,25 @@ function wireEvents() {
   };
   const closeDrawer = () => { $('#drawer').classList.remove('open'); $('#drawerBackdrop').classList.remove('open'); };
   $('#settingsBtn').addEventListener('click', openDrawer); $('#drawerClose').addEventListener('click', closeDrawer); $('#drawerBackdrop').addEventListener('click', closeDrawer);
-  $('#modalClose').addEventListener('click', closeModal); $('#modalCancel').addEventListener('click', closeModal); $('#modalSave').addEventListener('click', saveModal); $('#modalDelete').addEventListener('click', deleteModal);
-  $('#modalBackdrop').addEventListener('click', e => { if (e.target.id === 'modalBackdrop') closeModal(); });
+  $('#modalClose').addEventListener('click', attemptCloseModal); $('#modalCancel').addEventListener('click', attemptCloseModal); $('#modalSave').addEventListener('click', saveModal); $('#modalDelete').addEventListener('click', deleteModal);
+  $('#modalBackdrop').addEventListener('click', e => { if (e.target.id === 'modalBackdrop') attemptCloseModal(); });
+  // any user edit inside the modal marks it dirty; save/close resets
+  $('#modalBody').addEventListener('input', e => { if (e.target.matches('input, textarea, select')) modalDirty = true; });
+  $('#modalBody').addEventListener('change', e => { if (e.target.matches('input[type="checkbox"], input[type="radio"], select')) modalDirty = true; });
   // the modal lives outside .container, so clicks inside it need their own delegation
   $('#modalBody').addEventListener('click', e => {
     if (e.target.closest('#noteAdd')) return postNote(e.target.closest('.notes-field'));
     if (e.target.closest('#addTaskForSchool')) { taskReturnSchool = schoolId; return addTaskForSchool(); }
+    if (e.target.closest('#tplToggle')) return toggleTemplatesPanel();
+    if (e.target.closest('#tplApply')) return applyTemplatesToSchool();
+    if (e.target.id === 'tplAll') { const on = e.target.checked; document.querySelectorAll('#tplPanel .tpl-check:not([disabled])').forEach(c => c.checked = on); return updateTplSelection(); }
+    if (e.target.classList && e.target.classList.contains('tpl-check')) return updateTplSelection();
     const op = e.target.closest('[data-openplanschool]'); if (op) { closeModal(); clearFilters(); state.filters.schoolId = op.dataset.openplanschool; setView('plan'); return; }
     const os = e.target.closest('[data-openschool]'); if (os) { closeModal(); return openSchoolModal(os.dataset.openschool); }
     const ex = e.target.closest('[data-expand]'); if (ex) { if (modalMode === 'school') taskReturnSchool = schoolId; return openModal(ex.dataset.expand); }
   });
   $('#modalBody').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'noteInput') { e.preventDefault(); postNote(e.target.closest('.notes-field')); } });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeCmdk(); closeModal(); closeDrawer(); closePopover(); closeConfirm(); } });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeCmdk(); if ($('#modalBackdrop').classList.contains('open')) attemptCloseModal(); closeDrawer(); closePopover(); closeConfirm(); } });
 
   // keep timing colors live vs. the real date (on return-to-tab and hourly rollover)
   let _day = new Date().toDateString();
@@ -1265,6 +1430,9 @@ function wireEvents() {
     else if (e.target.id === 'gateSave') return saveGateSettings();
     else if (e.target.id === 'adminSave') return saveAdminSettings();
     else if (e.target.id === 'gateLock') return lockNow();
+    else if (e.target.id === 'msDeleteAll') return bulkDeleteAllSchools();
+    const msE = e.target.closest('[data-msedit]'); if (msE) { $('#drawer').classList.remove('open'); $('#drawerBackdrop').classList.remove('open'); return openSchoolModal(msE.dataset.msedit); }
+    const msD = e.target.closest('[data-msdel]'); if (msD) { const sid = msD.dataset.msdel; const s = schoolById(sid); if (!s) return; const tasks = schoolMs(s); confirmDialog({ title: `Remove ${esc(s.display_label)}?`, message: `Remove <b>${esc(s.display_label)} (${esc(s.market)})</b>` + (tasks.length ? ` and its <b>${tasks.length} task${tasks.length === 1 ? '' : 's'}</b>` : '') + ' from the schedule.', confirmLabel: 'Remove school', danger: true, onConfirm: () => { snapshotForUndo('Remove school: ' + s.display_label); const cd = s.code; state.data.schools = state.data.schools.filter(x => x.id !== sid); state.data.milestones = M().filter(m => { if (!(m.schoolIds || []).includes(sid)) return true; m.schoolIds = m.schoolIds.filter(id => id !== sid); m.schools = (m.schools || []).filter(c => c !== cd); return m.schoolIds.length > 0; }); autosave(); rerender(); renderDrawer(); toast('School removed', 'ok'); } }); return; }
     const cza = e.target.closest('[data-czadd]'); if (cza) return czAdd(cza.dataset.czadd);
     const czd = e.target.closest('.cz-del'); if (czd) return czRemove(czd.dataset.cztype, czd.dataset.czval);
   });

@@ -93,7 +93,7 @@
       }
     ],
     "updated": "2026-08-22",
-    "version": 16,
+    "version": 17,
     "statusMeta": {
       "not_started": {
         "label": "Not started",
@@ -160,7 +160,29 @@
     "gateEnabled": true,
     "gateHash": "1774240092958723",
     "adminEnabled": true,
-    "adminHash": "6991410205949042"
+    "adminHash": "6991410205949042",
+    "milestoneTemplates": [
+      { "id": "tpl_re_broker", "activity": "Hire broker/site consultant to understand market", "workstream": "Real Estate", "monthsBefore": 30 },
+      { "id": "tpl_re_search", "activity": "Conduct site search & identify shortlist", "workstream": "Real Estate", "monthsBefore": 24 },
+      { "id": "tpl_re_select", "activity": "Site selected & LOI signed", "workstream": "Real Estate", "monthsBefore": 20, "keyMilestone": true },
+      { "id": "tpl_re_lease", "activity": "Building lease/purchase finalized", "workstream": "Real Estate", "monthsBefore": 18, "keyMilestone": true },
+      { "id": "tpl_re_permits", "activity": "Building notice & permits submitted", "workstream": "Real Estate", "monthsBefore": 14 },
+      { "id": "tpl_re_buildout", "activity": "Facility build-out complete & occupancy ready", "workstream": "Real Estate", "monthsBefore": 2, "keyMilestone": true },
+      { "id": "tpl_fin_model", "activity": "Financial model updated for this opening cohort", "workstream": "Finance", "monthsBefore": 24 },
+      { "id": "tpl_fin_csp", "activity": "CSP grant application submitted", "workstream": "Finance", "monthsBefore": 18 },
+      { "id": "tpl_fin_afford", "activity": "Financing / affordability analysis complete", "workstream": "Finance", "monthsBefore": 16 },
+      { "id": "tpl_reg_app", "activity": "Charter application / amendment filed", "workstream": "Regulatory", "monthsBefore": 22 },
+      { "id": "tpl_reg_approval", "activity": "Charter approval / greenlight received", "workstream": "Regulatory", "monthsBefore": 18, "greenlight": true, "keyMilestone": true },
+      { "id": "tpl_reg_board", "activity": "District/board approval & public notice", "workstream": "Regulatory", "monthsBefore": 14 },
+      { "id": "tpl_reg_transition", "activity": "Transition to Regional Operations", "workstream": "Regulatory", "monthsBefore": 2, "transition": true, "keyMilestone": true },
+      { "id": "tpl_tal_sl", "activity": "School leader + DSO hired into fellowship", "workstream": "Talent", "monthsBefore": 15, "keyMilestone": true },
+      { "id": "tpl_tal_reg", "activity": "Regional leadership roles hired", "workstream": "Talent", "monthsBefore": 12 },
+      { "id": "tpl_tal_staff", "activity": "Staff & teachers hired for opening year", "workstream": "Talent", "monthsBefore": 4, "keyMilestone": true },
+      { "id": "tpl_mkt_launch", "activity": "Student recruitment campaign launched", "workstream": "Marketing & Recruitment", "monthsBefore": 12 },
+      { "id": "tpl_mkt_open", "activity": "Community engagement & open houses", "workstream": "Marketing & Recruitment", "monthsBefore": 10 },
+      { "id": "tpl_mkt_ramp", "activity": "Enrollment ramp to target applications", "workstream": "Marketing & Recruitment", "monthsBefore": 6 },
+      { "id": "tpl_mkt_lottery", "activity": "Enrollment lottery finalized", "workstream": "Marketing & Recruitment", "monthsBefore": 4, "keyMilestone": true }
+    ]
   },
   "schools": [
     {
