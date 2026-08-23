@@ -791,14 +791,17 @@ function myTasksCard(list) {
 
 // Team activity - the recent change feed, inline on the dashboard
 function teamActivityCard() {
-  const log = getActivityLog().slice().reverse().slice(0, 8);
+  const log = activityEntries(8);
+  const team = activityIsTeam();
   const rows = log.map(e => {
     const who = e.author || 'Someone';
-    const itemId = e.extra && e.extra.itemId, exists = itemId && findM(itemId);
-    const attr = exists ? ` data-openitem="${esc(itemId)}" title="Open milestone"` : '';
+    const exists = e.itemId && findM(e.itemId);
+    const attr = exists ? ` data-openitem="${esc(e.itemId)}" title="Open milestone"` : '';
     return `<div class="ta-item${exists ? ' ta-click' : ''}"${attr}>${personChip(e.author || '')}<div class="ta-main"><span class="ta-what"><b>${esc(who)}</b> ${esc(e.detail)}</span><span class="ta-when">${esc(fmtWhen(e.ts))}</span></div></div>`;
   }).join('');
-  return `<section class="ex-card ta-card"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('people')}<h3>Team activity</h3></div><button class="card-more" data-activityall="1">View all →</button></div><div class="ta-body">${log.length ? rows : '<div class="muted ex-empty">No activity yet. Changes you make will appear here.</div>'}</div></section>`;
+  const scope = team ? '<span class="ta-scope" title="Live from all signed-in members">Team-wide</span>' : '';
+  const empty = team ? 'No changes logged yet. Team edits will appear here.' : 'No activity yet. Changes you make will appear here.';
+  return `<section class="ex-card ta-card"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('people')}<h3>Team activity</h3>${scope}</div><button class="card-more" data-activityall="1">View all →</button></div><div class="ta-body">${log.length ? rows : `<div class="muted ex-empty">${empty}</div>`}</div></section>`;
 }
 
 function dashboardHtml(list) {
@@ -1258,6 +1261,8 @@ async function sbLoadData(client) {
     client._ngcChannels = true;
   }
   autosaveWriteLocal(); rerender();
+  // Load the team-wide audit feed (account mode) so Team activity shows everyone's changes.
+  refreshActivityViews();
 }
 function sbDisconnect() { try { if (state.sb.client) state.sb.client.removeAllChannels(); } catch (e) {} state.sb = { connected: false, client: null }; lsDel(LS.supabase); renderDrawer(); toast('Disconnected', 'ok'); }
 function sbOnRemote(p) {
@@ -1267,6 +1272,8 @@ function sbOnRemote(p) {
     if (p.eventType === 'DELETE') { const id = p.old && p.old.id; if (id) { const na = arr.filter(x => x.id !== id); if (isSchool) state.data.schools = na; else state.data.milestones = na; last.delete(id); } }
     else { const doc = p.new && p.new.doc; if (!doc) return; const j = JSON.stringify(doc); if (last.get(doc.id) === j) return; const i = arr.findIndex(x => x.id === doc.id); if (i >= 0) arr[i] = doc; else arr.push(doc); last.set(doc.id, j); }
     autosaveWriteLocal(); if (!$('#popover') && !$('#modalBackdrop').classList.contains('open')) rerender();
+    // A teammate changed data - pull the fresh audit so Team activity reflects who did it.
+    if (authModeOn()) sbFetchAudit(50).then(() => { renderActivityPanel(); if (state.view === 'progress' && !$('#modalBackdrop').classList.contains('open')) refreshBody(); });
   } catch (e) { console.error(e); }
 }
 async function sbPushTable(client, table, list, last) {
@@ -1653,11 +1660,15 @@ async function signInEmail(email, password) {
   state.auth.user = data.user; await loadProfile(data.user.id);
   return data.user;
 }
-async function signUpEmail(email, password, fullName) {
+async function signUpEmail(email, password, first, last) {
   const client = state.sb && state.sb.client; if (!client) throw new Error('Supabase is not connected. Ask an admin.');
+  first = (first || '').trim(); last = (last || '').trim();
+  if (!first || !last) throw new Error('Enter both a first and last name.');
+  const fullName = first + ' ' + last;
   const { data, error } = await client.auth.signUp({
     email: email.trim(), password,
-    options: { data: { full_name: fullName.trim() } }
+    // full_name feeds the handle_new_user trigger → profiles.full_name (what the app shows).
+    options: { data: { full_name: fullName, first_name: first, last_name: last } }
   });
   if (error) throw error;
   return data;   // if Confirm email is on, data.session is null until they click the link
@@ -1685,7 +1696,7 @@ function showAuthScreen(err, mode, info) {
         <button type="button" class="auth-tab ${isSignup ? 'on' : ''}" data-authmode="signup">Create account</button>
       </div>
       <form id="authForm" autocomplete="on">
-        ${isSignup ? '<input id="authName" type="text" placeholder="Full name" autocomplete="name" required>' : ''}
+        ${isSignup ? '<div class="auth-namerow"><input id="authFirst" type="text" placeholder="First name" autocomplete="given-name" required><input id="authLast" type="text" placeholder="Last name" autocomplete="family-name" required></div>' : ''}
         <input id="authEmail" type="email" placeholder="Email (@kippnj.org, @kippteamandfamily.org, @kippmiami.org)" autocomplete="username" required autofocus>
         <input id="authPw" type="password" placeholder="Password (12+ chars)" autocomplete="${isSignup ? 'new-password' : 'current-password'}" required minlength="6">
         <button type="submit" class="btn btn-filled" id="authSubmit">${isSignup ? 'Create account' : 'Sign in'}</button>
@@ -1701,7 +1712,15 @@ function showAuthScreen(err, mode, info) {
     sub.disabled = true; sub.textContent = isSignup ? 'Creating…' : 'Signing in…';
     try {
       if (isSignup) {
-        const res = await signUpEmail($('#authEmail').value, $('#authPw').value, $('#authName').value);
+        const first = ($('#authFirst').value || '').trim(), last = ($('#authLast').value || '').trim();
+        if (!first || !last) {
+          sub.disabled = false; sub.textContent = 'Create account';
+          let ie = $('#authInlineErr'); const msg = 'Enter both a first and last name.';
+          if (ie) { ie.textContent = msg; } else { ie = document.createElement('div'); ie.id = 'authInlineErr'; ie.className = 'gate-err'; ie.textContent = msg; f.after(ie); }
+          (first ? $('#authLast') : $('#authFirst')).focus();
+          return;
+        }
+        const res = await signUpEmail($('#authEmail').value, $('#authPw').value, first, last);
         if (res.session) {
           g.remove();
           if (!state._booted) { state._booted = true; bootApp(); } else { updateUserBadge(); rerender(); toast('Account created', 'ok'); }
@@ -1718,7 +1737,7 @@ function showAuthScreen(err, mode, info) {
       showAuthScreen(ex.message || (isSignup ? 'Signup failed.' : 'Sign-in failed. Check your email and password.'), mode);
     }
   });
-  setTimeout(() => { const i = $(isSignup ? '#authName' : '#authEmail'); if (i && !i.value) i.focus(); }, 30);
+  setTimeout(() => { const i = $(isSignup ? '#authFirst' : '#authEmail'); if (i && !i.value) i.focus(); }, 30);
 }
 
 /* ============================================================
@@ -1906,6 +1925,51 @@ function undo() {
    ACTIVITY LOG - local change journal (what changed, when)
    ============================================================ */
 function getActivityLog() { try { return JSON.parse(lsGet('ngc_activity') || '[]'); } catch (e) { return []; } }
+
+/* ---- Team activity source ----
+   In individual-accounts mode we read the SERVER audit log (growth_audit_v),
+   so the feed shows every teammate's changes with their real profile name -
+   not just what happened in this browser. Falls back to the local log when
+   not in account mode or not connected. */
+function activityIsTeam() { return authModeOn() && state.sb && state.sb.connected && Array.isArray(state.auditFeed); }
+async function sbFetchAudit(limit) {
+  if (!(authModeOn() && state.sb && state.sb.connected && state.sb.client)) return null;
+  try {
+    const { data, error } = await state.sb.client
+      .from('growth_audit_v')
+      .select('id,ts,action,entity_type,entity_id,actor_name,actor_email')
+      .order('ts', { ascending: false })
+      .limit(limit || 50);
+    if (error) throw error;
+    state.auditFeed = data || [];
+    return state.auditFeed;
+  } catch (e) { console.warn('Team activity (audit) fetch failed - using local log:', e.message || e); return null; }
+}
+function auditDetail(a) {
+  const v = a.action === 'insert' ? 'Created' : a.action === 'delete' ? 'Deleted' : 'Updated';
+  if (a.entity_type === 'milestone') { const m = findM(a.entity_id); return `${v} ${m ? '"' + m.activity + '"' : 'a milestone'}`; }
+  if (a.entity_type === 'school') { const s = schoolById(a.entity_id); return `${v} ${s ? esc(s.display_label) + ' (' + esc(s.market) + ')' : 'a school'}`; }
+  return `${v} ${esc(a.entity_type || 'record')}`;
+}
+// Unified, newest-first entries: { author, action, detail, ts, itemId }
+function activityEntries(limit) {
+  const n = limit || 8;
+  if (activityIsTeam()) {
+    return state.auditFeed.slice(0, n).map(a => ({
+      author: a.actor_name || a.actor_email || '',
+      action: a.action === 'insert' ? 'create' : a.action === 'delete' ? 'delete' : 'edit',
+      detail: auditDetail(a),
+      ts: new Date(a.ts).getTime(),
+      itemId: a.entity_type === 'milestone' ? a.entity_id : null
+    }));
+  }
+  return getActivityLog().slice().reverse().slice(0, n).map(e => ({ author: e.author, action: e.action, detail: e.detail, ts: e.ts, itemId: e.extra && e.extra.itemId }));
+}
+// Refetch the server audit (account mode) then repaint the activity panel + dashboard card.
+function refreshActivityViews() {
+  const done = () => { renderActivityPanel(); if (state.view === 'progress' && $('#viewBody') && !$('#modalBackdrop').classList.contains('open')) refreshBody(); };
+  if (authModeOn() && state.sb && state.sb.connected) sbFetchAudit(50).then(done); else done();
+}
 function logActivity(action, detail, extra) {
   const log = getActivityLog();
   // Attribute to the signed-in identity: Supabase profile name/email in account
@@ -1976,15 +2040,15 @@ function activityIcon(action) {
 }
 function renderActivityPanel() {
   const body = $('#activityBody'); if (!body) return;
-  const log = getActivityLog().slice().reverse().slice(0, 50);
-  if (!log.length) { body.innerHTML = '<div class="activity-empty">No activity yet. Changes you make will appear here.</div>'; return; }
-  body.innerHTML = log.map(e => {
+  const log = activityEntries(50);
+  const scope = activityIsTeam() ? '<div class="activity-scope">Team-wide · all signed-in members</div>' : '';
+  if (!log.length) { body.innerHTML = scope + '<div class="activity-empty">No activity yet. Changes you make will appear here.</div>'; return; }
+  body.innerHTML = scope + log.map(e => {
     const when = fmtWhen(e.ts);
     const who = e.author ? `<b>${esc(e.author)}</b> · ` : '';
-    const itemId = e.extra && e.extra.itemId;
-    const stillExists = itemId && findM(itemId);
+    const stillExists = e.itemId && findM(e.itemId);
     const cls = stillExists ? 'activity-item activity-clickable' : 'activity-item';
-    const attr = stillExists ? ` data-openitem="${esc(itemId)}" title="Open this milestone"` : '';
+    const attr = stillExists ? ` data-openitem="${esc(e.itemId)}" title="Open this milestone"` : '';
     return `<div class="${cls}"${attr}><span class="activity-ic">${activityIcon(e.action)}</span><div class="activity-detail">${who}<span class="activity-what">${esc(e.detail)}</span><span class="activity-when">${esc(when)}</span></div></div>`;
   }).join('');
   body.onclick = ev => { const it = ev.target.closest('[data-openitem]'); if (it) openModal(it.dataset.openitem); };
@@ -1994,6 +2058,8 @@ function toggleActivity() {
   const opening = !panel.classList.contains('open');
   panel.classList.toggle('open');
   renderActivityPanel();
+  // In account mode, pull the latest team-wide audit so the panel is fresh on open.
+  if (opening && authModeOn() && state.sb && state.sb.connected) sbFetchAudit(50).then(renderActivityPanel);
   if (opening) { try { lsSet('ngc_activity_seen', String(Date.now())); } catch (e) {} updateActivityDot(); }
 }
 
