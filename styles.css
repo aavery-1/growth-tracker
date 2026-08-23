@@ -1068,11 +1068,6 @@ body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 .dash-hero { padding: 22px 26px; }
 .ex-card { padding: 16px 18px; }
 
-/* sticky filter bar on desktop (sidebar layout) - controls never scroll away */
-@media (min-width: 1000px) {
-  .filterbar { position: sticky; top: 8px; z-index: 40; box-shadow: 0 2px 10px rgba(16,24,64,.06); }
-}
-
 .ex-legend-top{margin-top:0;margin-bottom:12px}
 
 /* project plan: columns scroll internally so status headers stay visible (desktop) */
@@ -1082,11 +1077,7 @@ body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
   .kcol-body::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 8px; }
 }
 
-/* holistic sticky context (desktop): keep the "where am I" label pinned while scrolling */
-@media (min-width: 1000px) {
-  .ot-term-h { position: sticky; top: 62px; z-index: 6; background: var(--surface-container-low); padding: 6px 0 8px; margin-bottom: 0; }
-  .plan-group-head { position: sticky; top: 62px; z-index: 6; background: var(--surface-container-low); padding: 8px 2px; }
-}
+/* (Section-header sticky behavior is defined once, later, using --cb-h.) */
 
 /* floating action buttons - Add school opening / New task */
 #addSchool, #newItem {
@@ -2545,7 +2536,8 @@ b, strong { font-weight: 600; }
   margin-bottom: 16px !important;
 }
 @media (min-width: 1000px) {
-  .filterbar { position: sticky !important; top: 60px; z-index: 38 !important; }
+  /* Filters peel off on scroll so the pinned date/group header owns the top. */
+  .filterbar { position: static !important; z-index: 1 !important; }
 }
 
 /* 11. SCROLL ANIMATIONS: stagger cards in, smooth transitions */
@@ -2695,17 +2687,23 @@ b, strong { font-weight: 600; }
 .plan-group.is-collapsed .plan-group-head { margin-bottom: 0 !important; opacity: .88; }
 
 @media (min-width: 1000px) {
-  .plan-group-head {
-    position: sticky !important; top: 58px; z-index: 6;
-    background: #F0F2F5 !important;
-  }
-  :root[data-theme="dark"] .plan-group-head {
-    background: #111218 !important;
-  }
+  /* Section headers pin directly beneath the sticky content bar. The offset is
+     the content bar's live height (--cb-h, kept current by JS) so it never
+     hides behind it or leaves a gap. The filter bar peels off on scroll. */
+  .plan-group-head,
   .ot-term-h {
-    position: sticky !important; top: 58px; z-index: 6;
-    background: #F0F2F5 !important; padding: 8px 0 10px !important;
+    position: sticky !important;
+    top: var(--cb-h, 76px) !important;
+    z-index: 20 !important;
+    background: #F0F2F5 !important;
+    box-shadow: 0 6px 8px -6px rgba(16,24,64,.12);
   }
+  .plan-group-head { padding: 10px 14px !important; }
+  .ot-term-h {
+    padding: 10px 0 !important; margin-bottom: 12px !important;
+    border-bottom: 1px solid var(--outline-variant);
+  }
+  :root[data-theme="dark"] .plan-group-head,
   :root[data-theme="dark"] .ot-term-h { background: #111218 !important; }
 }
 

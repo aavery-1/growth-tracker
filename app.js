@@ -2004,11 +2004,19 @@ function initContentBar() {
   }
   const contentBar = $('#contentBar');
   if (contentBar) {
+    // Keep --cb-h in sync with the content bar's live height so sticky section
+    // headers (timeline date, plan group) pin exactly beneath it - no overlap,
+    // no gap - even as it compresses on scroll or reflows on resize.
+    const syncCbHeight = () => document.documentElement.style.setProperty('--cb-h', contentBar.offsetHeight + 'px');
+    syncCbHeight();
+    if (window.ResizeObserver) new ResizeObserver(syncCbHeight).observe(contentBar);
+    window.addEventListener('resize', syncCbHeight, { passive: true });
     let ticking = false;
     window.addEventListener('scroll', () => {
       if (!ticking) {
         requestAnimationFrame(() => {
           contentBar.classList.toggle('scrolled', window.scrollY > 40);
+          syncCbHeight();
           ticking = false;
         });
         ticking = true;
