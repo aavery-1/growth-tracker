@@ -2282,10 +2282,6 @@ b, strong { font-weight: 600; }
 @media (min-width: 1000px) {
   .content-bar { top: 0; }
 }
-.content-bar.scrolled {
-  padding: 10px 0 10px !important;
-  box-shadow: 0 2px 12px rgba(16,24,64,.06);
-}
 
 .cb-greeting {
   display: flex !important; flex-direction: column; gap: 1px;
@@ -2762,15 +2758,11 @@ b, strong { font-weight: 600; }
   padding: 6px 12px !important; border-radius: 8px !important;
 }
 
-/* 26. VIEW TRANSITIONS: subtle rise on tab switch (transform-only, so a view
-   can never be left invisible by an interrupted animation). */
-.view.active {
-  animation: fadeIn .25s ease both !important;
-}
-@keyframes fadeIn {
-  from { transform: translateY(4px); }
-  to { transform: none; }
-}
+/* 26. VIEW TRANSITIONS: none on the view element itself. A transform here would
+   establish a containing block and break position:fixed for the FABs inside the
+   view; an opacity animation risks leaving content invisible if interrupted.
+   The dashboard cards (.dash > *) still animate individually - safe, no FABs. */
+.view.active { animation: none !important; }
 
 /* ============================================================
    27. TOP BAR RESHAPE — Aug 23 2026
