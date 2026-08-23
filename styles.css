@@ -2098,3 +2098,92 @@ body.nav-collapsed #navToggle svg { transform: scaleX(-1); }
 
 
 
+
+
+/* ============================================================
+   LEVEL-UP POLISH — Aug 22 2026
+   Greeting header · rich user chip · My tasks · Recent activity
+   · avatar palette · softer cards
+   ============================================================ */
+
+/* Dashboard: greeting header */
+.dash-greet { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; margin: 4px 0 22px; flex-wrap: wrap; }
+.dash-greet-l h1 { font-size: 30px; font-weight: 600; letter-spacing: -.4px; color: var(--on-surface); margin: 0; line-height: 1.15; }
+.dash-greet-l h1 .u-name { color: var(--primary); }
+.dash-greet-l .dg-date { font-size: 13px; color: var(--on-surface-variant); margin-top: 6px; font-weight: 500; }
+.dash-greet-r { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 700px) { .dash-greet-l h1 { font-size: 22px; } .dash-greet { margin-bottom: 16px; } }
+
+/* Content-bar user chip — richer than a bare initials button */
+#cbUser.cb-user-rich {
+  display: inline-flex; align-items: center; gap: 10px;
+  width: auto; height: 40px; padding: 4px 12px 4px 4px;
+  border-radius: 999px;
+  background: var(--surface-container-low); border: 1px solid var(--outline-variant);
+  color: var(--on-surface); cursor: pointer; transition: background .12s, box-shadow .12s;
+}
+#cbUser.cb-user-rich:hover { background: var(--surface-container); box-shadow: 0 1px 3px rgba(16,24,64,.06); }
+.cb-user-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: #fff; letter-spacing: .02em; flex-shrink: 0;
+}
+.cb-user-info { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; }
+.cb-user-info b { font-size: 13px; font-weight: 600; color: var(--on-surface); }
+.cb-user-info small { font-size: 10px; font-weight: 600; color: var(--on-surface-variant); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+@media (max-width: 720px) { .cb-user-info { display: none; } #cbUser.cb-user-rich { padding: 4px; } }
+
+/* Dashboard two-up row: My tasks | Recent activity */
+.dash-row-my { display: grid; grid-template-columns: 1.35fr 1fr; gap: 16px; margin-top: 4px; }
+@media (max-width: 900px) { .dash-row-my { grid-template-columns: 1fr; } }
+
+.dash-mytasks, .dash-activity {
+  background: var(--surface-container-lowest);
+  border-radius: 16px; padding: 18px 20px;
+  box-shadow: 0 1px 2px rgba(16,24,64,.05), 0 6px 18px rgba(16,24,64,.05);
+}
+.dmt-head, .dact-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 12px; }
+.dmt-head h3, .dact-head h3 { font-size: 15px; font-weight: 700; color: var(--on-surface); }
+.dmt-count { font-size: 11.5px; font-weight: 700; color: var(--on-surface-variant); background: var(--surface-container); padding: 3px 10px; border-radius: 999px; }
+
+.dmt-list { display: flex; flex-direction: column; }
+.dmt-row {
+  display: grid; grid-template-columns: 12px 1fr auto auto;
+  gap: 12px; align-items: center; padding: 10px 6px;
+  border-top: 1px solid var(--outline-variant); cursor: pointer;
+  transition: background .12s;
+}
+.dmt-row:first-child { border-top: 0; }
+.dmt-row:hover { background: color-mix(in srgb, var(--on-surface) 4%, transparent); border-radius: 8px; }
+.dmt-dot { width: 10px; height: 10px; border-radius: 50%; }
+.dmt-title { font-size: 13.5px; font-weight: 500; color: var(--on-surface); line-height: 1.35; min-width: 0; }
+.dmt-title .dmt-meta { display: block; font-size: 11.5px; color: var(--on-surface-variant); font-weight: 400; margin-top: 2px; }
+.dmt-pill { font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.dmt-due { font-size: 11.5px; font-weight: 600; color: var(--on-surface-variant); white-space: nowrap; }
+.dmt-due.warn { color: #C0341F; }
+.dmt-empty { padding: 14px 4px; font-size: 13px; color: var(--on-surface-variant); line-height: 1.5; }
+
+.dact-list { display: flex; flex-direction: column; gap: 12px; }
+.dact-row { display: grid; grid-template-columns: 30px 1fr auto; gap: 12px; align-items: center; }
+.dact-avatar { width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.dact-msg { font-size: 12.5px; color: var(--on-surface); line-height: 1.4; min-width: 0; }
+.dact-msg b { font-weight: 600; }
+.dact-when { font-size: 11px; color: var(--on-surface-variant); white-space: nowrap; font-weight: 500; }
+.dact-empty { padding: 8px 0; font-size: 13px; color: var(--on-surface-variant); }
+
+/* Owner avatars — hash-color painted at runtime */
+.owner-avatar.painted, .cb-user-avatar.painted, .dact-avatar.painted { color: #fff !important; }
+.owner-avatar.unassigned, .owner-avatar[data-empty="1"] { background: var(--surface-container-high) !important; color: var(--on-surface-variant) !important; }
+
+/* KPI icon disc — subtle animation on hover, matches reference cards */
+.kcard2 .k-ic { transition: transform .15s, background .15s; }
+button.kcard2:hover .k-ic { transform: scale(1.06); }
+
+/* Dark-mode overrides */
+:root[data-theme="dark"] .dash-mytasks,
+:root[data-theme="dark"] .dash-activity {
+  background: var(--surface-container-low);
+  box-shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.35);
+}
+:root[data-theme="dark"] #cbUser.cb-user-rich { background: var(--surface-container); border-color: var(--outline-variant); }
+:root[data-theme="dark"] #cbUser.cb-user-rich:hover { background: var(--surface-container-high); }

@@ -326,7 +326,7 @@ function updateMenuBadge(key) {
   if (btn) { const n = state.filters[key].size; btn.classList.toggle('on', !!n); let c = btn.querySelector('.fb-count'); if (n) { if (!c) { c = document.createElement('span'); c.className = 'fb-count'; btn.insertBefore(c, btn.querySelector('.fb-chev')); } c.textContent = n; } else if (c) c.remove(); }
   const cl = $('#clearFilters'); if (cl) cl.classList.toggle('hide', !activeCount());
 }
-function refreshBody() { const sec = $('#view-' + state.view); const b = sec ? sec.querySelector('#viewBody') : $('#viewBody'); if (!b) return rerender(); if (state.view === 'progress') b.innerHTML = progressBodyHtml(); else if (state.view === 'timeline') b.innerHTML = ganttBodyHtml(); else b.innerHTML = planBodyHtml(); }
+function refreshBody() { const sec = $('#view-' + state.view); const b = sec ? sec.querySelector('#viewBody') : $('#viewBody'); if (!b) return rerender(); if (state.view === 'progress') b.innerHTML = progressBodyHtml(); else if (state.view === 'timeline') b.innerHTML = ganttBodyHtml(); else b.innerHTML = planBodyHtml(); if (typeof paintAvatars === 'function') requestAnimationFrame(() => paintAvatars(b)); }
 function otCard(s) {
   const sm = schoolMs(s), r = ragReady(sm), n = sm.length;
   return `<article class="ot-card" data-drillschool="${esc(s.id)}" style="--mk:${mkColor(s.market)}" title="${esc(s.state)} · ${esc(s.market)} · ${esc(s.display_label)}">
@@ -596,7 +596,7 @@ function renderPlan() {
 /* ============================================================
    EDIT ENGINE + cross-tab
    ============================================================ */
-function rerender() { if (state.view === 'progress') renderProgress(); else if (state.view === 'timeline') renderTimeline(); else renderPlan(); }
+function rerender() { if (state.view === 'progress') renderProgress(); else if (state.view === 'timeline') renderTimeline(); else renderPlan(); requestAnimationFrame(() => paintAvatars()); }
 
 /* ============================================================
    TAB 0 — EXECUTIVE SUMMARY (board / chiefs readout, print-ready)
@@ -792,7 +792,70 @@ function dashboardHtml(list) {
   const statusLegend = `<div class="pl-legend pl-legend-sm">${STATUS_ORDER.filter(s => list.some(m => effectiveStatus(m) === s)).map(s => `<span class="pl-leg"><i style="background:${SM(s).color}"></i>${SM(s).label}</span>`).join('')}</div>`;
   const workload = `<section class="ex-card"><div class="ex-card-head toggle" data-toggle="dash:workload"><div class="ex-cardhead-l">${chev(wOpen)}<h3>Milestone Workload by Year</h3></div></div><div class="ex-card-body ${wOpen ? '' : 'hide'}">${statusLegend}${columnChart(list)}</div></section>`;
 
-  return `<div class="dash">${hero}${kpiStrip}${statusPipeline(list)}${readiness}${upcomingCard}<div class="dash-pair"><div class="dash-lstack">${capital}${workload}</div>${risksCard}</div></div>`;
+  return `<div class="dash">${greetHeader()}${kpiStrip}${personalRow(list)}${hero}${statusPipeline(list)}${readiness}${upcomingCard}<div class="dash-pair"><div class="dash-lstack">${capital}${workload}</div>${risksCard}</div></div>`;
+}
+
+/* Dashboard: greeting header — time-of-day + user name + today's date */
+function greetHeader() {
+  const first = (currentDisplayName() || '').split(/\s+/)[0];
+  const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  return `<header class="dash-greet"><div class="dash-greet-l">
+    <h1>${esc(timeGreeting())}${first ? `, <span class="u-name">${esc(first)}</span>` : ''}</h1>
+    <div class="dg-date">${esc(dateStr)} · Network Growth Hub</div>
+  </div></header>`;
+}
+
+/* Dashboard: two-up row — My tasks | Recent activity (only when signed in / attributed) */
+function personalRow(list) {
+  const name = currentDisplayName();
+  if (!name) return '';   // nothing personal to show
+  return `<section class="dash-row-my">${myTasksCard(list, name)}${recentActivityCard()}</section>`;
+}
+function myTasksCard(list, name) {
+  const isMine = m => {
+    if (!name) return false;
+    const owner = (m.owner || '').toLowerCase().trim();
+    const n = name.toLowerCase().trim();
+    if (!owner) return false;
+    if (owner === n) return true;
+    // fuzzy: last-name match ("Aden Avery" matches "A. Avery" or "Avery")
+    const ln = n.split(/\s+/).pop(); return ln && ln.length > 2 && owner.includes(ln);
+  };
+  const mine = list.filter(isMine).filter(m => effectiveStatus(m) !== 'complete')
+    .sort((a, b) => {
+      const ad = a.due_date ? parseDate(a.due_date) : Infinity;
+      const bd = b.due_date ? parseDate(b.due_date) : Infinity;
+      return ad - bd;
+    }).slice(0, 6);
+  const rows = mine.map(m => {
+    const s = SM(effectiveStatus(m));
+    const t = timingLevel(m);
+    const due = m.due_date ? fmtDate(m.due_date) : 'No date';
+    const warn = t === 'overdue' || t === 'due-this-month';
+    return `<div class="dmt-row drill" data-openitem="${esc(m.id)}"><span class="dmt-dot" style="background:${s.color}"></span>
+      <div class="dmt-title">${esc(m.activity)}<span class="dmt-meta">${esc(m.market || '')} · ${esc(m.functional_area || m.team || '')}</span></div>
+      <span class="dmt-pill" style="background:${s.color}22;color:${s.color}">${esc(s.label)}</span>
+      <span class="dmt-due ${warn ? 'warn' : ''}">${esc(due)}</span></div>`;
+  }).join('');
+  const body = mine.length ? `<div class="dmt-list">${rows}</div>` : `<div class="dmt-empty">Nothing assigned to <b>${esc(name)}</b> right now. Tasks you own will appear here — set yourself as Owner on a task to see it.</div>`;
+  return `<article class="dash-mytasks"><div class="dmt-head"><h3>Your open tasks</h3>${mine.length ? `<span class="dmt-count">${mine.length}</span>` : ''}</div>${body}</article>`;
+}
+function recentActivityCard() {
+  const log = getActivityLog().slice().reverse().slice(0, 5);
+  if (!log.length) {
+    return `<article class="dash-activity"><div class="dact-head"><h3>Recent activity</h3></div><div class="dact-empty">Changes made in the workspace will appear here.</div></article>`;
+  }
+  const rows = log.map(e => {
+    const who = e.author || '—';
+    const init = userInitials(who);
+    const when = fmtWhen(e.ts);
+    const itemId = e.extra && e.extra.itemId;
+    const attr = itemId && findM(itemId) ? ` data-openitem="${esc(itemId)}" style="cursor:pointer"` : '';
+    return `<div class="dact-row"${attr}><span class="dact-avatar" data-seed="${esc(who)}">${esc(init)}</span>
+      <span class="dact-msg"><b>${esc(who)}</b> ${esc(e.detail)}</span>
+      <span class="dact-when">${esc(when)}</span></div>`;
+  }).join('');
+  return `<article class="dash-activity"><div class="dact-head"><h3>Recent activity</h3><button class="btn btn-outlined btn-sm" data-toggleactivity>See all</button></div><div class="dact-list">${rows}</div></article>`;
 }
 function applyDrill(dim, val) {
   if (dim === 'team') state.filters.areas = new Set([val]);
@@ -1440,6 +1503,8 @@ function wireEvents() {
     const sm = e.target.closest('[data-showmore]'); if (sm) { const p = sm.dataset.showmore; if (p === 'focus') state.planFocus = true; else { state.planGroup = p; state.planFocus = false; } return setView('plan'); }
     const tg = e.target.closest('[data-toggle]'); if (tg) { const k = tg.dataset.toggle; state.expanded[k] = !state.expanded[k]; return refreshBody(); }
     const ex = e.target.closest('[data-expand]'); if (ex) return openModal(ex.dataset.expand);
+    const oi = e.target.closest('[data-openitem]'); if (oi) return openModal(oi.dataset.openitem);
+    if (e.target.closest('[data-toggleactivity]')) return toggleActivity();
     const es2 = e.target.closest('[data-editschool]'); if (es2) return openSchoolModal(es2.dataset.editschool);
     const ds = e.target.closest('[data-drillschool]'); if (ds) return openSchoolModal(ds.dataset.drillschool);
     const gp = e.target.closest('[data-goplan]'); if (gp) { const m = findM(gp.dataset.goplan); if (m) { state.filters.search = m.activity; const cb = $('#cbSearch'); if (cb) cb.value = m.activity; } setView('plan'); return; }
@@ -1597,22 +1662,35 @@ function showAuthScreen(err, mode, info) {
   setTimeout(() => { const i = $(isSignup ? '#authName' : '#authEmail'); if (i && !i.value) i.focus(); }, 30);
 }
 
+/* ============================================================
+   Level-up polish (Aug 22 2026): avatar palette, greeting,
+   personalized My-tasks + inline Activity, rich user chip
+   ============================================================ */
+const _AVATAR_PAL = ['#16357F','#B03A5B','#0F7B6C','#8A5B14','#7A3A9B','#0B4E7F','#B04E00','#3A6B14','#5B2A85','#9B2C55','#155F8A','#7B4600','#0E5D9E','#7B1E3C'];
+function avatarColor(seed) { if (!seed) return '#75778B'; let h = 0; for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0; return _AVATAR_PAL[Math.abs(h) % _AVATAR_PAL.length]; }
+function userInitials(name) { if (!name) return '?'; const p = name.trim().split(/\s+/); return (p.length >= 2 ? p[0][0] + p[p.length - 1][0] : name.slice(0, 2)).toUpperCase(); }
+function paintAvatars(root) {
+  (root || document).querySelectorAll('.owner-avatar:not(.unassigned):not(.painted), .dact-avatar:not(.painted), .cb-user-avatar:not(.painted)').forEach(el => {
+    const seed = el.getAttribute('data-seed') || el.textContent || '';
+    if (!seed) return;
+    el.style.background = avatarColor(seed); el.style.color = '#fff'; el.classList.add('painted');
+  });
+}
+function timeGreeting() { const h = new Date().getHours(); return h < 5 ? 'Working late' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; }
+function currentDisplayName() { const p = currentProfile(); return (p && (p.full_name || p.email)) || lsGet('ngc_author') || ''; }
+function currentRoleLabel() { const p = currentProfile(); if (p && p.role) return p.role; return 'Editor'; }
+
 function updateUserBadge() {
   const btn = $('#cbUser'); if (!btn) return;
   const p = currentProfile();
-  if (p) {
-    const nm = p.full_name || p.email || 'User';
-    const initials = nm.split(/\s+/).map(w => w[0]).filter(Boolean).join('').toUpperCase().slice(0, 2) || nm.slice(0, 2).toUpperCase();
-    btn.textContent = initials;
-    btn.title = `${nm} · ${p.role || 'viewer'}\nClick for menu`;
-    btn.dataset.authed = '1';
-  } else {
-    const author = lsGet('ngc_author') || '';
-    const initials = author ? author.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : '?';
-    btn.textContent = initials;
-    btn.title = author || 'Set your name';
-    delete btn.dataset.authed;
-  }
+  const name = (p && (p.full_name || p.email)) || lsGet('ngc_author') || '';
+  const initials = userInitials(name);
+  const role = p ? (p.role || 'viewer') : (name ? 'guest' : '');
+  btn.classList.add('cb-user-rich');
+  btn.innerHTML = `<span class="cb-user-avatar" data-seed="${esc(name || 'anon')}">${esc(initials)}</span>${name ? `<span class="cb-user-info"><b>${esc(name.split(/\s+/)[0])}</b><small>${esc(role)}</small></span>` : `<span class="cb-user-info"><b>Sign in</b><small>Set name</small></span>`}`;
+  btn.title = name ? `${name} · ${role}\nClick for menu` : 'Set your name';
+  if (p) btn.dataset.authed = '1'; else delete btn.dataset.authed;
+  paintAvatars(btn);
 }
 
 function openUserMenu(anchor) {
