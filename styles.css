@@ -2040,5 +2040,48 @@ body.nav-collapsed #navToggle svg { transform: scaleX(-1); }
 .auth-mode-block .field-check:has(input:checked) { border-color: var(--primary, #16357F); background: color-mix(in srgb, var(--primary) 6%, transparent); }
 .auth-mode-block .field-check b { font-weight: 600; }
 
+/* ============================================================
+   DASHBOARD & NAV — MD-aligned icon + rhythm pass
+   ============================================================ */
+
+/* (1) Sidebar nav — cleaner left-align + consistent indent so items visually nest under "Workspace" */
+@media (min-width: 1000px) {
+  .app-header .nav-section { padding: 0 14px 4px; margin: 16px 0 4px; letter-spacing: .12em; opacity: .55; }
+  .app-header .nav-tab { padding: 10px 12px; gap: 14px; }
+  .app-header .nav-tab .nav-ic { width: 18px; height: 18px; margin-left: 2px; }
+  .app-header .header-actions .icon-btn.nav-util { padding: 10px 12px; gap: 14px; }
+  .app-header .header-actions .icon-btn.nav-util svg { width: 18px; height: 18px; margin-left: 2px; }
+}
+
+/* (2) Dashboard card headers — MD-align icons: chev vertically centered with title baseline,
+       count badge and "See all" action right-aligned with consistent gap */
+.dash .ex-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 24px; }
+.dash .ex-cardhead-l { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1 1 auto; }
+.dash .ex-cardhead-l h3 { display: flex; align-items: center; }
+.dash .ex-card-head .chev { width: 14px; height: 14px; opacity: .55; flex-shrink: 0; }
+.dash .ex-card-head.toggle:hover .chev { opacity: 1; }
+.dash .dash-count { flex-shrink: 0; align-self: center; height: 20px; display: inline-flex; align-items: center; }
+.dash .card-more { flex-shrink: 0; align-self: center; }
+
+/* (3) Overdue column — give it more width so it sits proportionally against the tall left stack,
+       and remove the internal unused real estate by letting the list fill the card height */
+.dash-pair { grid-template-columns: 1fr 1.15fr; align-items: stretch; }
+.dash-pair > .ex-card { display: flex; flex-direction: column; }
+.dash-pair > .ex-card > .ex-card-body { flex: 1 1 auto; display: flex; flex-direction: column; }
+.dash-pair > .ex-card > .ex-card-body > .ex-list { flex: 1 1 auto; }
+@media (max-width: 640px) { .dash-pair { grid-template-columns: 1fr; } }
+
+/* (4) Key Milestones + Overdue list items — clearer visual separation between rows */
+.dash .ex-list { gap: 0; }
+.dash .ex-list .ex-li {
+  padding: 12px 10px; border-top: 1px solid var(--outline-variant, #E4E7EF);
+  border-radius: 8px; margin: 0 -6px; transition: background .12s;
+}
+.dash .ex-list .ex-li:first-child { border-top: 0; }
+.dash .ex-list .ex-li:hover { background: var(--surface-container, #EEF1F6); }
+.dash .ex-li-t { font-weight: 600; font-size: 13.5px; }
+.dash .ex-li-m { font-size: 12px; color: var(--on-surface-variant, #6B7280); margin-top: 3px; }
+
+
 
 
