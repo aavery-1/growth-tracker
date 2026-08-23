@@ -3139,3 +3139,56 @@ body[data-view="progress"] #cbPillFilter { display: none; }
 .kcol-add { width: 22px; height: 22px; border-radius: 6px; border: 0; background: rgba(255,255,255,.22); color: #fff; font-size: 17px; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background .12s; padding: 0; }
 .kcol-add:hover { background: rgba(255,255,255,.38); }
 .kcol.collapsed .kcol-add { display: none; }
+
+/* ============================================================
+   31. NAV BARS — adopt reference styling (soft sidebar + pill topbar)
+   ============================================================ */
+@media (min-width: 1000px) {
+  .app-header { background: #F5F6F8 !important; border-right: 1px solid #ECEEF2 !important; }
+  :root[data-theme="dark"] .app-header { background: #0E0F14 !important; border-right-color: #1E2029 !important; }
+
+  .app-header .nav-tab {
+    color: #5A6270 !important; font-weight: 600 !important; font-size: 14px !important;
+    border-radius: 11px !important; padding: 10px 12px !important; gap: 12px !important;
+    background: transparent !important; box-shadow: none !important;
+    transition: background .12s, color .12s, box-shadow .12s !important;
+  }
+  .app-header .nav-tab .nav-ic { color: #7A828F !important; opacity: 1 !important; width: 20px; height: 20px; }
+  .app-header .nav-tab:hover { background: rgba(20,26,36,.05) !important; color: #1B2230 !important; }
+  .app-header .nav-tab:hover .nav-ic { color: #1B2230 !important; }
+  .app-header .nav-tab.active {
+    background: #FFFFFF !important; color: #141A24 !important; font-weight: 700 !important;
+    box-shadow: 0 1px 2px rgba(16,24,64,.06), 0 4px 12px rgba(16,24,64,.08) !important;
+  }
+  .app-header .nav-tab.active::after { display: none !important; }
+  .app-header .nav-tab.active::before { opacity: 0 !important; }
+  .app-header .nav-tab.active .nav-ic { color: var(--primary, #16357F) !important; opacity: 1 !important; }
+  :root[data-theme="dark"] .app-header .nav-tab { color: #9BA3B2 !important; }
+  :root[data-theme="dark"] .app-header .nav-tab .nav-ic { color: #8B93A3 !important; }
+  :root[data-theme="dark"] .app-header .nav-tab:hover { background: rgba(255,255,255,.06) !important; color: #fff !important; }
+  :root[data-theme="dark"] .app-header .nav-tab.active { background: #1B1D27 !important; color: #fff !important; box-shadow: 0 2px 10px rgba(0,0,0,.4) !important; }
+  :root[data-theme="dark"] .app-header .nav-tab.active .nav-ic { color: #7FA8FF !important; }
+
+  .app-header .nav-section-label { color: #99A0AD !important; font-size: 11px !important; font-weight: 700 !important; letter-spacing: .06em !important; text-transform: uppercase; }
+
+  .app-header .header-actions .icon-btn.nav-util { color: #5A6270 !important; font-weight: 600 !important; border-radius: 11px !important; }
+  .app-header .header-actions .icon-btn.nav-util:hover { background: rgba(20,26,36,.05) !important; color: #1B2230 !important; }
+}
+
+/* Top bar: rounded search pill (with ⌘K hint) + user chip */
+.cb-search {
+  background: #FFFFFF !important; border: 1px solid #E6E9EF !important; border-radius: 12px !important;
+  box-shadow: 0 1px 2px rgba(16,24,64,.04) !important; height: 42px !important;
+}
+:root[data-theme="dark"] .cb-search { background: #14161D !important; border-color: #262A35 !important; }
+.cb-search::after {
+  content: "⌘K"; margin-left: auto; flex: 0 0 auto; font-size: 11px; font-weight: 700;
+  color: var(--on-surface-variant); background: var(--surface-container-high, #EEF1F6);
+  border: 1px solid var(--outline-variant); border-radius: 6px; padding: 2px 6px; letter-spacing: .02em;
+}
+.cb-profile {
+  background: #FFFFFF !important; border: 1px solid #E6E9EF !important; border-radius: 999px !important;
+  box-shadow: 0 1px 2px rgba(16,24,64,.04) !important;
+}
+:root[data-theme="dark"] .cb-profile { background: #14161D !important; border-color: #262A35 !important; }
+.cb-iconbtn { border-radius: 11px !important; }
