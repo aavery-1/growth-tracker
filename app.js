@@ -142,6 +142,27 @@ const DATA_MIGRATIONS = {
     if (data.meta) data.meta.authMode = 'supabase';
   }
 };
+/* Normalize milestone shape on every load. This is idempotent and cheap.
+   It resolves the schema debt (team vs functional_area, schools vs schoolIds,
+   three booleans vs one type) without needing a versioned migration. Reads
+   throughout the app assume the normalized shape. Writes still populate
+   both fields on new items for backward compatibility. */
+function normalizeData(data) {
+  if (!data || !Array.isArray(data.milestones)) return data;
+  data.milestones.forEach(m => {
+    // Workstream: functional_area is the canonical read; sync team = functional_area.
+    if (m.functional_area && !m.team) m.team = m.functional_area;
+    else if (m.team && !m.functional_area) m.functional_area = m.team;
+    // Schools: schoolIds is the source of truth; keep schools codes as a mirror.
+    if (!Array.isArray(m.schoolIds)) m.schoolIds = [];
+    if (!Array.isArray(m.schools)) m.schools = [];
+    // Derived type enum from the historical boolean flags. Preserves flags for
+    // any code path that still reads them; new UI can read m.type directly.
+    if (!m.type) m.type = m.greenlight ? 'greenlight' : m.transition ? 'transition' : m.keyMilestone ? 'key' : 'task';
+  });
+  return data;
+}
+
 async function loadData() {
   let base;
   if (window.__EMBEDDED_DATA__) base = JSON.parse(JSON.stringify(window.__EMBEDDED_DATA__));
@@ -151,20 +172,20 @@ async function loadData() {
     if (s && s.milestones) {
       const baseV = (base.meta && base.meta.version) || 0;
       const cachedV = s.__baseVersion || 0;
-      if (cachedV === baseV) return s;                 // versions match - use cache as-is
-      if (cachedV < baseV) {                            // upgrade path - migrate in place, keep user data
+      if (cachedV === baseV) return normalizeData(s);          // versions match - use cache as-is
+      if (cachedV < baseV) {                                    // upgrade path - migrate in place, keep user data
         for (let v = cachedV + 1; v <= baseV; v++) {
           const fn = DATA_MIGRATIONS[v];
           if (fn) { try { fn(s, base); } catch (e) { console.warn('data migration v' + v + ' failed:', e); } }
         }
         s.__baseVersion = baseV;
         try { lsSet(LS.data, JSON.stringify(s)); } catch (e) {}   // persist the migrated cache
-        return s;
+        return normalizeData(s);
       }
-      return s;                                         // cached ahead of shipped (unexpected) - trust cache
+      return normalizeData(s);                                  // cached ahead of shipped (unexpected) - trust cache
     }
   } catch (e) {}
-  return base;
+  return normalizeData(base);
 }
 let saveTimer = null;
 function autosaveWriteLocal() { try { const c = JSON.parse(JSON.stringify(state.data)); c.__baseVersion = state.data.meta && state.data.meta.version; lsSet(LS.data, JSON.stringify(c)); return true; } catch (e) { return false; } }
@@ -376,38 +397,9 @@ function renderTimeline() {
     ${openingYearBar()}
     <div id="viewBody">${ganttBodyHtml()}</div>`;
 }
-function reportsBodyHtml() {
-  const list = filtered();
-  const rTab = state.reportsTab || 'overview';
-  if (rTab === 'timeline') return `${openingYearBar()}${ganttBodyHtml()}`;
-  if (rTab === 'list') {
-    const items = list.slice().sort(bySortUrgency);
-    const byArea = teams().map(t => ({ key: 'a:' + t, name: t, list: list.filter(m => m.functional_area === t) }));
-    const njMk = statesMeta().find(s => s.code === 'NJ').markets, flMk = statesMeta().find(s => s.code === 'FL').markets;
-    const byNJ = njMk.map(mk => ({ key: 'nj:' + mk, name: mk, color: mkColor(mk), list: list.filter(m => m.market === mk) }));
-    const byFL = flMk.map(mk => ({ key: 'fl:' + mk, name: mk, color: mkColor(mk), list: list.filter(m => m.market === mk) }));
-    const prio = list.filter(m => m.keyMilestone || m.greenlight || m.transition).slice().sort(bySortUrgency);
-    state._pmKeys = ['sec:prio', 'prio:all', 'sec:area', ...byArea.map(s => s.key), 'sec:nj', ...byNJ.map(s => s.key), 'sec:fl', ...byFL.map(s => s.key)];
-    return `<div class="pm-urgency"><span class="muted" style="font-size:12.5px">Click any section to expand</span><span class="tb-spacer"></span><button class="btn btn-text btn-sm" id="pmExpandAll">Expand all</button><button class="btn btn-text btn-sm" id="pmCollapseAll">Collapse all</button></div>
-      ${section('sec:prio', 'Key Milestones & Greenlights', [{ key: 'prio:all', name: 'Flagged milestones, greenlights & transitions', list: prio }], 'Decisions and gateways that unlock each opening')}
-      ${section('sec:area', 'By Workstream', byArea)}
-      ${section('sec:nj', 'By Market (New Jersey)', byNJ)}
-      ${section('sec:fl', 'By Market (Florida)', byFL)}`;
-  }
-  return chartsHtml(list);
-}
-function renderReports() {
-  const rTab = state.reportsTab || 'overview';
-  const tabs = [['overview', 'Charts'], ['timeline', 'Openings Timeline'], ['list', 'Detailed List']];
-  const tabsHtml = tabs.map(([v, l]) => `<button class="seg ${rTab === v ? 'on' : ''}" data-reportstab="${v}"><span>${l}</span></button>`).join('');
-  const addSchool = rTab === 'timeline' ? `<button class="btn btn-filled" id="addSchool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>Add school opening</button>` : '';
-  const printBtn = `<button class="btn btn-tonal" id="dashPrint"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Print / PDF</button>`;
-  $('#view-reports').innerHTML = `
-    <div class="view-head"><div><h2>Reports</h2></div><div class="vh-actions">${addSchool}${printBtn}</div></div>
-    <div class="reports-tabs"><div class="segmented">${tabsHtml}</div></div>
-    ${filterBar(['states', 'markets', 'areas', 'statuses'], { school: true })}
-    <div id="viewBody">${reportsBodyHtml()}</div>`;
-}
+// (Deleted: renderReports + reportsBodyHtml. The Reports tab was removed
+//  months ago; the functions had no callers and referenced a #view-reports
+//  element that no longer exists in index.html.)
 
 /* ============================================================
    TAB 2 - PROGRESS MONITORING (collapsible)
@@ -822,7 +814,10 @@ function dashboardHtml(list) {
   //   6. Readiness grid - full portfolio deep-dive (default open)
   //   7. Growth Fundraising - capital context (default open)
   //   8. Workload | Overdue Milestones - side by side, equal height (default open)
-  return `<div class="dash">${greetBanner(list)}${kpiStrip}${hero}${statusPipeline(list)}${upcomingCard}${readiness}${capital}<div class="dash-pair">${workload}${risksCard}</div></div>`;
+  // Bottom row: [Growth Fundraising + Milestone Workload stacked] | [Overdue Milestones]
+  //             This saves vertical space and puts the "actionable" list next
+  //             to the two context cards.
+  return `<div class="dash">${greetBanner(list)}${kpiStrip}${hero}${statusPipeline(list)}${upcomingCard}${readiness}<div class="dash-pair"><div class="dash-lstack">${capital}${workload}</div>${risksCard}</div></div>`;
 }
 
 /* Elegant greeting header - typography only, no photo. The photo lives on
@@ -1674,7 +1669,6 @@ function showAuthScreen(err, mode, info) {
    ============================================================ */
 const _AVATAR_PAL = ['#16357F','#B03A5B','#0F7B6C','#8A5B14','#7A3A9B','#0B4E7F','#B04E00','#3A6B14','#5B2A85','#9B2C55','#155F8A','#7B4600','#0E5D9E','#7B1E3C'];
 function avatarColor(seed) { if (!seed) return '#75778B'; let h = 0; for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0; return _AVATAR_PAL[Math.abs(h) % _AVATAR_PAL.length]; }
-function userInitials(name) { if (!name) return '?'; const p = name.trim().split(/\s+/); return (p.length >= 2 ? p[0][0] + p[p.length - 1][0] : name.slice(0, 2)).toUpperCase(); }
 function paintAvatars(root) {
   (root || document).querySelectorAll('.owner-avatar:not(.unassigned):not(.painted), .dact-avatar:not(.painted), .cb-user-avatar:not(.painted)').forEach(el => {
     const seed = el.getAttribute('data-seed') || el.textContent || '';
@@ -1690,11 +1684,11 @@ function updateUserBadge() {
   const btn = $('#cbUser'); if (!btn) return;
   const p = currentProfile();
   const name = (p && (p.full_name || p.email)) || lsGet('ngc_author') || '';
-  const initials = userInitials(name);
+  const inits = initials(name) || '?';
   const role = p ? (p.role || 'viewer') : (name ? 'guest' : '');
   // Compact: just the initials circle. Fixed to viewport top-right via CSS.
   btn.classList.add('cb-user-fixed');
-  btn.innerHTML = `<span class="cb-user-avatar" data-seed="${esc(name || 'anon')}">${esc(initials || '?')}</span>`;
+  btn.innerHTML = `<span class="cb-user-avatar" data-seed="${esc(name || 'anon')}">${esc(inits)}</span>`;
   btn.title = name ? `${name} · ${role}\nClick for menu` : 'Set your name';
   if (p) btn.dataset.authed = '1'; else delete btn.dataset.authed;
   paintAvatars(btn);
@@ -1977,6 +1971,8 @@ function initContentBar() {
   if (cbPage) { cbPage.style.cursor = 'pointer'; cbPage.title = 'Clear active filters on this view'; cbPage.addEventListener('click', () => { if (activeCount()) { clearFilters(); rerender(); toast('Filters cleared', 'ok'); } }); }
 }
 function bootApp() {
+  // Clear any loading skeleton painted by index.html or a prior boot attempt.
+  const sk = document.getElementById('bootSkeleton'); if (sk) sk.remove();
   wireEvents();
   wireCmdk();
   wireKeyboard();

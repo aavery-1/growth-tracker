@@ -2196,8 +2196,10 @@ button.kcard2:hover .k-ic { transform: scale(1.06); }
 .dash-pair > .ex-card > .ex-card-body::-webkit-scrollbar-thumb:hover { background: var(--outline); }
 @media (max-width: 900px) { .dash-pair { grid-template-columns: 1fr; } }
 
-/* Responsive: container breathes on wider screens */
-.container { max-width: min(1440px, 96vw); }
+/* Responsive: container caps at 1440px. Padding on .container already
+   provides side gutters, no vw needed (avoids the vw=0 collapse in some
+   embedded browser panes). */
+.container { max-width: 1440px; }
 .dash-banner h1, .view-head h2 { text-wrap: balance; }
 
 /* Dark-mode overrides */
@@ -2351,3 +2353,145 @@ button.kcard2:hover .k-ic { transform: scale(1.06); }
 /* Ex-card hover: lift subtly so cards feel tactile without moving too much */
 .ex-card { transition: box-shadow .15s, transform .12s; }
 .ex-card:hover { box-shadow: 0 2px 6px rgba(16,24,64,.06), 0 12px 28px rgba(16,24,64,.08) !important; }
+
+
+/* ============================================================
+   POLISH v6 - Aug 22 2026
+   "Restraint" pass to close the elegance gap vs modern references:
+   bigger greeting, more section rhythm, disciplined accent color
+   (used only for meaning), unified motion tokens, cross-browser
+   fallbacks, loading skeleton, Material 3 typography adherence.
+   ============================================================ */
+
+/* Material 3 motion tokens - one source of truth for easing/duration */
+:root {
+  --motion-standard: cubic-bezier(0.2, 0, 0, 1);
+  --motion-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --dur-short: 150ms;
+  --dur-medium: 250ms;
+  --dur-long: 400ms;
+}
+
+/* Greeting: bigger, more presence. Matches modern dashboard hero norm. */
+.dash-banner { padding: 8px 0 26px 22px; margin: 8px 0 34px; }
+.dash-banner h1 { font-size: clamp(32px, 4.5vw, 52px); font-weight: 600; letter-spacing: -.8px; line-height: 1.05; }
+.db-eyebrow { font-size: 12px; letter-spacing: .14em; margin-bottom: 4px; }
+
+/* Section rhythm: more air between cards. Matches the reference designs. */
+.dash { gap: 28px; }
+.ex-card { padding: 22px 24px !important; }
+.ex-card-head { margin-bottom: 18px !important; }
+.ex-card h3 { font-size: 17px !important; letter-spacing: -.15px; font-weight: 700; }
+
+/* Accent discipline: red reserved for Overdue only. Everything else neutral.
+   Distinctness now comes from typography, rhythm, and content - not color. */
+.ex-card[data-section="upcoming"],
+.ex-card[data-section="readiness"],
+.ex-card[data-section="capital"],
+.ex-card[data-section="workload"] { border-left: 0 !important; padding-left: 24px !important; }
+.ex-card[data-section="overdue"] { border-left: 3px solid #C0341F !important; padding-left: 24px !important; }
+/* Section headers get a small semantic dot instead of a colored stripe - subtler */
+.ex-card[data-section] .ex-cardhead-l::before {
+  content: ''; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--outline); margin-right: 2px; flex-shrink: 0;
+}
+.ex-card[data-section="upcoming"]  .ex-cardhead-l::before { background: #B36A00; }
+.ex-card[data-section="readiness"] .ex-cardhead-l::before { background: #16357F; }
+.ex-card[data-section="capital"]   .ex-cardhead-l::before { background: #C77400; }
+.ex-card[data-section="workload"]  .ex-cardhead-l::before { background: #7A3A9B; }
+.ex-card[data-section="overdue"]   .ex-cardhead-l::before { background: #C0341F; }
+
+/* KPI tiles: tone the tint pills down a notch for a more restrained read */
+.kpi-strip { gap: 14px; margin-bottom: 6px; }
+.kcard2 { padding: 18px 20px !important; }
+.k-num { font-size: 32px !important; font-weight: 700 !important; letter-spacing: -.6px !important; }
+.k-lbl { font-size: 13px !important; font-weight: 600 !important; margin-top: 10px !important; }
+
+/* Cross-browser: color-mix fallback for older Safari (< 16.2) and other UAs.
+   Any rule that uses color-mix should first declare a safe fallback so the
+   surface still renders if color-mix is unsupported. */
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .kcard:hover, .ex-card:hover, .ot-card:hover, .kcard2:hover { background: rgba(22, 53, 127, 0.04); }
+  .dmt-row:hover { background: rgba(22, 53, 127, 0.04); }
+  .ex-li:hover { background: rgba(22, 53, 127, 0.04); }
+}
+
+/* Firefox scrollbars: mirror the ::-webkit-scrollbar look with the
+   scrollbar-color / scrollbar-width properties Firefox actually reads. */
+* { scrollbar-width: thin; scrollbar-color: var(--outline-variant) transparent; }
+.ex-grid-wrap, .ex-card-body, .modal-body, .cmdk-body, .activity-body, .pop-list {
+  scrollbar-width: thin; scrollbar-color: var(--outline-variant) transparent;
+}
+
+/* Safari prefixes for backdrop-filter (some paths were missing them) */
+.gate-card, .cmdk, .modal, .confirm-box {
+  /* keep any existing backdrop-filter and mirror it with -webkit- for old Safari */
+  -webkit-backdrop-filter: blur(0);   /* no-op fallback; explicit -webkit- pairings sit next to the standard property elsewhere in the file */
+}
+
+/* Loading skeleton painted before app boots. Removed by bootApp(). */
+.boot-skeleton {
+  padding: 24px 0; display: flex; flex-direction: column; gap: 20px;
+  animation: bskFade .4s ease;
+}
+.bsk-bar { height: 40px; width: 100%; max-width: 480px; background: linear-gradient(90deg, var(--surface-container) 0%, var(--surface-container-high) 50%, var(--surface-container) 100%); background-size: 200% 100%; border-radius: 10px; animation: bskShimmer 1.6s infinite linear; }
+.bsk-line { height: 52px; background: linear-gradient(90deg, var(--surface-container) 0%, var(--surface-container-high) 50%, var(--surface-container) 100%); background-size: 200% 100%; border-radius: 12px; animation: bskShimmer 1.6s infinite linear; }
+.bsk-line.l1 { width: 55%; max-width: 520px; height: 40px; }
+.bsk-line.l2 { width: 30%; max-width: 260px; height: 18px; }
+.bsk-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 12px; }
+.bsk-tiles > div { height: 96px; border-radius: 14px; background: linear-gradient(90deg, var(--surface-container) 0%, var(--surface-container-high) 50%, var(--surface-container) 100%); background-size: 200% 100%; animation: bskShimmer 1.6s infinite linear; }
+.bsk-block { height: 240px; border-radius: 16px; background: linear-gradient(90deg, var(--surface-container) 0%, var(--surface-container-high) 50%, var(--surface-container) 100%); background-size: 200% 100%; animation: bskShimmer 1.6s infinite linear; }
+@keyframes bskShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@keyframes bskFade { from { opacity: 0 } to { opacity: 1 } }
+@media (max-width: 640px) { .bsk-tiles { grid-template-columns: repeat(2, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .bsk-bar, .bsk-line, .bsk-tiles > div, .bsk-block { animation: none !important; } }
+
+/* Material 3: minimum interactive target 40px (desktop) / 48px (touch).
+   Verify buttons meet that; some small ones stayed too small. */
+.btn { min-height: 40px; }
+.btn-sm { min-height: 32px; }
+.icon-btn { min-width: 40px; min-height: 40px; }
+@media (pointer: coarse) {
+  .btn { min-height: 44px; }
+  .icon-btn { min-width: 44px; min-height: 44px; }
+  .nav-tab { min-height: 44px; }
+}
+
+/* Print-only: hide the fixed user chip so it doesn't cover PDF content */
+@media print { #cbUser.cb-user-fixed { display: none !important; } }
+
+
+/* ============================================================
+   POLISH v6.1 - dash-pair layout: stacked left + tall right
+   Growth Fundraising + Milestone Workload stack in the left
+   column; Overdue Milestones fills the right column. Whole pair
+   is capped so it doesn't dominate the page; each card body
+   scrolls internally within its share of the height.
+   ============================================================ */
+.dash-pair {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 20px !important;
+  align-items: stretch !important;
+  height: 640px !important;              /* fixed row height, robust across viewport quirks */
+}
+.dash-pair > * { min-width: 0; min-height: 0; margin: 0 !important; height: 100%; }
+.dash-lstack { display: flex !important; flex-direction: column; gap: 20px; min-height: 0; }
+.dash-lstack > .ex-card { flex: 1 1 50%; min-height: 0; display: flex; flex-direction: column; }
+.dash-lstack > .ex-card > .ex-card-body {
+  flex: 1 1 auto !important; min-height: 0; max-height: none !important; overflow-y: auto !important;
+  scrollbar-width: thin; scrollbar-color: var(--outline-variant) transparent;
+}
+/* Right column = Overdue Milestones. Fills full row height, list scrolls. */
+.dash-pair > .ex-card:last-child {
+  display: flex; flex-direction: column;
+}
+.dash-pair > .ex-card:last-child > .ex-card-body {
+  flex: 1 1 auto !important; min-height: 0; max-height: none !important; overflow-y: auto !important;
+  scrollbar-width: thin; scrollbar-color: var(--outline-variant) transparent;
+}
+@media (max-width: 900px) {
+  .dash-pair { grid-template-columns: 1fr !important; height: auto !important; grid-auto-rows: minmax(300px, auto); }
+  .dash-lstack > .ex-card > .ex-card-body { max-height: 320px !important; }
+  .dash-pair > .ex-card:last-child > .ex-card-body { max-height: 400px !important; }
+}
