@@ -367,8 +367,9 @@ function ganttBodyHtml() {
     <div class="ot-legend"><span><i class="rag" style="background:${RAG.none}"></i>Not started</span><span><i class="rag" style="background:${RAG.blue}"></i>In progress</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind</span><span><i class="rag" style="background:${RAG.green}"></i>Cleared</span><span class="muted">· click a school to open its milestones</span></div>`;
 }
 function renderTimeline() {
+  // No H2 - sidebar already indicates active page. Action button floats right.
   const el = $('#view-timeline'); if (el) el.innerHTML = `
-    <div class="view-head"><div><h2>Openings Timeline</h2></div>
+    <div class="view-actions">
       <button class="btn btn-filled" id="addSchool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>Add school opening</button>
     </div>
     ${filterBar(['states', 'markets', 'types'])}
@@ -607,8 +608,8 @@ function renderPlan() {
     <select id="planGroupSel" ${state.planFocus ? 'disabled' : ''}>${[['team', 'Workstream'], ['school', 'School opening'], ['market', 'Market'], ['year', 'Year']].map(([v, l]) => `<option value="${v}" ${state.planGroup === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`;
   const expandBtns = (!state.planFocus && !isBoard) ? `<button class="btn btn-ghost btn-sm" id="planExpandAll">Expand all</button><button class="btn btn-ghost btn-sm" id="planCollapseAll">Collapse all</button>` : '';
   const right = `${viewToggle}${focusBtn}${viewSel}${expandBtns}<button class="btn btn-filled" id="newItem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>New milestone</button>`;
+  // No H2 - all actions live in the filter bar's right slot.
   $('#view-plan').innerHTML = `
-    <div class="view-head"><div><h2>Project Plan</h2></div></div>
     ${filterBar(['states', 'markets', 'fys', 'areas'], { school: true, right })}
     <div id="viewBody">${planBodyHtml()}</div>`;
 }
@@ -1442,7 +1443,13 @@ function wireEvents() {
   $('#navTabs').addEventListener('click', e => {
     const si = e.target.closest('.nav-subitem');
     if (si) { const p = si.dataset.plan; if (p === 'focus') state.planFocus = true; else { state.planGroup = p; state.planFocus = false; } return setView('plan'); }
-    const t = e.target.closest('.nav-tab'); if (t) setView(t.dataset.view);
+    const t = e.target.closest('.nav-tab');
+    if (t) {
+      // Manual sidebar nav resets filters so users aren't confused by leftover
+      // filters carried in from a KPI drill. Drills call setView() directly.
+      if (activeCount()) clearFilters();
+      setView(t.dataset.view);
+    }
   });
   const nt = $('#navToggle'); if (nt) nt.addEventListener('click', () => { const on = document.body.classList.toggle('nav-collapsed'); lsSet('ngc_nav', on ? '1' : '0'); nt.title = on ? 'Expand menu' : 'Collapse menu'; const lbl = nt.querySelector('.nav-util-lbl'); if (lbl) lbl.textContent = on ? 'Expand' : 'Collapse'; });
   const showDrawer = () => { renderDrawer(); $('#drawer').classList.add('open'); $('#drawerBackdrop').classList.add('open'); };

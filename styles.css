@@ -2312,3 +2312,42 @@ button.kcard2:hover .k-ic { transform: scale(1.06); }
 @media (min-width: 1000px) {
   .app-header .nav-tabs { margin-top: 16px; }
 }
+
+
+/* ============================================================
+   POLISH v5 - Aug 22 2026
+   Redundant H2s off · view-actions consistent · subtle page motion
+   · card fade-in stagger · accessible focus rings
+   ============================================================ */
+
+/* view-actions row: consistent placement across all three views */
+.view-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin: 6px 0 12px; flex-wrap: wrap; }
+.view-actions .btn { flex-shrink: 0; }
+
+/* Subtle staggered fade for dashboard cards so the page feels alive without
+   ever being slow. 70ms delay per card, 220ms fade. Prefers-reduced-motion
+   respected below. */
+@keyframes cardIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.dash > * { animation: cardIn .22s cubic-bezier(.2,0,0,1) both; }
+.dash > *:nth-child(1) { animation-delay: 0ms; }
+.dash > *:nth-child(2) { animation-delay: 30ms; }
+.dash > *:nth-child(3) { animation-delay: 60ms; }
+.dash > *:nth-child(4) { animation-delay: 90ms; }
+.dash > *:nth-child(5) { animation-delay: 120ms; }
+.dash > *:nth-child(6) { animation-delay: 150ms; }
+.dash > *:nth-child(7) { animation-delay: 180ms; }
+.dash > *:nth-child(8) { animation-delay: 210ms; }
+
+/* Accessible focus rings everywhere - one consistent style */
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
+.btn:focus-visible, .kcard:focus-visible, .ot-card:focus-visible, .kpi-card:focus-visible { outline-offset: 3px; }
+
+/* Reduced motion: kill card stagger + view fade for people who ask for it */
+@media (prefers-reduced-motion: reduce) {
+  .dash > *, .view.active, .modal, .confirm-box, .cmdk { animation: none !important; }
+  .kcard, .ot-card, .kcard2, .db-pill { transition: none !important; }
+}
+
+/* Ex-card hover: lift subtly so cards feel tactile without moving too much */
+.ex-card { transition: box-shadow .15s, transform .12s; }
+.ex-card:hover { box-shadow: 0 2px 6px rgba(16,24,64,.06), 0 12px 28px rgba(16,24,64,.08) !important; }
