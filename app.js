@@ -820,20 +820,14 @@ function dashboardHtml(list) {
   return `<div class="dash">${greetBanner(list)}${kpiStrip}${hero}${statusPipeline(list)}${upcomingCard}${readiness}<div class="dash-pair"><div class="dash-lstack">${capital}${workload}</div>${risksCard}</div></div>`;
 }
 
-/* Elegant greeting header - typography only, no photo. The photo lives on
-   the sign-in page where it earns its size. Here we want an executive read:
-   welcome, date, and (only when relevant) an inline pill to your tasks. */
+/* The full greeting moved to the top content bar (updateGreeting).
+   Here we render just the personal shortcut pill (only when the signed-in
+   user has open tasks assigned to them). Empty otherwise. */
 function greetBanner(list) {
   const name = currentDisplayName();
-  const first = (name || '').split(/\s+/)[0];
-  const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const myCount = name ? myOpenTasks(list, name).length : 0;
-  const pill = myCount ? `<button class="db-pill" data-drillmine="1"><span class="db-pill-n">${myCount}</span>${myCount === 1 ? ' task assigned to you' : ' tasks assigned to you'}<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>` : '';
-  return `<header class="dash-banner">
-    <div class="db-eyebrow">${esc(dateStr)}</div>
-    <h1>${esc(timeGreeting())}${first ? `, <span class="db-name">${esc(first)}</span>` : ''}</h1>
-    ${pill ? `<div class="db-pillrow">${pill}</div>` : ''}
-  </header>`;
+  if (!myCount) return '';
+  return `<div class="dash-mypill"><button class="db-pill" data-drillmine="1"><span class="db-pill-n">${myCount}</span>${myCount === 1 ? ' task assigned to you' : ' tasks assigned to you'}<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div>`;
 }
 
 /* Tasks assigned to the current user. Exact owner match, then last-name fallback
@@ -1686,12 +1680,28 @@ function updateUserBadge() {
   const name = (p && (p.full_name || p.email)) || lsGet('ngc_author') || '';
   const inits = initials(name) || '?';
   const role = p ? (p.role || 'viewer') : (name ? 'guest' : '');
-  // Compact: just the initials circle. Fixed to viewport top-right via CSS.
-  btn.classList.add('cb-user-fixed');
-  btn.innerHTML = `<span class="cb-user-avatar" data-seed="${esc(name || 'anon')}">${esc(inits)}</span>`;
+  const email = (p && p.email) || '';
+  // Sidebar profile card (Weihu-style): avatar + name + email + chevron.
+  btn.innerHTML = `<span class="sp-avatar cb-user-avatar" data-seed="${esc(name || 'anon')}">${esc(inits)}</span>
+    <span class="sp-info">
+      <b class="sp-name">${esc(name || 'Sign in')}</b>
+      <small class="sp-sub">${esc(email || role || 'Set your name')}</small>
+    </span>
+    <svg class="sp-chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>`;
   btn.title = name ? `${name} · ${role}\nClick for menu` : 'Set your name';
   if (p) btn.dataset.authed = '1'; else delete btn.dataset.authed;
   paintAvatars(btn);
+  updateGreeting();
+}
+
+/* Top-bar greeting: "Good evening, Aden" + today's date. Runs on user
+   change and view switch. Redundant dashboard banner is removed. */
+function updateGreeting() {
+  const line = $('#cbGreetLine'), dateEl = $('#cbGreetDate');
+  if (!line || !dateEl) return;
+  const first = (currentDisplayName() || '').split(/\s+/)[0];
+  dateEl.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  line.innerHTML = first ? `${esc(timeGreeting())}, <b>${esc(first)}</b>` : `<b>Welcome</b>`;
 }
 
 function openUserMenu(anchor) {
@@ -1978,6 +1988,8 @@ function bootApp() {
   wireKeyboard();
   initContentBar();
   const ab = $('#activityBtn'); if (ab) ab.addEventListener('click', toggleActivity);
+  const cbAb = $('#cbActivityBtn'); if (cbAb) cbAb.addEventListener('click', toggleActivity);
+  updateGreeting();
   const ac = $('#activityClose'); if (ac) ac.addEventListener('click', toggleActivity);
   renderActivityPanel();
   window.addEventListener('popstate', () => setView((location.hash || '').replace('#', '') || 'progress', true));

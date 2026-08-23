@@ -24,6 +24,7 @@
     </div>
     <span class="brand-icon" aria-hidden="true">K</span>
     <div class="brand-sub"><b>Network Growth Hub</b></div>
+    <div class="nav-section-label">Main</div>
     <nav class="nav-tabs" id="navTabs" role="tablist">
       <button class="nav-tab active" data-view="progress" role="tab" title="Dashboard"><svg class="nav-ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>Dashboard</span></button>
       <button class="nav-tab" data-view="timeline" role="tab" title="Openings"><svg class="nav-ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="17" rx="2"/><path d="M8 2.5v4M16 2.5v4M3 10h18"/></svg><span>Openings</span></button>
@@ -32,6 +33,7 @@
 
     <div class="header-spacer"></div>
 
+    <div class="nav-section-label">Account</div>
     <div class="header-actions">
       <span class="save-state saved" id="saveState">All changes saved</span>
       <button class="icon-btn nav-util" id="settingsBtn" title="Sync &amp; settings" aria-label="Settings">
@@ -43,6 +45,8 @@
         <span class="nav-util-lbl">Collapse</span>
       </button>
     </div>
+    <!-- Sidebar profile card (Weihu-style). Filled by updateUserBadge(). -->
+    <button class="sidebar-profile" id="cbUser" aria-label="Account menu"></button>
   </header>
 
   <main class="container">
@@ -52,11 +56,15 @@
       <div class="bsk-block"></div>
     </div>
     <div class="content-bar" id="contentBar">
-      <div class="cb-crumb"><span class="cb-app">Growth Hub</span><svg class="cb-sep" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg><span class="cb-page" id="cbPage">Dashboard</span></div>
-      <div class="cb-right">
-        <div class="cb-search"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input id="cbSearch" type="search" placeholder="Search" autocomplete="off"></div>
-        <button class="cb-user" id="cbUser" title="Set your name"></button>
+      <div class="cb-greeting" id="cbGreet"><small id="cbGreetDate"></small><span id="cbGreetLine"><b>Welcome</b></span></div>
+      <div class="cb-search"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input id="cbSearch" type="search" placeholder="Search" autocomplete="off"></div>
+      <div class="cb-actions">
+        <button class="cb-iconbtn" id="cbActivityBtn" title="Activity" aria-label="Activity">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </button>
       </div>
+      <!-- Keep #cbPage referenced by JS; hidden visually -->
+      <span id="cbPage" hidden>Dashboard</span>
     </div>
     <section class="view active" id="view-progress" role="tabpanel"></section>
     <section class="view" id="view-timeline" role="tabpanel"></section>
