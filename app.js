@@ -356,8 +356,8 @@ function otCard(s) {
   const now = Date.now();
   const opens = s.opening_date ? parseDate(s.opening_date) : null;
   const mo = opens ? Math.max(0, Math.round((opens - now) / 2.63e9)) : null;
-  const when = s.openingFY ? `Opens Fall ${s.openingFY - 1}${mo != null ? ` · ${mo <= 0 ? 'now' : mo + ' mo out'}` : ''}` : 'Opening not scheduled';
-  // Status text is authoritative here; the tooltip repeat is dropped.
+  // Group header already announces "Fall YYYY · N months out" - only surface a card-level date when unscheduled.
+  const when = s.openingFY ? '' : 'Opening not scheduled';
   const statusLbl = n === 0 ? 'Not yet scoped' : r.label.split(' · ')[0];   // "On track" / "At risk" / "Behind" / "Complete" / "Not started"
   return `<article class="ot-card" data-drillschool="${esc(s.id)}" style="--mk:${mk}">
       <div class="ot-card-top">
@@ -365,7 +365,7 @@ function otCard(s) {
         <span class="ot-status" data-rag="${r.key}"><i style="background:${r.color}"></i>${esc(statusLbl)}</span>
       </div>
       <h4 class="ot-title">${esc(s.display_label)}</h4>
-      <p class="ot-when">${esc(when)}</p>
+      ${when ? `<p class="ot-when">${esc(when)}</p>` : ''}
       ${n ? `<div class="ot-prog">
         <div class="ot-prog-bar"><span style="width:${pct}%;background:${r.color}"></span></div>
         <div class="ot-prog-lbl"><b>${done}/${n}</b> milestones cleared<span class="muted"> · ${pct}%</span></div>
