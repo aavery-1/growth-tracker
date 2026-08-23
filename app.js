@@ -759,7 +759,7 @@ function needsAttentionCard(list) {
     if (t === 'this_month') return { c: 'na-tag-y', t: d != null && d >= 0 ? 'Due in ' + d + 'd' : 'Due soon' };
     return { c: 'na-tag-y', t: 'Attention' };
   };
-  const top = items.slice(0, 6);
+  const top = items.slice(0, 8);
   const rows = top.map(m => { const z = reason(m); return `<div class="na-item" data-expand="${m.id}"><div class="na-main"><span class="na-title">${esc(m.activity)}</span><span class="na-meta">${esc([m.market, m.functional_area].filter(Boolean).join(' · '))}</span></div><span class="na-tag ${z.c}">${esc(z.t)}</span></div>`; }).join('');
   const foot = items.length ? `<button class="na-more" data-showmore="focus">${items.length > top.length ? 'View all ' + items.length + ' →' : 'Open in Project Plan →'}</button>` : '';
   return `<section class="ex-card na-card"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('warning')}<h3>Needs attention</h3></div><span class="dash-count ${items.length ? 'bad' : ''}">${items.length}</span></div>
@@ -772,7 +772,7 @@ function myTasksCard(list) {
   const mine = name ? myOpenTasks(list, name) : [];
   if (mine.length) {
     mine.sort(bySortUrgency);
-    const rows = mine.slice(0, 6).map(m => {
+    const rows = mine.slice(0, 8).map(m => {
       const due = dueBadge(m) || (m.due_date ? `<span class="mt-due">${fmtDate(m.due_date)}</span>` : '');
       return `<div class="mt-item"><button class="mt-check" data-complete="${m.id}" title="Mark complete" aria-label="Mark complete"></button><div class="mt-main" data-expand="${m.id}"><span class="mt-title">${esc(m.activity)}</span><span class="mt-tags">${m.market ? `<span class="mt-tag">${esc(m.market)}</span>` : ''}${due}</span></div></div>`;
     }).join('');
@@ -780,7 +780,7 @@ function myTasksCard(list) {
   }
   const soon = Date.now() + 90 * 864e5;
   const up = list.filter(m => (m.keyMilestone || m.greenlight || m.transition) && m.due_date && parseDate(m.due_date) <= soon && effectiveStatus(m) !== 'complete')
-    .sort((a, b) => parseDate(a.due_date) - parseDate(b.due_date)).slice(0, 6);
+    .sort((a, b) => parseDate(a.due_date) - parseDate(b.due_date)).slice(0, 8);
   const rows = up.map(m => {
     const flag = m.greenlight ? '<span class="ex-flag ex-flag-green" title="Greenlight decision"></span>' : m.transition ? '<span class="ex-flag ex-flag-trans" title="Transition to Regional Ops"></span>' : '';
     const due = dueBadge(m) || (m.due_date ? `<span class="mt-due">${fmtDate(m.due_date)}</span>` : '');
@@ -791,7 +791,7 @@ function myTasksCard(list) {
 
 // Team activity - the recent change feed, inline on the dashboard
 function teamActivityCard() {
-  const log = getActivityLog().slice().reverse().slice(0, 6);
+  const log = getActivityLog().slice().reverse().slice(0, 8);
   const rows = log.map(e => {
     const who = e.author || 'Someone';
     const itemId = e.extra && e.extra.itemId, exists = itemId && findM(itemId);
@@ -847,23 +847,6 @@ function dashboardHtml(list) {
   </section>`;
 
 
-  // READINESS INDEX - where every opening stands, by workstream (full width)
-  const grid = statesMeta().map(st => {
-    const rows = rags.filter(x => x.s.state === st.code);
-    if (!rows.length) return '';
-    const body = rows.map(({ s }) => {
-      const sm = schoolMs(s);
-      const cells = tms.map(t => { const tl = sm.filter(m => m.functional_area === t); return `<td>${tl.length ? ragDotR(tl, t) : ragDot('x')}</td>`; }).join('');
-      return `<tr class="ex-grow" data-drillschool="${esc(s.id)}"><td class="ex-sch"><span class="muted">${esc(s.market)}</span> · <b>${esc(s.display_label)}</b></td>
-        <td class="ex-open">${s.openingFY ? 'Fall ' + (s.openingFY - 1) : '-'}</td><td>${ragDotR(sm, 'Overall')}</td>${cells}</tr>`;
-    }).join('');
-    return `<tr class="ex-band"><td colspan="${3 + tms.length}"><span class="state-badge" style="background:${stColor(st.code)}">${st.code}</span> ${esc(st.name)} <span class="muted">· ${rows.length} openings</span></td></tr>${body}`;
-  }).join('');
-  const rOpen = !state.expanded['dash:readiness'];
-  const readiness = `<section class="ex-card" data-section="readiness"><div class="ex-card-head toggle" data-toggle="dash:readiness"><div class="ex-cardhead-l">${chev(rOpen)}<h3>Readiness by School &amp; Workstream</h3></div><button class="card-more" data-showmore="school">See all →</button></div>
-    <div class="ex-card-body ${rOpen ? '' : 'hide'}"><div class="ex-legend ex-legend-top"><span><i class="rag" style="background:${RAG.none}"></i>Not started</span><span><i class="rag" style="background:${RAG.blue}"></i>On track</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind</span><span><i class="rag" style="background:${RAG.green}"></i>Complete</span></div>
-    <div class="ex-grid-wrap"><table class="ex-grid"><thead><tr><th>School</th><th>Opens</th><th>Overall</th>${tms.map(t => `<th class="ex-th-team"><span>${esc(t)}</span></th>`).join('')}</tr></thead><tbody>${grid}</tbody></table></div></div></section>`;
-
   // GROWTH FUNDRAISING
   const camps = (state.data.campaigns || []).filter(c => !state.filters.states.size || state.filters.states.has(c.state));
   const fOpen = !state.expanded['dash:fund'];
@@ -878,23 +861,17 @@ function dashboardHtml(list) {
   const statusLegend = `<div class="pl-legend pl-legend-sm">${STATUS_ORDER.filter(s => list.some(m => effectiveStatus(m) === s)).map(s => `<span class="pl-leg"><i style="background:${SM(s).color}"></i>${SM(s).label}</span>`).join('')}</div>`;
   const workload = `<section class="ex-card" data-section="workload"><div class="ex-card-head toggle" data-toggle="dash:workload"><div class="ex-cardhead-l">${chev(wOpen)}<h3>Milestone Workload by Year</h3></div></div><div class="ex-card-body ${wOpen ? '' : 'hide'}">${statusLegend}${columnChart(list)}</div></section>`;
 
-  // Info hierarchy (overview layout, for Chiefs/Board):
-  //   1. Personal pill (only if you have assigned tasks)
-  //   2. KPI strip - top-line health
-  //   3. Main grid:  Opening-readiness table  |  Needs attention
-  //   4. Sub grid:   My tasks  |  Team activity
-  //   5. Detail:     Milestone status · Readiness-by-workstream · Fundraising | Workload
-  const detail = capital
-    ? `<div class="dash-pair"><div class="dash-lstack">${capital}</div>${workload}</div>`
-    : workload;
+  // Info hierarchy (overview layout, for Chiefs/Board) - two dense columns so the
+  // cards fill their space instead of leaving voids:
+  //   LEFT  (wide): Opening-readiness table · Milestone status · Growth fundraising
+  //   RIGHT (rail): Needs attention · My tasks · Team activity
+  //   FULL width:   Milestone workload by year
+  const leftCol = `<div class="dash-col dash-col-main">${schoolProgressTable(schools)}${statusPipeline(list)}${capital}${workload}</div>`;
+  const rightCol = `<div class="dash-col dash-col-rail">${needsAttentionCard(list)}${myTasksCard(list)}${teamActivityCard()}</div>`;
   return `<div class="dash dash-v2">
     ${greetBanner(list)}
     ${kpiStrip}
-    <div class="dash-main">${schoolProgressTable(schools)}${needsAttentionCard(list)}</div>
-    <div class="dash-sub">${myTasksCard(list)}${teamActivityCard()}</div>
-    ${statusPipeline(list)}
-    ${readiness}
-    ${detail}
+    <div class="dash-main">${leftCol}${rightCol}</div>
   </div>`;
 }
 
@@ -1931,7 +1908,15 @@ function undo() {
 function getActivityLog() { try { return JSON.parse(lsGet('ngc_activity') || '[]'); } catch (e) { return []; } }
 function logActivity(action, detail, extra) {
   const log = getActivityLog();
-  const author = lsGet('ngc_author') || '';
+  // Attribute to the signed-in identity: Supabase profile name/email in account
+  // mode, else the display name the user set on their chip ("Set your name").
+  // If nothing is set yet (password mode), ask once per session so the very first
+  // change is still attributed instead of showing up as "Someone".
+  if (!authModeOn() && !lsGet('ngc_author') && !state._askedAuthor) {
+    state._askedAuthor = true;
+    try { const n = prompt('Your name (shown on activity and edits):', ''); if (n && n.trim()) { lsSet('ngc_author', n.trim()); if (typeof updateUserBadge === 'function') updateUserBadge(); } } catch (e) {}
+  }
+  const author = (typeof currentDisplayName === 'function' ? currentDisplayName() : '') || lsGet('ngc_author') || '';
   log.push({ action, detail, author, ts: Date.now(), extra: extra || null });
   if (log.length > 100) log.splice(0, log.length - 100);
   try { lsSet('ngc_activity', JSON.stringify(log)); } catch (e) {}

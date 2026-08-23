@@ -2973,11 +2973,14 @@ body[data-view="progress"] #cbPillFilter { display: none; }
        needs-attention · my tasks · team activity)
    ============================================================ */
 .dash-v2 { display: flex; flex-direction: column; gap: 18px; }
-.dash-main { display: grid; grid-template-columns: 1.85fr 1fr; gap: 18px; align-items: start; }
-.dash-sub  { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+/* Two dense columns: a wide left rail (table + distribution) and a right rail
+   (the three action cards, stacked) so both sides fill instead of leaving voids. */
+.dash-main { display: grid; grid-template-columns: 1.62fr 1fr; gap: 18px; align-items: start; }
 /* min-width:0 lets grid tracks shrink so the table scrolls inside its card
    instead of blowing the whole page out horizontally. */
 .dash-main > *, .dash-sub > * { min-width: 0; }
+.dash-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.dash-sub  { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
 @media (max-width: 1040px) { .dash-main, .dash-sub { grid-template-columns: 1fr; } }
 
 .dash-v2 .ex-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
@@ -2990,7 +2993,7 @@ body[data-view="progress"] #cbPillFilter { display: none; }
 .dash-v2 .ex-hint { font-size: 12px; }
 
 /* --- Opening-readiness table (Flowly "Project Progress") --- */
-.dash-tablecard .rt-wrap { overflow: auto; max-height: 452px; margin: 2px -4px -4px; }
+.dash-tablecard .rt-wrap { overflow: auto; max-height: 620px; margin: 2px -4px -4px; }
 .rt-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .rt-table thead th { text-align: left; font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--on-surface-variant); padding: 8px 12px 10px; border-bottom: 1px solid var(--outline-variant); white-space: nowrap; position: sticky; top: 0; background: var(--card-white); z-index: 1; }
 :root[data-theme="dark"] .rt-table thead th { background: var(--surface-container-low); }
