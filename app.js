@@ -339,7 +339,10 @@ function openFilterMenu(anchor, key) {
     const cb = e.target.closest('[data-fkey]'); if (!cb) return;
     const k = cb.dataset.fkey;
     toggleFilter(k, cb.dataset.fval, k === 'fys' ? Number : null);
-    if (k === 'states' || k === 'markets' || k === 'fys') { rerender(); const btn = $(`.fb-menu[data-fmenu="${k}"]`); if (btn) openFilterMenu(btn, k); else closePopover(); }
+    // Dashboard renders the applied-filter chip row inside the filter bar, so every change needs a
+    // rerender to refresh those chips (badges on the menu buttons alone aren't enough).
+    const needsFullRerender = k === 'states' || k === 'markets' || k === 'fys' || state.view === 'progress';
+    if (needsFullRerender) { rerender(); const btn = $(`.fb-menu[data-fmenu="${k}"]`); if (btn) openFilterMenu(btn, k); else closePopover(); }
     else { updateMenuBadge(k); refreshBody(); }
   });
 }
@@ -525,15 +528,41 @@ function progressBodyHtml_legacyList() {
 }
 function renderProgress() {
   const printBtn = `<button class="btn btn-tonal" id="dashPrint"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Print / PDF</button>`;
-  const ac = activeCount();
-  const filterToggle = `<button class="btn btn-ghost btn-sm fb-toggle ${ac ? 'on' : ''}" id="dashFilterToggle"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>Filters${ac ? ` <span class="fb-count">${ac}</span>` : ''}</button>`;
-  const filtersOpen = state.dashFiltersOpen;
-  // No H2 here: the banner ("Good evening, Aden") IS this page's title.
-  // Actions row floats above the banner, right-aligned.
+  // Filter bar is always visible on the dashboard: it's a primary scoping control, not an occasional detour.
+  // Menus kept to what changes the STATUS picture: State, Market, Workstream. Opening year lives on the cohort strip;
+  // status/priority filters belong to the Project Plan (the dashboard IS the status/priority view).
   $('#view-progress').innerHTML = `
-    <div class="view-actions">${filterToggle}${printBtn}</div>
-    <div class="dash-filters ${filtersOpen ? '' : 'hide'}" id="dashFilters">${filterBar(['states', 'markets', 'areas', 'statuses'], { school: true })}${openingYearBar()}</div>
+    <div class="view-actions">${printBtn}</div>
+    <div class="dash-filters" id="dashFilters">${filterBar(['states', 'markets', 'areas'], { right: appliedFilterChips() })}</div>
     <div id="viewBody">${progressBodyHtml()}</div>`;
+}
+/* Applied-filter chips: shown inline in the filter bar so the current scope is visible at a glance
+   and individually removable (no "open the panel to see what's on" hunt). */
+function appliedFilterChips() {
+  const f = state.filters, chips = [];
+  const push = (label, onRemove) => chips.push(`<button class="af-chip" data-afclear="${onRemove}" title="Remove filter"><span>${esc(label)}</span><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>`);
+  f.states.forEach(v => push('State: ' + v, 'states:' + v));
+  f.markets.forEach(v => push(v, 'markets:' + v));
+  f.areas.forEach(v => push(v, 'areas:' + v));
+  f.openingFYs.forEach(v => push('Fall ' + (v - 1), 'openingFYs:' + v));
+  f.statuses.forEach(v => push(SM(v).label, 'statuses:' + v));
+  if (f.timing) push(f.timing === 'overdue' ? 'Overdue' : f.timing === 'this_month' ? 'Due this month' : 'Due soon', 'timing:');
+  if (f.search) push('“' + f.search.slice(0, 24) + (f.search.length > 24 ? '…' : '') + '”', 'search:');
+  if (f.schoolId) { const sc = schoolById(f.schoolId); if (sc) push(sc.market + ' · ' + sc.display_label, 'schoolId:'); }
+  if (!chips.length) return '';
+  return `<div class="af-chips">${chips.join('')}</div>`;
+}
+function removeAppliedFilter(spec) {
+  const [key, val] = spec.split(':');
+  const f = state.filters;
+  if (key === 'timing') f.timing = '';
+  else if (key === 'search') { f.search = ''; const cb = $('#cbSearch'); if (cb) cb.value = ''; }
+  else if (key === 'schoolId') f.schoolId = '';
+  else if (f[key] instanceof Set) {
+    if (key === 'openingFYs' || key === 'fys') f[key].delete(Number(val));
+    else f[key].delete(val);
+    if (key === 'states') { const ok = new Set(marketsForStates()); [...f.markets].forEach(mk => { if (!ok.has(mk)) f.markets.delete(mk); }); }
+  }
 }
 
 /* ============================================================
@@ -544,21 +573,20 @@ function planCard(m) {
   const urgent = t === 'overdue' || t === 'this_month';
   const nc = (m.noteLog || []).length;
   const mk = m.market ? mkColor(m.market) : '';
-  // Top row: due date (with clock) on the left, priority flag on the right.
+  // Information order (top → bottom): TITLE (what) · CONTEXT market+workstream (where) · META
+  //   due date + priority (when/how important) · PROGRESS · OWNER (who). Never lead with a date.
+  const ctx = (m.market || m.functional_area) ? `<div class="kc-ctx">${m.market ? `<span class="kc-mkdot" style="background:${mk}"></span><span class="kc-mk">${esc(m.market)}</span>` : ''}${m.functional_area ? `<span class="kc-team">${esc(m.functional_area)}</span>` : ''}</div>` : '';
   const due = dueBadge(m) || (m.due_date ? `<span class="kc-due"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>${fmtDate(m.due_date)}</span>` : '');
   const flag = m.priority === 'high' ? '<span class="kc-flag kc-flag-high" title="High priority">⚑</span>'
     : m.priority === 'low' ? '<span class="kc-flag kc-flag-low" title="Low priority">⚑</span>' : '';
-  const headRow = (due || flag) ? `<div class="kc-headrow">${due || '<span></span>'}${flag}</div>` : '';
-  // Context chip: market (sets the color) + workstream, so a card read out of context still places itself.
-  const ctx = (m.market || m.functional_area) ? `<div class="kc-ctx">${m.market ? `<span class="kc-mkdot" style="background:${mk}"></span><span class="kc-mk">${esc(m.market)}</span>` : ''}${m.functional_area ? `<span class="kc-team">${esc(m.functional_area)}</span>` : ''}</div>` : '';
-  // Progress bar (Relatio-style) - colored by live status.
+  const metaRow = (due || flag) ? `<div class="kc-metarow">${due || '<span></span>'}${flag}</div>` : '';
   const pct = Math.max(0, Math.min(100, m.progress_percent || 0));
   const prog = `<div class="kc-prog"><div class="kc-prog-top"><span>Progress</span><b>${pct}%</b></div><div class="kc-prog-bar"><span style="width:${pct}%;background:${scol}"></span></div></div>`;
   const notes = nc ? `<span class="kc-notes" title="${nc} note${nc === 1 ? '' : 's'}"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${nc}</span>` : '';
   return `<div class="kcard kcard-v2 ${urgent ? 'urgent' : ''}" draggable="true" data-id="${m.id}" style="border-left-color:${scol}">
-    ${headRow}
     <div class="kc-title" data-expand="${m.id}">${esc(m.activity)}</div>
     ${ctx}
+    ${metaRow}
     ${prog}
     <div class="kc-foot">${personChip(m.owner)}<span class="kc-foot-r">${notes}</span></div>
   </div>`;
@@ -734,7 +762,12 @@ function ragTonePill(r) { return `<span class="rt-pill rt-${r.key}"><i></i>${esc
 function focusCohort() { return state.filters.openingFYs.size === 1 ? [...state.filters.openingFYs][0] : null; }
 function setDashCohort(v) {
   if (v === 'all') state.filters.openingFYs.clear();
-  else state.filters.openingFYs = new Set([Number(v)]);
+  else {
+    const fy = Number(v);
+    // Click the currently-focused cohort again to unfocus (toggle behavior).
+    if (state.filters.openingFYs.size === 1 && state.filters.openingFYs.has(fy)) state.filters.openingFYs.clear();
+    else state.filters.openingFYs = new Set([fy]);
+  }
   rerender();
   if (typeof updateFilterBubble === 'function') updateFilterBubble();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1647,7 +1680,7 @@ function wireEvents() {
     if (e.target.closest('#addTaskForSchool')) return addTaskForSchool();
     if (e.target.closest('#newItem')) return addItem();
     if (e.target.closest('#dashPrint')) return window.print();
-    if (e.target.closest('#dashFilterToggle')) { state.dashFiltersOpen = !state.dashFiltersOpen; const df = $('#dashFilters'); if (df) df.classList.toggle('hide', !state.dashFiltersOpen); return; }
+    const afc = e.target.closest('[data-afclear]'); if (afc) { removeAppliedFilter(afc.dataset.afclear); return rerender(); }
   });
   $('.container').addEventListener('change', e => {
     if (e.target.id === 'planGroupSel') { state.planGroup = e.target.value; state._lastListGroup = state.planGroup; refreshBody(); }
@@ -2255,13 +2288,15 @@ function initContentBar() {
       searchTimer = setTimeout(() => {
         if (state.filters.search === v) return;
         state.filters.search = v;
-        refreshBody();
+        // Dashboard's applied-chip row and filter-bubble both depend on search state.
+        state.view === 'progress' ? rerender() : refreshBody();
+        if (typeof updateFilterBubble === 'function') updateFilterBubble();
       }, 180);   // debounce: 156 milestones × complex render = noticeable per-keystroke lag
     });
     // Enter fires immediately (no wait); Escape clears
     cbSearch.addEventListener('keydown', e => {
-      if (e.key === 'Enter') { clearTimeout(searchTimer); state.filters.search = e.target.value; refreshBody(); }
-      else if (e.key === 'Escape' && e.target.value) { e.target.value = ''; clearTimeout(searchTimer); state.filters.search = ''; refreshBody(); }
+      if (e.key === 'Enter') { clearTimeout(searchTimer); state.filters.search = e.target.value; state.view === 'progress' ? rerender() : refreshBody(); updateFilterBubble && updateFilterBubble(); }
+      else if (e.key === 'Escape' && e.target.value) { e.target.value = ''; clearTimeout(searchTimer); state.filters.search = ''; state.view === 'progress' ? rerender() : refreshBody(); updateFilterBubble && updateFilterBubble(); }
     });
   }
   // Once the in-flow header scrolls past, reveal the floating control pill.
