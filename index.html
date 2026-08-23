@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Network Growth Hub</title>
-  <link rel="stylesheet" href="styles.css?v=20260824b" />
+  <link rel="stylesheet" href="styles.css?v=20260824e" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%2316357F'/><text x='50' y='70' font-size='56' font-weight='700' text-anchor='middle' fill='white' font-family='Roboto,Arial'>K</text></svg>" />
   <script>
     // Visible fail-safe: if anything throws, show it instead of a blank screen.
@@ -61,16 +61,20 @@
         <button class="cb-profile" id="cbUser" aria-label="Account menu"></button>
       </div>
     </div>
-    <!-- Floating control pill: hidden at rest, hovers top-right on scroll -->
+    <!-- Floating control bubbles: hidden at rest, hover top-right on scroll so
+         search, filters, and alerts stay within reach without scrolling back up. -->
     <div class="cb-pill" id="cbPill" aria-hidden="true">
       <button class="cb-pill-btn" id="cbPillSearch" title="Search (⌘K)" aria-label="Search">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+      </button>
+      <button class="cb-pill-btn" id="cbPillFilter" title="Filters" aria-label="Filters">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+        <span class="cb-badge cb-count" id="cbPillFilterCount" hidden></span>
       </button>
       <button class="cb-pill-btn" id="cbPillActivity" title="Activity" aria-label="Activity">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span class="cb-badge" id="cbPillDot" hidden></span>
       </button>
-      <button class="cb-pill-avatar" id="cbPillUser" title="Account" aria-label="Account menu"></button>
     </div>
     <section class="view active" id="view-progress" role="tabpanel"></section>
     <section class="view" id="view-timeline" role="tabpanel"></section>
@@ -96,7 +100,7 @@
   <!-- Command Palette -->
   <div class="cmdk-backdrop hide" id="cmdkBackdrop">
     <div class="cmdk" role="dialog" aria-modal="true" aria-label="Command palette">
-      <div class="cmdk-head"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input id="cmdkInput" type="text" placeholder="Search milestones…" autocomplete="off" spellcheck="false"></div>
+      <div class="cmdk-head"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input id="cmdkInput" type="text" placeholder="Search openings, milestones, owners…" autocomplete="off" spellcheck="false"></div>
       <div class="cmdk-body" id="cmdkBody"></div>
     </div>
   </div>
@@ -108,6 +112,6 @@
   </aside>
 
   <div class="toast-wrap" id="toastWrap"></div>
-  <script src="app.js?v=20260824b"></script>
+  <script src="app.js?v=20260824e"></script>
 </body>
 </html>

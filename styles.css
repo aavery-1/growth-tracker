@@ -2578,19 +2578,52 @@ b, strong { font-weight: 600; }
 .dash .ex-li-m { font-size: 11.5px !important; color: var(--on-surface-variant) !important; margin-top: 2px !important; }
 .dash .ex-li-d { font-size: 12px !important; font-weight: 500 !important; }
 
-/* 13. DASH PAIR: balanced two-column with capped height */
+/* 13. DASH PAIR: left = compact Fundraising + Workload; right = Overdue
+   Milestones as a FIXED-HEIGHT card whose list scrolls inside (so 30+ overdue
+   items never make the page enormous). Columns align to the top - no stretching,
+   no content spilling out of a clipped box. */
 .dash-pair {
   height: auto !important;
-  max-height: 620px;
-  grid-template-columns: 1fr 1fr !important;
+  max-height: none !important;
+  grid-template-columns: 1fr 1.1fr !important;
   gap: 22px !important;
+  align-items: start !important;
 }
+/* Overdue card (the direct .ex-card child): fixed height, header pinned,
+   body scrolls internally. */
+.dash-pair > .ex-card {
+  display: flex !important; flex-direction: column !important;
+  height: 460px !important; max-height: 460px !important; min-height: 0 !important;
+  overflow: hidden !important;
+}
+.dash-pair > .ex-card > .ex-card-head { flex: 0 0 auto !important; margin-bottom: 12px !important; }
 .dash-pair > .ex-card > .ex-card-body {
-  max-height: 420px !important; overflow-y: auto !important;
+  flex: 1 1 auto !important; min-height: 0 !important;
+  max-height: none !important;
+  overflow-y: auto !important; padding-right: 6px;
 }
+.dash-lstack { align-self: start !important; }
 @media (max-width: 900px) {
-  .dash-pair { grid-template-columns: 1fr !important; max-height: none; }
+  .dash-pair { grid-template-columns: 1fr !important; }
+  .dash-pair > .ex-card { height: 420px !important; max-height: 420px !important; }
 }
+
+/* Cap the full-width "Key Milestones · Next 90 Days" list too, so a long list
+   scrolls inside its card instead of stretching the page. Header stays put. */
+.dash > .ex-card[data-section="upcoming"] > .ex-card-body,
+.dash > .ex-card[data-section="overdue"] > .ex-card-body {
+  max-height: 360px; overflow-y: auto; padding-right: 6px;
+}
+
+/* Compact scrollbars inside dashboard cards */
+.dash .ex-card-body::-webkit-scrollbar { width: 8px; }
+.dash .ex-card-body::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 999px; }
+.dash .ex-card-body::-webkit-scrollbar-thumb:hover { background: var(--outline); }
+
+/* Compact Fundraising + Workload so they don't tower */
+.dash-lstack .ex-caps { gap: 12px !important; }
+.dash-lstack .ex-cap-bar { height: 7px !important; }
+.dash-lstack .ex-card { padding: 18px 20px !important; }
 
 /* 14. OPENINGS CARDS: clean, aligned */
 .ot-card {
@@ -2848,39 +2881,70 @@ b, strong { font-weight: 600; }
 }
 
 /* ============================================================
-   FLOATING CONTROL PILL - hovers top-right once you scroll.
-   The in-flow content bar scrolls away naturally; this keeps search,
-   notifications, and account one tap away without a heavy sticky bar.
+   FLOATING CONTROL BUBBLES - hover top-right once you scroll.
+   Three separate bubbles (search / filter / alerts) keep those functions
+   within reach as the content bar scrolls away - no clutter, no lost filters.
    ============================================================ */
 .cb-pill {
   position: fixed; top: 16px; right: 24px; z-index: 60;
-  display: flex; align-items: center; gap: 4px;
-  padding: 5px; border-radius: 999px;
-  background: color-mix(in srgb, var(--card-white, #fff) 80%, transparent);
-  -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
-  border: 1px solid var(--outline-variant);
-  box-shadow: 0 6px 20px rgba(16,24,64,.14), 0 1px 3px rgba(16,24,64,.08);
-  opacity: 0; transform: translateY(-10px) scale(.95); pointer-events: none;
-  transition: opacity .25s ease, transform .3s cubic-bezier(.2,0,0,1);
+  display: flex; align-items: center; gap: 8px;
+  pointer-events: none; /* container is just a positioner; bubbles catch clicks */
 }
-:root[data-theme="dark"] .cb-pill { background: color-mix(in srgb, #1b1d27 88%, transparent); }
-body.header-pinned .cb-pill { opacity: 1; transform: none; pointer-events: auto; }
+body.header-pinned .cb-pill { pointer-events: auto; }
 
-.cb-pill-btn, .cb-pill-avatar {
-  width: 38px; height: 38px; border-radius: 50%; border: 0; cursor: pointer;
+/* Each control is its own floating bubble */
+.cb-pill-btn {
+  width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--outline-variant);
   display: inline-flex; align-items: center; justify-content: center;
-  position: relative; padding: 0; transition: background .12s ease, color .12s ease;
+  position: relative; padding: 0; cursor: pointer;
+  color: var(--on-surface-variant);
+  background: color-mix(in srgb, var(--card-white, #fff) 82%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
+  box-shadow: 0 4px 14px rgba(16,24,64,.14), 0 1px 3px rgba(16,24,64,.08);
+  opacity: 0; transform: translateY(-10px) scale(.9);
+  transition: opacity .25s ease, transform .3s cubic-bezier(.2,0,0,1),
+              background .12s ease, color .12s ease, box-shadow .12s ease;
 }
-.cb-pill-btn { background: transparent; color: var(--on-surface-variant); }
-.cb-pill-btn:hover { background: var(--surface-container); color: var(--on-surface); }
-.cb-pill-avatar { font-size: 12.5px; font-weight: 700; color: #fff; background: var(--primary); }
-.cb-pill-avatar:hover { filter: brightness(.95); }
-.cb-pill .cb-badge { top: 6px; right: 6px; box-shadow: 0 0 0 2px var(--card-white, #fff); }
+:root[data-theme="dark"] .cb-pill-btn { background: color-mix(in srgb, #1b1d27 90%, transparent); }
+.cb-pill-btn:hover { color: var(--on-surface); transform: translateY(-1px); box-shadow: 0 7px 20px rgba(16,24,64,.2); }
+.cb-pill-btn.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+.cb-pill .cb-badge { top: 7px; right: 8px; box-shadow: 0 0 0 2px var(--card-white, #fff); }
+/* numbered filter badge */
+.cb-count {
+  min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px;
+  top: 2px; right: 2px; width: auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 800; color: #fff; background: var(--primary);
+}
+.cb-pill-btn.on .cb-count { background: #fff; color: var(--primary); }
 
-/* When the pill is floating top-right, keep sticky section-header counts clear of it. */
+/* Staggered entrance so the bubbles pop in one after another */
+body.header-pinned .cb-pill-btn { opacity: 1; transform: none; }
+body.header-pinned .cb-pill-btn:nth-child(2) { transition-delay: .05s; }
+body.header-pinned .cb-pill-btn:nth-child(3) { transition-delay: .1s; }
+
+/* Filter bubble only where a filter bar exists (Openings / Project Plan) */
+body[data-view="progress"] #cbPillFilter { display: none; }
+
+/* Filter bubble opens the real filter bar as a floating panel (reuses all its
+   controls/wiring - no duplication) instead of making you scroll to the top. */
 @media (min-width: 1000px) {
+  body.filters-open .filterbar {
+    position: fixed !important; top: 70px !important; right: 24px !important; z-index: 55 !important;
+    width: min(390px, calc(100vw - 320px));
+    display: flex !important; flex-wrap: wrap; align-items: center; gap: 8px !important;
+    padding: 14px !important; margin: 0 !important;
+    background: var(--card-white) !important;
+    border: 1px solid var(--outline-variant) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 14px 44px rgba(16,24,64,.2) !important;
+    animation: fadeIn .18s ease both;
+  }
+  :root[data-theme="dark"] body.filters-open .filterbar { background: var(--surface-container) !important; }
+  body.filters-open .filterbar .fb-spacer { display: none; }
+  /* keep sticky section-header counts clear of the floating bubbles */
   body.header-pinned .plan-group-head,
-  body.header-pinned .ot-term-h { padding-right: 148px !important; }
+  body.header-pinned .ot-term-h { padding-right: 156px !important; }
 }
 
 @media (max-width: 999px) {
@@ -2888,7 +2952,7 @@ body.header-pinned .cb-pill { opacity: 1; transform: none; pointer-events: auto;
   .cb-profile { max-width: 44px; padding: 0 6px; }
   .cb-profile .sp-info, .cb-profile .sp-chev { display: none; }
   /* The mobile top bar (logo + nav tabs) is already sticky, so the floating
-     pill would only overlap it - hide it on small screens. */
+     bubbles would only overlap it - hide them on small screens. */
   .cb-pill { display: none !important; }
 }
 

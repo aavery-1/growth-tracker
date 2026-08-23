@@ -347,7 +347,7 @@ function updateMenuBadge(key) {
   if (btn) { const n = state.filters[key].size; btn.classList.toggle('on', !!n); let c = btn.querySelector('.fb-count'); if (n) { if (!c) { c = document.createElement('span'); c.className = 'fb-count'; btn.insertBefore(c, btn.querySelector('.fb-chev')); } c.textContent = n; } else if (c) c.remove(); }
   const cl = $('#clearFilters'); if (cl) cl.classList.toggle('hide', !activeCount());
 }
-function refreshBody() { const sec = $('#view-' + state.view); const b = sec ? sec.querySelector('#viewBody') : $('#viewBody'); if (!b) return rerender(); if (state.view === 'progress') b.innerHTML = progressBodyHtml(); else if (state.view === 'timeline') b.innerHTML = ganttBodyHtml(); else b.innerHTML = planBodyHtml(); if (typeof paintAvatars === 'function') requestAnimationFrame(() => paintAvatars(b)); }
+function refreshBody() { const sec = $('#view-' + state.view); const b = sec ? sec.querySelector('#viewBody') : $('#viewBody'); if (!b) return rerender(); if (state.view === 'progress') b.innerHTML = progressBodyHtml(); else if (state.view === 'timeline') b.innerHTML = ganttBodyHtml(); else b.innerHTML = planBodyHtml(); if (typeof paintAvatars === 'function') requestAnimationFrame(() => paintAvatars(b)); if (typeof updateFilterBubble === 'function') updateFilterBubble(); }
 function otCard(s) {
   const sm = schoolMs(s), r = ragReady(sm), n = sm.length;
   const done = sm.filter(m => effectiveStatus(m) === 'complete').length;
@@ -615,7 +615,7 @@ function renderPlan() {
 /* ============================================================
    EDIT ENGINE + cross-tab
    ============================================================ */
-function rerender() { if (state.view === 'progress') renderProgress(); else if (state.view === 'timeline') renderTimeline(); else renderPlan(); requestAnimationFrame(() => paintAvatars()); }
+function rerender() { if (state.view === 'progress') renderProgress(); else if (state.view === 'timeline') renderTimeline(); else renderPlan(); requestAnimationFrame(() => paintAvatars()); if (typeof updateFilterBubble === 'function') updateFilterBubble(); }
 
 /* ============================================================
    TAB 0 - EXECUTIVE SUMMARY (board / chiefs readout, print-ready)
@@ -1429,8 +1429,11 @@ function setView(v, fromPop) {
   $$('.nav-subitem').forEach(x => x.classList.toggle('active', v === 'plan' && (x.dataset.plan === 'focus' ? state.planFocus : (!state.planFocus && state.planGroup === x.dataset.plan))));
   $$('.view').forEach(s => { const on = s.id === 'view-' + v; s.classList.toggle('active', on); if (!on) s.innerHTML = ''; });
   const cbPage = $('#cbPage'); if (cbPage) cbPage.textContent = v === 'progress' ? 'Dashboard' : v === 'timeline' ? 'Openings' : 'Project Plan';
+  document.body.dataset.view = v;
+  if (typeof closeFilterPanel === 'function') closeFilterPanel();
   updateGreeting();
   rerender();
+  if (typeof updateFilterBubble === 'function') updateFilterBubble();
   if (!fromPop) { try { if (location.hash !== '#' + v) history.pushState({ v }, '', '#' + v); } catch (e) {} }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -1866,6 +1869,36 @@ function updateActivityDot() {
   const dot = $('#cbActivityDot'); if (dot) dot.hidden = !unseen;
   const pillDot = $('#cbPillDot'); if (pillDot) pillDot.hidden = !unseen;
 }
+
+/* ---------- Floating filter bubble: opens the real filter bar as a panel ---------- */
+function updateFilterBubble() {
+  const btn = $('#cbPillFilter'); if (!btn) return;
+  const n = activeCount();
+  const badge = $('#cbPillFilterCount');
+  if (badge) { badge.textContent = n; badge.hidden = !n; }
+  btn.classList.toggle('on', document.body.classList.contains('filters-open') || n > 0);
+}
+function closeFilterPanel() {
+  if (!document.body.classList.contains('filters-open')) return;
+  document.body.classList.remove('filters-open');
+  document.removeEventListener('mousedown', filterPanelOutside, true);
+  updateFilterBubble();
+}
+function filterPanelOutside(e) {
+  // Keep open while interacting with the panel, the bubble, or a filter menu popover.
+  if (e.target.closest('#filterbar') || e.target.closest('#cbPillFilter') || e.target.closest('.popover')) return;
+  closeFilterPanel();
+}
+function toggleFilterPanel() {
+  const open = document.body.classList.toggle('filters-open');
+  if (open) {
+    closePopover();
+    setTimeout(() => document.addEventListener('mousedown', filterPanelOutside, true), 0);
+  } else {
+    document.removeEventListener('mousedown', filterPanelOutside, true);
+  }
+  updateFilterBubble();
+}
 /* Material-style single-color glyphs (outlined, 1.75 stroke, 14px). */
 function activityIcon(action) {
   const paths = {
@@ -1932,17 +1965,27 @@ function buildCmdkItems(q) {
   items.push({ icon: ic('<path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/>'), name: 'Print / PDF', hint: '', kbd: '', action: () => window.print() });
   items.push({ icon: ic('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'), name: 'Open settings', hint: '', kbd: '', action: () => { const s = $('#settingsBtn'); if (s) s.click(); } });
   items.push({ icon: ic('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>'), name: 'Activity log', hint: '', kbd: '⌃⇧A', action: () => toggleActivity() });
-  if (state.data && state.data.milestones) {
-    const q2 = (q || '').toLowerCase();
-    if (q2.length >= 2) {
-      M().filter(m => `${m.activity} ${m.owner} ${m.market} ${m.functional_area}`.toLowerCase().includes(q2)).slice(0, 8).forEach(m => {
-        items.push({ icon: ic('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'), name: m.activity, hint: `${m.market} · ${m.functional_area}`, kbd: '', action: () => openModal(m.id) });
-      });
-    }
-  }
-  if (!q) return items;
-  const ql = q.toLowerCase();
-  return items.filter(it => it.name.toLowerCase().includes(ql) || (it.hint || '').toLowerCase().includes(ql));
+
+  // Nav/action commands filter on the query text; search results are matched separately.
+  const ql = (q || '').toLowerCase();
+  const nav = !q ? items : items.filter(it => it.name.toLowerCase().includes(ql) || (it.hint || '').toLowerCase().includes(ql));
+  if (ql.length < 2 || !state.data) return nav;
+
+  // ---- Universal search: milestones, school openings, and owners ----
+  const results = [];
+  const mIc = ic('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>');
+  const sIc = ic('<path d="M3 21V9l9-7 9 7v12h-6v-6h-6v6H3z"/>');
+  const oIc = ic('<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 14 0v1"/>');
+  const mils = (state.data.milestones ? M() : []);
+  mils.filter(m => `${m.activity} ${m.owner} ${m.market} ${m.functional_area} ${m.workstream || ''} ${(m.tags || []).join(' ')} ${m.notes || ''}`.toLowerCase().includes(ql))
+    .slice(0, 6).forEach(m => results.push({ icon: mIc, name: m.activity, hint: `Milestone · ${m.market} · ${m.functional_area}${m.owner ? ' · ' + m.owner : ''}`, kbd: '', action: () => openModal(m.id) }));
+  (state.data.schools || []).filter(s => `${s.display_label || ''} ${s.code || ''} ${s.market || ''} ${s.state || ''} ${fyLabel(s.openingFY)}`.toLowerCase().includes(ql))
+    .slice(0, 6).forEach(s => results.push({ icon: sIc, name: `${s.market} · ${s.display_label}`, hint: `School opening · ${fyLabel(s.openingFY)}`, kbd: '', action: () => openSchoolModal(s.id) }));
+  [...new Set(mils.map(m => m.owner).filter(Boolean))].filter(o => o.toLowerCase().includes(ql)).slice(0, 5).forEach(o => {
+    const n = mils.filter(m => m.owner === o).length;
+    results.push({ icon: oIc, name: o, hint: `Owner · ${n} milestone${n === 1 ? '' : 's'}`, kbd: '', action: () => { clearFilters(); state.filters.search = o; const cb = $('#cbSearch'); if (cb) cb.value = o; setView('plan'); } });
+  });
+  return [...nav, ...results];
 }
 function execCmdk() {
   if (cmdkItems[cmdkIdx]) { cmdkItems[cmdkIdx].action(); closeCmdk(); }
@@ -2041,14 +2084,10 @@ function initContentBar() {
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
 
-  // Floating pill controls mirror the header: search (⌘K), notifications, account.
+  // Floating bubbles: search (universal ⌘K), filters, alerts.
   const pillSearch = $('#cbPillSearch'); if (pillSearch) pillSearch.addEventListener('click', () => openCmdk());
   const pillAct = $('#cbPillActivity'); if (pillAct) pillAct.addEventListener('click', toggleActivity);
-  const pillUser = $('#cbPillUser'); if (pillUser) pillUser.addEventListener('click', () => {
-    if (pillUser.dataset.authed === '1') return openUserMenu(pillUser);
-    const name = prompt('Your name (shown on edits):', lsGet('ngc_author') || '');
-    if (name !== null) { lsSet('ngc_author', name.trim()); updateUserBadge(); }
-  });
+  const pillFilter = $('#cbPillFilter'); if (pillFilter) pillFilter.addEventListener('click', e => { e.stopPropagation(); toggleFilterPanel(); });
   const cbApp = document.querySelector('.cb-app');
   if (cbApp) { cbApp.style.cursor = 'pointer'; cbApp.title = 'Return to Dashboard (clears filters)'; cbApp.addEventListener('click', () => { clearFilters(); setView('progress'); }); }
   const cbPage = $('#cbPage');
