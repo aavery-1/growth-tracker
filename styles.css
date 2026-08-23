@@ -1888,16 +1888,11 @@ button.kcard2:hover .k-ic { transform: scale(1.06); }
 .ex-card[data-section="capital"],
 .ex-card[data-section="workload"] { border-left: 0 !important; padding-left: 24px !important; }
 .ex-card[data-section="overdue"] { border-left: 3px solid #C0341F !important; padding-left: 24px !important; }
-/* Section headers get a small semantic dot instead of a colored stripe - subtler */
-.ex-card[data-section] .ex-cardhead-l::before {
-  content: ''; width: 8px; height: 8px; border-radius: 50%;
-  background: var(--outline); margin-right: 2px; flex-shrink: 0;
-}
-.ex-card[data-section="upcoming"]  .ex-cardhead-l::before { background: #B36A00; }
-.ex-card[data-section="readiness"] .ex-cardhead-l::before { background: #16357F; }
-.ex-card[data-section="capital"]   .ex-cardhead-l::before { background: #C77400; }
-.ex-card[data-section="workload"]  .ex-cardhead-l::before { background: #7A3A9B; }
-.ex-card[data-section="overdue"]   .ex-cardhead-l::before { background: #C0341F; }
+/* (Removed the decorative colored dot before card titles - it duplicated the
+   count badge and carried no unique meaning. The title alone reads cleaner.)
+   With the accent gone, normalize the left padding so cards are symmetric. */
+.ex-card[data-section],
+.ex-card[data-section="overdue"] { padding-left: 22px !important; }
 
 /* KPI tiles: tone the tint pills down a notch for a more restrained read */
 .kpi-strip { gap: 14px; margin-bottom: 6px; }
@@ -2202,8 +2197,6 @@ h1, h2, h3, h4, .k-num, .dash-count { color: #1a1a24; letter-spacing: -.2px; }
   .app-header .header-actions .icon-btn.nav-util .nav-util-lbl { display: none; }   /* icon-only */
 }
 
-/* Section semantic dot in card header - keep, but crisper (2px smaller, 2px inset) */
-.ex-card[data-section] .ex-cardhead-l::before { width: 6px !important; height: 6px !important; }
 .ex-card h3 { font-size: 16px !important; letter-spacing: 0 !important; font-weight: 600 !important; }
 .dash-count { font-weight: 600 !important; font-size: 11.5px !important; letter-spacing: .02em; padding: 2px 8px !important; min-width: 22px !important; height: 20px !important; }
 
@@ -2541,9 +2534,11 @@ b, strong { font-weight: 600; }
 }
 
 /* 11. SCROLL ANIMATIONS: stagger cards in, smooth transitions */
+/* Entrance is transform-only: content is visible by default, so an interrupted
+   or throttled animation can never leave a card stuck invisible. */
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: none; }
+  from { transform: translateY(10px); }
+  to { transform: none; }
 }
 .dash > * {
   animation: slideUp .3s cubic-bezier(.2,0,0,1) both !important;
@@ -2767,13 +2762,14 @@ b, strong { font-weight: 600; }
   padding: 6px 12px !important; border-radius: 8px !important;
 }
 
-/* 26. VIEW TRANSITIONS: fade in content on tab switch */
+/* 26. VIEW TRANSITIONS: subtle rise on tab switch (transform-only, so a view
+   can never be left invisible by an interrupted animation). */
 .view.active {
   animation: fadeIn .25s ease both !important;
 }
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from { transform: translateY(4px); }
+  to { transform: none; }
 }
 
 /* ============================================================
@@ -2908,15 +2904,17 @@ body.header-pinned .cb-pill { pointer-events: auto; }
 :root[data-theme="dark"] .cb-pill-btn { background: color-mix(in srgb, #1b1d27 90%, transparent); }
 .cb-pill-btn:hover { color: var(--on-surface); transform: translateY(-1px); box-shadow: 0 7px 20px rgba(16,24,64,.2); }
 .cb-pill-btn.on { background: var(--primary); color: #fff; border-color: var(--primary); }
-.cb-pill .cb-badge { top: 7px; right: 8px; box-shadow: 0 0 0 2px var(--card-white, #fff); }
-/* numbered filter badge */
-.cb-count {
+.cb-pill .cb-badge { top: 8px; right: 9px; box-shadow: 0 0 0 2px var(--card-white, #fff); }
+/* numbered filter badge - sits on the top-right rim so it never covers the icon */
+.cb-pill .cb-count {
   min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px;
-  top: 2px; right: 2px; width: auto;
+  top: -6px; right: -6px; bottom: auto; left: auto; width: auto;
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: 10px; font-weight: 800; color: #fff; background: var(--primary);
+  font-size: 10px; font-weight: 800; line-height: 1; color: #fff; background: var(--primary);
+  box-shadow: 0 0 0 2px var(--card-white, #fff);
 }
-.cb-pill-btn.on .cb-count { background: #fff; color: var(--primary); }
+:root[data-theme="dark"] .cb-pill .cb-count { box-shadow: 0 0 0 2px #1b1d27; }
+.cb-pill-btn.on .cb-count { background: #fff; color: var(--primary); box-shadow: 0 0 0 2px var(--primary); }
 
 /* Staggered entrance so the bubbles pop in one after another */
 body.header-pinned .cb-pill-btn { opacity: 1; transform: none; }
