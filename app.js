@@ -900,78 +900,131 @@ function teamActivityCard() {
   return `<section class="ex-card ta-card"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('people')}<h3>Team activity</h3>${scope}</div><button class="card-more" data-activityall="1">View all →</button></div><div class="ta-body">${log.length ? rows : `<div class="muted ex-empty">${empty}</div>`}</div></section>`;
 }
 
+/* ============================================================
+   DASHBOARD - Chief/Board altitude
+   The dashboard answers ONE question: "How is the portfolio doing right now?"
+   It stays a level above the Openings tab (which schools are opening) and the
+   Project Plan (which tasks are being worked). Everything here either answers
+   that question, surfaces urgent action, or lets a viewer drill down.
+   Layout (top → bottom): Health banner (the singular headline) → 30-day pulse
+   → Cohort switcher chips → Focus cohort card (its schools' readiness) →
+   Where's-the-pressure breakdown + My tasks | Needs attention + Team activity
+   → Portfolio detail (collapsed: fundraising, workload, full status mix).
+   ============================================================ */
 function dashboardHtml(list) {
   const schools = schoolsInView();
   const total = schools.length;
   const rags = schools.map(s => ({ s, r: ragReady(schoolMs(s)) }));
   const cnt = k => rags.filter(x => x.r.key === k).length;
-  const g = cnt('green'), y = cnt('yellow'), r = cnt('red'), none = cnt('none');
-  const tms = teams();
+  const gC = cnt('green'), bC = cnt('blue'), yC = cnt('yellow'), rC = cnt('red'), noneC = cnt('none');
+  const attention = rC + yC;
+  const onTrack = total - attention;
+  const now = Date.now();
   const seg = (v, c) => v ? `<span style="flex:${v};background:${c}"></span>` : '';
 
-  // HERO - how ready is each UPCOMING opening batch (by fiscal-year cohort)?
-  const now = Date.now();
+  // Cohort math — used by the switcher chips and the focus card.
   const cohorts = [...new Set(schools.map(s => s.openingFY))].filter(Boolean).sort((a, b) => a - b).map(fy => {
     const cs = schools.filter(s => s.openingFY === fy);
-    const ms = cs.flatMap(s => schoolMs(s));
+    const ms = cs.flatMap(schoolMs);
     const done = ms.filter(m => effectiveStatus(m) === 'complete').length;
-    const prep = ms.length ? Math.round(100 * done / ms.length) : 0;
-    const mkts = [...new Set(cs.map(s => s.market))];
-    const first = Math.min(...cs.map(s => +parseDate(s.opening_date)));
-    const mo = Math.max(0, Math.round((first - now) / 2.63e9));
-    return { fy, cs, ms, prep, mkts, mo };
+    const firsts = cs.map(s => +parseDate(s.opening_date)).filter(n => !isNaN(n));
+    const mo = firsts.length ? Math.max(0, Math.round((Math.min(...firsts) - now) / 2.63e9)) : null;
+    return { fy, cs, ms, done, mo, pct: ms.length ? Math.round(100 * done / ms.length) : 0, mkts: [...new Set(cs.map(s => s.market))] };
   });
-  const nextC = cohorts.find(c => c.mo >= 0) || cohorts[0];
+  const focusFY = focusCohort();
+  const focusC = cohorts.find(c => c.fy === focusFY) || cohorts.find(c => c.mo != null && c.mo >= 0) || cohorts[0];
 
-  // KPI SUMMARY - restrained, clearly-labeled cards; each number tied to a click-through
-  const b = cnt('blue'), attention = r + y, onTrack = total - attention;
-  const overdue = list.filter(m => timingLevel(m) === 'overdue').length;
-  // Material Symbols (Rounded, filled) - clean geometric shapes on a subtle tinted disc
-  const KPI_IC = {
-    school:  '<path d="M12 3 1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/>',
-    warning: '<path d="M12 2 1 21h22L12 2zm1 15h-2v-2h2v2zm0-4h-2V9h2v4z"/>',
-    flag:    '<path d="M14.4 6 14 4H5v17h2v-7h5.6l.4 2h7V6z"/>',
-    alarm:   '<path d="M22 5.72 17.4 1.86 16.11 3.39l4.6 3.86 1.29-1.53zM7.88 3.39 6.6 1.86 2 5.71 3.29 7.24zM12.5 8H11v6l4.75 2.85.75-1.23-4-2.37V8zM12 4a9 9 0 1 0 .01 18.01A9 9 0 0 0 12 4zm0 16c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>'
-  };
-  // month-over-month trend (portfolio-wide; only shown when no filters are applied)
-  const unfiltered = !state.filters.states.size && !state.filters.markets.size && !state.filters.areas.size && !state.filters.statuses.size && !state.filters.openingFYs.size && !state.filters.schoolId && !state.filters.search && !state.filters.timing;
-  const tp = unfiltered ? trendPrev() : null;
-  const dChip = (cur, key, goodUp) => { if (!tp || typeof tp[key] !== 'number') return ''; const d = cur - tp[key]; if (!d) return ''; const up = d > 0; const good = up === goodUp; return `<span class="k-delta ${good ? 'good' : 'bad'}">${up ? '▲' : '▼'} ${Math.abs(d)}<span class="k-delta-lbl"> vs last month</span></span>`; };
-  const kpi = (icon, num, den, lbl, sub, cls, drill, delta) => `<${drill ? 'button' : 'div'} class="kcard2 ${cls || ''} ${drill ? 'drill' : ''}" ${drill || ''}><span class="k-ic"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">${KPI_IC[icon]}</svg></span><div class="k-num">${num}${den ? `<span class="k-den">${den}</span>` : ''}</div><div class="k-lbl">${lbl}</div><div class="k-sub">${sub}</div>${delta || ''}</${drill ? 'button' : 'div'}>`;
-  const kpiStrip = `<section class="kpi-strip">
-    ${kpi('school', onTrack, `/ ${total}`, 'Schools on track', '', 'k-tone-ok', '', dChip(onTrack, 'onTrack', true))}
-    ${kpi('warning', attention, '', 'Need attention', '', 'k-tone-warn' + (attention ? ' k-alert' : ''), attention ? 'data-drilldim="riskbehind" data-drillval=""' : '', dChip(attention, 'attention', false))}
-    ${nextC ? kpi('flag', nextC.mo <= 0 ? 'Now' : nextC.mo, nextC.mo <= 0 ? '' : ' mo', 'Next opening', `Fall ${nextC.fy - 1} · ${esc(nextC.mkts.join(' · '))}`, 'k-tone-nav', `data-drilldim="year" data-drillval="${nextC.fy}"`) : ''}
-    ${kpi('alarm', overdue, '', 'Milestones overdue', '', 'k-tone-err' + (overdue ? ' k-alert' : ''), overdue ? 'data-drilldim="timing" data-drillval="overdue"' : '', dChip(overdue, 'overdue', false))}
+  // ─── 1. Portfolio Health Banner ── one lead statement + a health mix bar ───
+  const attnLine = attention
+    ? `<button class="ph-cta" data-drilldim="riskbehind" data-drillval="">${attention} school${attention === 1 ? '' : 's'} need attention →</button>`
+    : (total ? `<span class="ph-ok">Nothing off track right now.</span>` : `<span class="muted">No schools in scope. Adjust filters above.</span>`);
+  const healthBar = total ? `<div class="ph-bar" title="${gC} complete · ${bC} on track · ${noneC} not started · ${yC} at risk · ${rC} behind">${seg(gC, RAG.green)}${seg(bC, RAG.blue)}${seg(noneC, RAG.none)}${seg(yC, RAG.yellow)}${seg(rC, RAG.red)}</div>
+    <div class="ph-legend"><span><i style="background:${RAG.green}"></i>Complete <b>${gC}</b></span><span><i style="background:${RAG.blue}"></i>On track <b>${bC}</b></span><span><i style="background:${RAG.yellow}"></i>At risk <b>${yC}</b></span><span><i style="background:${RAG.red}"></i>Behind <b>${rC}</b></span>${noneC ? `<span><i style="background:${RAG.none}"></i>Not started <b>${noneC}</b></span>` : ''}</div>` : '';
+  const healthBanner = `<section class="ph-banner">
+    <div class="ph-lead">
+      <div class="ph-eyebrow">Portfolio health</div>
+      <div class="ph-headline"><b>${onTrack}</b><span class="ph-of"> of ${total}</span> school${total === 1 ? '' : 's'} on track to open on schedule</div>
+      <div class="ph-sub">${attnLine}</div>
+    </div>
+    <div class="ph-vis">${healthBar}</div>
   </section>`;
 
+  // ─── 2. Pulse row ── the 30-day operational rhythm the committee runs on ───
+  const overdue = list.filter(m => timingLevel(m) === 'overdue' && effectiveStatus(m) !== 'complete');
+  const thisMonth = list.filter(m => timingLevel(m) === 'this_month' && effectiveStatus(m) !== 'complete');
+  const gates30 = list.filter(m => (m.keyMilestone || m.greenlight || m.transition) && m.due_date && effectiveStatus(m) !== 'complete')
+    .filter(m => { const d = daysUntil(m.due_date); return d != null && d >= -7 && d <= 30; })
+    .sort((a, b) => parseDate(a.due_date) - parseDate(b.due_date));
+  const pulseCard = (label, items, tone, drill, empty) => {
+    const preview = items.slice(0, 3).map(m => `<div class="pu-item" data-expand="${m.id}"><span class="pu-t">${esc(m.activity)}</span><span class="pu-m">${esc([m.market, m.owner].filter(Boolean).join(' · '))}</span></div>`).join('');
+    const cta = items.length > 3 ? `<button class="pu-more" ${drill}>View all ${items.length} →</button>` : '';
+    return `<div class="pu-card pu-${tone}">
+      <div class="pu-head"><span class="pu-n">${items.length}</span><span class="pu-lbl">${label}</span></div>
+      ${items.length ? `<div class="pu-list">${preview}</div>${cta}` : `<div class="pu-empty">${empty}</div>`}
+    </div>`;
+  };
+  const pulse = `<section class="pulse-row">
+    ${pulseCard('Overdue', overdue, 'r', 'data-drilldim="timing" data-drillval="overdue"', 'Nothing overdue.')}
+    ${pulseCard('Due this month', thisMonth, 'y', 'data-drilldim="timing" data-drillval="this_month"', 'Nothing due this month.')}
+    ${pulseCard('Key gates · next 30 days', gates30, 'b', 'data-showmore="focus"', 'No greenlights or key milestones in the next 30 days.')}
+  </section>`;
 
-  // GROWTH FUNDRAISING
+  // ─── 3. Cohort switcher chips ── compact row (replaces the 6-card strip) ───
+  const cohortChips = cohorts.length > 1 ? `<div class="ch-chips" role="tablist" aria-label="Opening cohort">
+    <span class="ch-lbl">Focus cohort</span>
+    ${cohorts.map(c => { const on = focusC && c.fy === focusC.fy && focusFY != null; return `<button class="ch-chip ${on ? 'on' : ''}" data-cohort="${c.fy}" role="tab" aria-selected="${on}">Fall ${c.fy - 1}<span class="ch-chip-n">${c.cs.length} school${c.cs.length === 1 ? '' : 's'}</span></button>`; }).join('')}
+    ${focusFY != null ? '<button class="ch-chip ch-all" data-cohort="all">Show all</button>' : '<span class="ch-hint muted">Click to scope the whole app</span>'}
+  </div>` : '';
+
+  // ─── 4. Focus card ── one hero: the cohort in focus with per-school RAG ───
+  const focusHtml = focusC ? (() => {
+    const rows = focusC.cs.slice().sort((a, b) => a.market.localeCompare(b.market) || a.display_label.localeCompare(b.display_label)).map(s => {
+      const sm = schoolMs(s), rr = ragReady(sm), n = sm.length, d = sm.filter(m => effectiveStatus(m) === 'complete').length;
+      const p = n ? Math.round(100 * d / n) : 0;
+      return `<button class="fc-row" data-drillschool="${esc(s.id)}" title="Open ${esc(s.display_label)}"><span class="fc-mk"><i style="background:${mkColor(s.market)}"></i>${esc(s.market)}</span><span class="fc-nm">${esc(s.display_label)}</span><span class="fc-bar"><span style="width:${p}%;background:${rr.color}"></span></span><span class="fc-pct">${n ? p + '%' : '—'}</span><span class="fc-pill">${ragTonePill(rr)}</span></button>`;
+    }).join('');
+    const scopedIndicator = focusFY != null ? '<span class="fc-scoped">App scoped to this cohort</span>' : '<span class="muted ex-hint">Preview · click a cohort chip above to scope the app</span>';
+    return `<section class="ex-card fc-card">
+      <div class="ex-card-head">
+        <div class="ex-cardhead-l">${ehIc('flag')}<h3>Fall ${focusC.fy - 1}</h3><span class="muted ex-hint">${focusC.cs.length} school${focusC.cs.length === 1 ? '' : 's'} · ${esc(focusC.mkts.join(' · '))}${focusC.mo != null ? ' · ' + (focusC.mo <= 0 ? 'opening now' : focusC.mo + ' mo out') : ''}</span></div>
+        <span class="fc-agg"><b>${focusC.pct}%</b><span class="muted"> pre-opening complete</span></span>
+      </div>
+      <div class="fc-body">${rows || '<div class="muted ex-empty">No schools scoped for this cohort yet.</div>'}</div>
+      <div class="fc-foot">${scopedIndicator}</div>
+    </section>`;
+  })() : '';
+
+  // ─── 5. Body grid: pressure + personal / needs attention + activity ───
+  // Two columns of equal weight — the dashboard doesn't privilege portfolio over people at this altitude.
+  const leftCol = `<div class="dash-col dash-col-main">${breakdownCard(list, schools)}${myTasksCard(list)}</div>`;
+  const rightCol = `<div class="dash-col dash-col-rail">${needsAttentionCard(list)}${teamActivityCard()}</div>`;
+
+  // ─── 6. Portfolio detail (collapsed) ── fundraising + workload + full mix ───
+  // These belong on the dashboard because they're portfolio-level, but they're
+  // secondary to health/pulse/focus — so they collapse by default.
   const camps = (state.data.campaigns || []).filter(c => !state.filters.states.size || state.filters.states.has(c.state));
-  const fOpen = !state.expanded['dash:fund'];
-  const capital = camps.length ? `<section class="ex-card" data-section="capital"><div class="ex-card-head toggle" data-toggle="dash:fund"><div class="ex-cardhead-l">${chev(fOpen)}<h3>Growth Fundraising</h3></div></div><div class="ex-card-body ${fOpen ? '' : 'hide'}"><div class="ex-caps">${camps.map(c => {
-    const p = c.target ? Math.min(100, Math.round(100 * c.raised / c.target)) : 0;
-    return `<div class="ex-cap"><div class="ex-cap-top"><b>${esc(c.name)}</b><span>${fmtMoney(c.raised)} <span class="muted">/ ${fmtMoney(c.target)}</span></span></div>
-      <div class="ex-cap-bar"><span style="width:${p}%"></span></div><div class="ex-cap-foot muted">${p}% raised</div></div>`;
-  }).join('')}</div></div></section>` : '';
-
-  // WORKLOAD - pacing across fiscal years
-  const wOpen = !state.expanded['dash:workload'];
+  const dOpen = !!state.expanded['dash:detail'];
+  const fundHtml = camps.length ? `<div class="pd-block"><h4>Growth fundraising</h4><div class="ex-caps">${camps.map(c => { const p = c.target ? Math.min(100, Math.round(100 * c.raised / c.target)) : 0; return `<div class="ex-cap"><div class="ex-cap-top"><b>${esc(c.name)}</b><span>${fmtMoney(c.raised)} <span class="muted">/ ${fmtMoney(c.target)}</span></span></div><div class="ex-cap-bar"><span style="width:${p}%"></span></div><div class="ex-cap-foot muted">${p}% raised</div></div>`; }).join('')}</div></div>` : '';
   const statusLegend = `<div class="pl-legend pl-legend-sm">${STATUS_ORDER.filter(s => list.some(m => effectiveStatus(m) === s)).map(s => `<span class="pl-leg"><i style="background:${SM(s).color}"></i>${SM(s).label}</span>`).join('')}</div>`;
-  const workload = `<section class="ex-card" data-section="workload"><div class="ex-card-head toggle" data-toggle="dash:workload"><div class="ex-cardhead-l">${chev(wOpen)}<h3>Milestone Workload by Year</h3></div></div><div class="ex-card-body ${wOpen ? '' : 'hide'}">${statusLegend}${columnChart(list)}</div></section>`;
+  const workloadHtml = `<div class="pd-block"><h4>Milestone workload by year</h4>${statusLegend}${columnChart(list)}</div>`;
+  // Inline the pipeline bar+legend (don't wrap statusPipeline's <section> — regex-stripping its
+  // nested divs was brittle and leaked sibling blocks out of the collapsed body).
+  const pipeOrder = ['not_started', 'on_track', 'at_risk', 'behind', 'blocked', 'complete'];
+  const pipeCounts = {}; pipeOrder.forEach(s => pipeCounts[s] = 0);
+  list.forEach(m => { const es = effectiveStatus(m); if (pipeCounts[es] == null) pipeCounts[es] = 0; pipeCounts[es]++; });
+  const pipeSeg = pipeOrder.map(s => pipeCounts[s] ? `<span class="pl-seg" style="flex:${pipeCounts[s]};background:${SM(s).color}" title="${SM(s).label}: ${pipeCounts[s]}"></span>` : '').join('') || '<span class="pl-seg" style="flex:1;background:var(--surface-container-high)"></span>';
+  const pipeLegend = pipeOrder.filter(s => pipeCounts[s]).map(s => `<span class="pl-leg"><i style="background:${SM(s).color}"></i>${SM(s).label}<b>${pipeCounts[s]}</b></span>`).join('');
+  const pipeHtml = `<div class="pd-block"><h4>Full milestone status mix</h4><div class="pl-legend">${pipeLegend || '<span class="muted">No milestones in view.</span>'}</div><div class="pl-bar">${pipeSeg}</div></div>`;
+  const detail = `<section class="ex-card pd-card"><div class="ex-card-head toggle" data-toggle="dash:detail"><div class="ex-cardhead-l">${chev(dOpen)}<h3>Portfolio detail</h3><span class="muted ex-hint">Fundraising · workload · full status mix</span></div></div><div class="ex-card-body ${dOpen ? '' : 'hide'}">${pipeHtml}${fundHtml}${workloadHtml}</div></section>`;
 
-  // Info hierarchy (overview layout, for Chiefs/Board) - two dense columns so the
-  // cards fill their space instead of leaving voids:
-  //   LEFT  (wide): Opening-readiness table · Milestone status · Growth fundraising
-  //   RIGHT (rail): Needs attention · My tasks · Team activity
-  //   FULL width:   Milestone workload by year
-  const leftCol = `<div class="dash-col dash-col-main">${breakdownCard(list, schools)}${statusPipeline(list)}${capital}${workload}</div>`;
-  const rightCol = `<div class="dash-col dash-col-rail">${needsAttentionCard(list)}${myTasksCard(list)}${teamActivityCard()}</div>`;
   return `<div class="dash dash-v2">
     ${greetBanner(list)}
-    ${kpiStrip}
-    ${cohortStrip()}
+    ${healthBanner}
+    ${pulse}
+    ${cohortChips}
+    ${focusHtml}
     <div class="dash-main">${leftCol}${rightCol}</div>
+    ${detail}
   </div>`;
 }
 

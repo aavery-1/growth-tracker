@@ -3217,3 +3217,176 @@ body[data-view="progress"] #cbPillFilter { display: none; }
 :root[data-theme="dark"] .filterbar .af-chips { border-left-color: #2A2E38; }
 :root[data-theme="dark"] .af-chip { background: #21283A; color: #B9C8F0; }
 :root[data-theme="dark"] .af-chip:hover { background: #2A344B; color: #DCE5FA; }
+
+/* ============================================================
+   §33 Dashboard altitude redesign
+   Health banner · 30-day pulse · cohort chips · focus card · detail
+   ============================================================ */
+
+/* — Portfolio Health Banner — the singular "how are we doing" moment */
+.ph-banner {
+  background: var(--surface-container-lowest, #fff);
+  border: 1px solid var(--outline-variant);
+  border-radius: 16px;
+  padding: 24px 26px;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 28px;
+  align-items: center;
+  box-shadow: 0 1px 2px rgba(16, 24, 64, .04);
+}
+.ph-eyebrow {
+  font-size: 11px; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--on-surface-variant); opacity: .8;
+  margin-bottom: 6px;
+}
+.ph-headline {
+  font-size: 22px; line-height: 1.28; font-weight: 500;
+  color: var(--on-surface, #0d1230); letter-spacing: -.2px;
+}
+.ph-headline b { font-size: 34px; font-weight: 700; color: var(--on-surface, #0d1230); margin-right: 2px; }
+.ph-of { color: var(--on-surface-variant); font-weight: 500; }
+.ph-sub { margin-top: 10px; font-size: 13.5px; }
+.ph-cta {
+  appearance: none; background: transparent; border: 0; color: var(--primary, #16357F);
+  font-weight: 700; font-size: 13.5px; cursor: pointer; padding: 0;
+}
+.ph-cta:hover { text-decoration: underline; }
+.ph-ok { color: var(--on-surface-variant); }
+.ph-vis { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.ph-bar {
+  display: flex; height: 14px; border-radius: 999px; overflow: hidden;
+  background: var(--surface-container-high, #EEF1F6);
+}
+.ph-bar > span { display: block; height: 100%; transition: flex .2s; }
+.ph-legend { display: flex; flex-wrap: wrap; gap: 14px 18px; font-size: 12.5px; color: var(--on-surface-variant); }
+.ph-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.ph-legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.ph-legend b { color: var(--on-surface); font-weight: 700; margin-left: 2px; }
+:root[data-theme="dark"] .ph-banner { background: var(--surface-container-low); }
+:root[data-theme="dark"] .ph-headline,
+:root[data-theme="dark"] .ph-headline b { color: #EEF1F6; }
+@media (max-width: 900px) { .ph-banner { grid-template-columns: 1fr; padding: 20px; } }
+
+/* — Pulse row — 30-day operational queues */
+.pulse-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.pu-card {
+  background: var(--surface-container-lowest, #fff);
+  border: 1px solid var(--outline-variant);
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: flex; flex-direction: column; gap: 10px;
+  min-width: 0;
+  box-shadow: 0 1px 2px rgba(16, 24, 64, .04);
+}
+.pu-head { display: flex; align-items: baseline; gap: 10px; }
+.pu-n { font-size: 26px; font-weight: 700; color: var(--on-surface); letter-spacing: -.3px; line-height: 1; }
+.pu-lbl { font-size: 13px; font-weight: 600; color: var(--on-surface-variant); }
+.pu-r .pu-n { color: #C6202F; }
+.pu-y .pu-n { color: #B87914; }
+.pu-b .pu-n { color: var(--primary, #16357F); }
+.pu-list { display: flex; flex-direction: column; gap: 2px; }
+.pu-item {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 6px 8px; margin: 0 -8px;
+  border-radius: 8px; cursor: pointer;
+  transition: background .12s;
+}
+.pu-item:hover { background: var(--surface-container, #F1F3F8); }
+.pu-t { font-size: 13px; font-weight: 500; color: var(--on-surface); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pu-m { font-size: 11.5px; color: var(--on-surface-variant); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pu-more {
+  appearance: none; background: transparent; border: 0; padding: 0; margin-top: 2px;
+  color: var(--primary, #16357F); font-weight: 700; font-size: 12.5px; cursor: pointer; text-align: left;
+}
+.pu-more:hover { text-decoration: underline; }
+.pu-empty { font-size: 12.5px; color: var(--on-surface-variant); font-style: italic; padding: 4px 0; }
+:root[data-theme="dark"] .pu-card { background: var(--surface-container-low); }
+:root[data-theme="dark"] .pu-item:hover { background: rgba(255,255,255,.05); }
+@media (max-width: 900px) { .pulse-row { grid-template-columns: 1fr; } }
+
+/* — Cohort switcher chips (compact replacement for the 6-card strip) */
+.ch-chips {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  padding: 4px 0 2px;
+}
+.ch-lbl {
+  font-size: 11px; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--on-surface-variant); opacity: .8;
+  margin-right: 4px;
+}
+.ch-chip {
+  appearance: none; cursor: pointer; font: inherit;
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 34px; padding: 0 14px;
+  background: var(--surface-container-lowest, #fff);
+  color: var(--on-surface);
+  border: 1px solid var(--outline-variant);
+  border-radius: 999px;
+  font-size: 13px; font-weight: 600;
+  transition: background .12s, color .12s, border-color .12s, box-shadow .12s, transform .1s;
+}
+.ch-chip:hover { border-color: var(--outline); box-shadow: 0 2px 6px rgba(16, 24, 64, .05); transform: translateY(-1px); }
+.ch-chip.on {
+  background: var(--primary, #16357F); color: #fff; border-color: transparent;
+  box-shadow: 0 2px 10px rgba(22, 53, 127, .18);
+}
+.ch-chip-n {
+  display: inline-flex; align-items: center; height: 20px; padding: 0 7px;
+  border-radius: 999px;
+  background: var(--surface-container, #EEF1F6);
+  color: var(--on-surface-variant);
+  font-size: 11px; font-weight: 600;
+}
+.ch-chip.on .ch-chip-n { background: rgba(255,255,255,.18); color: #fff; }
+.ch-chip.ch-all { background: transparent; border-style: dashed; color: var(--on-surface-variant); }
+.ch-hint { font-size: 12px; }
+:root[data-theme="dark"] .ch-chip { background: var(--surface-container-low); color: #D9DEE8; }
+:root[data-theme="dark"] .ch-chip.on { background: var(--primary, #43B0E6); color: #0d1230; }
+
+/* — Focus card — the current cohort as a scannable school list */
+.fc-card { padding: 18px 20px; }
+.fc-card .ex-card-head { align-items: baseline; }
+.fc-agg { font-size: 13px; color: var(--on-surface-variant); }
+.fc-agg b { font-size: 22px; font-weight: 700; color: var(--on-surface); margin-right: 4px; letter-spacing: -.2px; }
+.fc-body { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.fc-row {
+  appearance: none; cursor: pointer; font: inherit; text-align: left;
+  display: grid;
+  grid-template-columns: 140px minmax(120px, 1fr) minmax(120px, 1.5fr) 46px 100px;
+  align-items: center; gap: 14px;
+  padding: 10px 12px; margin: 0 -12px;
+  background: transparent; border: 0; border-radius: 10px;
+  transition: background .12s;
+}
+.fc-row:hover { background: var(--surface-container, #F4F6FA); }
+.fc-mk { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--on-surface-variant); }
+.fc-mk i { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.fc-nm { font-size: 14px; font-weight: 600; color: var(--on-surface); }
+.fc-bar { display: block; height: 8px; border-radius: 999px; background: var(--surface-container-high, #EEF1F6); overflow: hidden; }
+.fc-bar > span { display: block; height: 100%; border-radius: 999px; }
+.fc-pct { font-size: 12.5px; font-weight: 700; color: var(--on-surface); text-align: right; }
+.fc-pill { display: flex; justify-content: flex-end; }
+.fc-foot { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--outline-variant); font-size: 12px; }
+.fc-scoped {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--primary, #16357F); font-weight: 700; font-size: 12px;
+}
+.fc-scoped::before { content: "●"; font-size: 10px; }
+:root[data-theme="dark"] .fc-row:hover { background: rgba(255,255,255,.05); }
+@media (max-width: 900px) {
+  .fc-row { grid-template-columns: 1fr; gap: 4px; padding: 12px; }
+  .fc-bar, .fc-pct, .fc-pill, .fc-mk { justify-self: flex-start; }
+}
+
+/* — Portfolio detail (collapsed) — secondary metrics */
+.pd-card .pd-block { margin-top: 22px; }
+.pd-card .pd-block:first-child { margin-top: 0; }
+.pd-card .pd-block > h4 {
+  font-size: 13.5px; font-weight: 700; letter-spacing: -.1px;
+  color: var(--on-surface); margin: 0 0 10px;
+}
