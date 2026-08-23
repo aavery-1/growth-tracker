@@ -133,10 +133,13 @@ const DATA_MIGRATIONS = {
     if (sm && sm.complete && sm.complete.color === '#79A81E') sm.complete.color = '#4A8C1F';
   },
   17: (data, base) => {
-    // Seed the milestone template library into caches that predate it (respects existing customizations).
     if (data.meta && base.meta && base.meta.milestoneTemplates && !data.meta.milestoneTemplates) {
       data.meta.milestoneTemplates = JSON.parse(JSON.stringify(base.meta.milestoneTemplates));
     }
+  },
+  18: (data /* , base */) => {
+    // Flip everyone to Individual accounts as the default (shared-password mode retired).
+    if (data.meta) data.meta.authMode = 'supabase';
   }
 };
 async function loadData() {
