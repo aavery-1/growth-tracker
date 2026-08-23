@@ -1525,6 +1525,15 @@ async function signInEmail(email, password) {
   state.auth.user = data.user; await loadProfile(data.user.id);
   return data.user;
 }
+async function signUpEmail(email, password, fullName) {
+  const client = state.sb && state.sb.client; if (!client) throw new Error('Supabase is not connected. Ask an admin.');
+  const { data, error } = await client.auth.signUp({
+    email: email.trim(), password,
+    options: { data: { full_name: fullName.trim() } }
+  });
+  if (error) throw error;
+  return data;   // if Confirm email is on, data.session is null until they click the link
+}
 
 async function signOutUser() {
   const client = state.sb && state.sb.client; if (!client) return;
@@ -1533,36 +1542,55 @@ async function signOutUser() {
   if (authModeOn()) showAuthScreen(); else location.reload();
 }
 
-function showAuthScreen(err) {
+function showAuthScreen(err, mode, info) {
+  mode = mode || 'signin';   // 'signin' | 'signup'
   let g = $('#gateScreen');
   if (!g) { g = document.createElement('div'); g.id = 'gateScreen'; g.className = 'gate-screen'; document.body.appendChild(g); }
   const logoSrc = (document.querySelector('.brand-logo') || {}).src || '';
+  const isSignup = mode === 'signup';
   g.innerHTML = `<div class="gate-card auth-card">
       <img class="gate-logo" src="${logoSrc}" alt="KIPP">
       <h1>Network Growth Hub</h1>
-      <p>Sign in with your work email.</p>
+      <p>${isSignup ? 'Create your account with a KIPP work email.' : 'Sign in with your work email.'}</p>
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab ${!isSignup ? 'on' : ''}" data-authmode="signin">Sign in</button>
+        <button type="button" class="auth-tab ${isSignup ? 'on' : ''}" data-authmode="signup">Create account</button>
+      </div>
       <form id="authForm" autocomplete="on">
-        <input id="authEmail" type="email" placeholder="Email" autocomplete="username" required autofocus>
-        <input id="authPw" type="password" placeholder="Password" autocomplete="current-password" required>
-        <button type="submit" class="btn btn-filled" id="authSubmit">Sign in</button>
+        ${isSignup ? '<input id="authName" type="text" placeholder="Full name" autocomplete="name" required>' : ''}
+        <input id="authEmail" type="email" placeholder="Email (@kippnj.org, @kippteamandfamily.org, @kippmiami.org)" autocomplete="username" required autofocus>
+        <input id="authPw" type="password" placeholder="Password (12+ chars)" autocomplete="${isSignup ? 'new-password' : 'current-password'}" required minlength="6">
+        <button type="submit" class="btn btn-filled" id="authSubmit">${isSignup ? 'Create account' : 'Sign in'}</button>
       </form>
       ${err ? `<div class="gate-err">${esc(err)}</div>` : ''}
-      <div class="auth-foot">No account? Ask an admin to invite you.</div>
+      ${info ? `<div class="gate-info">${esc(info)}</div>` : ''}
+      <div class="auth-foot">${isSignup ? 'After signup, verify via the email we send. You start as a viewer; an admin can promote you.' : 'Only KIPP work emails can create accounts.'}</div>
     </div>`;
+  g.querySelectorAll('[data-authmode]').forEach(b => b.addEventListener('click', () => showAuthScreen(null, b.dataset.authmode)));
   const f = $('#authForm'), sub = $('#authSubmit');
   f.addEventListener('submit', async e => {
     e.preventDefault();
-    sub.disabled = true; sub.textContent = 'Signing in…';
+    sub.disabled = true; sub.textContent = isSignup ? 'Creating…' : 'Signing in…';
     try {
-      await signInEmail($('#authEmail').value, $('#authPw').value);
-      g.remove();
-      if (!state._booted) { state._booted = true; bootApp(); } else { updateUserBadge(); rerender(); toast('Signed in', 'ok'); }
+      if (isSignup) {
+        const res = await signUpEmail($('#authEmail').value, $('#authPw').value, $('#authName').value);
+        if (res.session) {
+          g.remove();
+          if (!state._booted) { state._booted = true; bootApp(); } else { updateUserBadge(); rerender(); toast('Account created', 'ok'); }
+        } else {
+          showAuthScreen(null, 'signin', 'Account created — check your email for the verification link, then sign in.');
+        }
+      } else {
+        await signInEmail($('#authEmail').value, $('#authPw').value);
+        g.remove();
+        if (!state._booted) { state._booted = true; bootApp(); } else { updateUserBadge(); rerender(); toast('Signed in', 'ok'); }
+      }
     } catch (ex) {
-      sub.disabled = false; sub.textContent = 'Sign in';
-      showAuthScreen(ex.message || 'Sign-in failed. Check your email and password.');
+      sub.disabled = false; sub.textContent = isSignup ? 'Create account' : 'Sign in';
+      showAuthScreen(ex.message || (isSignup ? 'Signup failed.' : 'Sign-in failed. Check your email and password.'), mode);
     }
   });
-  setTimeout(() => { const i = $('#authEmail'); if (i && !i.value) i.focus(); else { const p = $('#authPw'); if (p) p.focus(); } }, 30);
+  setTimeout(() => { const i = $(isSignup ? '#authName' : '#authEmail'); if (i && !i.value) i.focus(); }, 30);
 }
 
 function updateUserBadge() {

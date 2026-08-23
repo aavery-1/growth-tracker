@@ -2019,6 +2019,10 @@ body.nav-collapsed #navToggle svg { transform: scaleX(-1); }
 .auth-card #authForm button { margin-top: 6px; height: 44px; font-size: 14.5px; font-weight: 700; }
 .auth-card #authForm button:disabled { opacity: .6; cursor: wait; }
 .auth-foot { margin-top: 16px; font-size: 12.5px; color: var(--on-surface-variant, #6B7280); text-align: center; }
+.auth-tabs { display: flex; gap: 4px; padding: 4px; background: var(--surface-container, #EEF1F6); border-radius: 10px; margin-bottom: 14px; }
+.auth-tab { flex: 1; padding: 8px 12px; border: 0; background: transparent; font: inherit; font-size: 13px; font-weight: 600; color: var(--on-surface-variant, #6B7280); border-radius: 7px; cursor: pointer; transition: background .12s, color .12s; }
+.auth-tab.on { background: var(--surface-container-lowest, #FFF); color: var(--primary, #16357F); box-shadow: 0 1px 3px rgba(16,53,127,.08); }
+.gate-info { margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: #E9F6ED; color: #1E7A3D; font-size: 12.5px; }
 
 /* Signed-in user badge (in header) */
 #cbUser[data-authed="1"] { box-shadow: 0 0 0 2px rgba(22,53,127,.15); }
