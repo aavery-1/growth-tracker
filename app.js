@@ -5,7 +5,7 @@
    ============================================================ */
 'use strict';
 
-const LS = { theme: 'ngc_theme', data: 'ngc_data', gh: 'ngc_gh', supabase: 'ngc_supabase', ui: 'ngc_ui', gate: 'ngc_gate' };
+const LS = { theme: 'ngc_theme', data: 'ngc_data', gh: 'ngc_gh', supabase: 'ngc_supabase', ui: 'ngc_ui', gate: 'ngc_gate', team: 'ngc_team' };
 /* Safe storage - sandboxed iframes (e.g. the published artifact) throw on any localStorage access.
    Never let that break app init / event wiring. */
 function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -22,7 +22,7 @@ const state = {
   dashBreakdown: 'workstream',   // dashboard progress breakdown: workstream | school
   reportsTab: 'overview',       // overview | timeline | list
   expanded: {},                  // progress section/item expand map
-  filters: { states: new Set(), fys: new Set(), types: new Set(), areas: new Set(), markets: new Set(), statuses: new Set(), priorities: new Set(), openingFYs: new Set(), schoolId: '', search: '', timing: '' },
+  filters: { states: new Set(), fys: new Set(), types: new Set(), areas: new Set(), owners: new Set(), markets: new Set(), statuses: new Set(), priorities: new Set(), openingFYs: new Set(), schoolId: '', search: '', timing: '' },
   sb: { connected: false, client: null },
   adminUnlocked: false,
   auth: { user: null, profile: null, wired: false },
@@ -148,12 +148,21 @@ const DATA_MIGRATIONS = {
    three booleans vs one type) without needing a versioned migration. Reads
    throughout the app assume the normalized shape. Writes still populate
    both fields on new items for backward compatibility. */
+const TEAM_ALIASES = { 'Advancement': 'Fundraising' };   // one canonical label per functional team
+function canonTeam(v) { return TEAM_ALIASES[v] || v; }
 function normalizeData(data) {
   if (!data || !Array.isArray(data.milestones)) return data;
+  // Keep the team roster on one canonical label set (functional_area is the read of record).
+  if (data.meta) {
+    if (Array.isArray(data.meta.teams)) data.meta.teams = data.meta.teams.map(canonTeam);
+    if (Array.isArray(data.meta.functionalAreas)) data.meta.functionalAreas = data.meta.functionalAreas.map(canonTeam);
+    else if (Array.isArray(data.meta.teams)) data.meta.functionalAreas = data.meta.teams.slice();
+  }
   data.milestones.forEach(m => {
-    // Workstream: functional_area is the canonical read; sync team = functional_area.
+    // Team: functional_area is the canonical read; sync team = functional_area.
     if (m.functional_area && !m.team) m.team = m.functional_area;
     else if (m.team && !m.functional_area) m.functional_area = m.team;
+    m.functional_area = canonTeam(m.functional_area); m.team = canonTeam(m.team);
     // Schools: schoolIds is the source of truth; keep schools codes as a mirror.
     if (!Array.isArray(m.schoolIds)) m.schoolIds = [];
     if (!Array.isArray(m.schools)) m.schools = [];
@@ -214,10 +223,12 @@ function passFilters(m) {
   if (f.states.size && !f.states.has(m.state)) return false;
   if (f.fys.size && !f.fys.has(m.targetFY)) return false;
   if (f.areas.size && !f.areas.has(m.functional_area)) return false;
+  if (f.owners.size && !f.owners.has(m.owner)) return false;
   if (f.markets.size && !f.markets.has(m.market)) return false;
   if (f.statuses.size && !f.statuses.has(effectiveStatus(m))) return false;
   if (f.priorities.size && !f.priorities.has(m.priority)) return false;
-  if (f.timing && timingLevel(m) !== f.timing) return false;
+  if (f.timing === 'due30') { const d = daysUntil(m.due_date); if (effectiveStatus(m) === 'complete' || d == null || d < 0 || d > 30) return false; }
+  else if (f.timing && timingLevel(m) !== f.timing) return false;
   if (f.openingFYs.size && m.openingFY && !f.openingFYs.has(m.openingFY)) return false;
   if (f.schoolId) { const sc = state.data.schools.find(x => x.id === f.schoolId); if (!sc || !taskInSchool(m, sc)) return false; }
   if (f.search) { const q = f.search.toLowerCase(); if (!`${m.activity} ${m.workstream} ${m.functional_area} ${m.market} ${m.owner} ${(m.tags || []).join(' ')}`.toLowerCase().includes(q)) return false; }
@@ -245,8 +256,14 @@ function toggleFilter(key, val, cast) {
   // cascade cleanup: drop downstream selections that no longer belong
   if (key === 'states') { const ok = new Set(marketsForStates()); [...state.filters.markets].forEach(mk => { if (!ok.has(mk)) state.filters.markets.delete(mk); }); }
   if (key === 'states' || key === 'markets') { const sc = state.filters.schoolId && schoolById(state.filters.schoolId); if (sc && !schoolFacetPass(sc, null)) state.filters.schoolId = ''; }
+  if (key === 'areas') saveTeamScope();
 }
-function clearFilters() { ['states', 'fys', 'types', 'areas', 'markets', 'statuses', 'priorities', 'openingFYs'].forEach(k => state.filters[k].clear()); state.filters.schoolId = ''; state.filters.search = ''; state.filters.timing = ''; const cb = $('#cbSearch'); if (cb) cb.value = ''; }
+function clearFilters() { ['states', 'fys', 'types', 'areas', 'owners', 'markets', 'statuses', 'priorities', 'openingFYs'].forEach(k => state.filters[k].clear()); state.filters.schoolId = ''; state.filters.search = ''; state.filters.timing = ''; const cb = $('#cbSearch'); if (cb) cb.value = ''; saveTeamScope(); }
+// The Team lens is the one filter that follows a leader across pages (their "my function" scope),
+// so it survives tab navigation and reloads. Everything else is transient to the current view.
+function clearTransientFilters() { ['states', 'fys', 'types', 'owners', 'markets', 'statuses', 'priorities', 'openingFYs'].forEach(k => state.filters[k].clear()); state.filters.schoolId = ''; state.filters.search = ''; state.filters.timing = ''; const cb = $('#cbSearch'); if (cb) cb.value = ''; }
+function saveTeamScope() { lsSet(LS.team, JSON.stringify([...state.filters.areas])); }
+function restoreTeamScope() { try { const t = JSON.parse(lsGet(LS.team) || '[]'); const valid = new Set(teams()); t.forEach(v => { if (valid.has(v)) state.filters.areas.add(v); }); } catch (e) {} }
 /* which opening cohorts (fiscal years) to display - empty = show all */
 function openingYears() { return [...new Set(state.data.schools.filter(s => s.openingFY).map(s => s.openingFY))].sort((a, b) => a - b); }
 function oyShown(fy) { return !state.filters.openingFYs.size || state.filters.openingFYs.has(fy); }
@@ -279,7 +296,7 @@ function fchip(key, val, label, color) {
 }
 
 /* ---------- unified filter bar (dropdown menus, live counts) ---------- */
-const FILTER_LABEL = { states: 'State', types: 'Type', markets: 'Market', fys: 'Year', areas: 'Workstream', statuses: 'Status', priorities: 'Priority' };
+const FILTER_LABEL = { states: 'State', types: 'Type', markets: 'Market', fys: 'Year', areas: 'Team', owners: 'Owner', statuses: 'Status', priorities: 'Priority' };
 /* Hierarchical facets: a menu's options are limited by the filters chosen above it
    (State → Market → Year → Team → Status). Empty upstream = show everything. */
 const selStates = () => state.filters.states;
@@ -290,6 +307,7 @@ function facetPass(m, skip) {
   if (skip !== 'markets' && f.markets.size && !f.markets.has(m.market)) return false;
   if (skip !== 'fys' && f.fys.size && !f.fys.has(m.targetFY)) return false;
   if (skip !== 'areas' && f.areas.size && !f.areas.has(m.functional_area)) return false;
+  if (skip !== 'owners' && f.owners.size && !f.owners.has(m.owner)) return false;
   if (skip !== 'statuses' && f.statuses.size && !f.statuses.has(effectiveStatus(m))) return false;
   return true;
 }
@@ -313,11 +331,15 @@ function filterOpts(key) {
     const present = new Set(); M().forEach(m => { if (facetPass(m, 'areas')) present.add(m.functional_area); });
     const list = teams().filter(t => present.has(t)); return (list.length ? list : teams()).map(t => [t, t]);
   }
+  if (key === 'owners') {
+    const present = new Set(); M().forEach(m => { if (m.owner && facetPass(m, 'owners')) present.add(m.owner); });
+    return [...present].sort((a, b) => a.localeCompare(b)).map(o => [o, o]);
+  }
   if (key === 'statuses') return meta().statuses.map(s => [s, SM(s).label, SM(s).color]);
   if (key === 'priorities') return ['high', 'medium', 'low'].map(p => [p, PRIORITY[p].label, PRIORITY[p].color]);
   return [];
 }
-function activeCount() { let n = 0; ['states', 'types', 'markets', 'fys', 'areas', 'statuses', 'priorities', 'openingFYs'].forEach(k => n += state.filters[k].size); if (state.filters.schoolId) n++; if (state.filters.search) n++; if (state.filters.timing) n++; return n; }
+function activeCount() { let n = 0; ['states', 'types', 'markets', 'fys', 'areas', 'owners', 'statuses', 'priorities', 'openingFYs'].forEach(k => n += state.filters[k].size); if (state.filters.schoolId) n++; if (state.filters.search) n++; if (state.filters.timing) n++; return n; }
 function filterBar(menus, opts = {}) {
   // #fSearch removed - #cbSearch in the header content-bar is the single, wired search across every view
   const search = '';
@@ -366,7 +388,6 @@ function otCard(s) {
   return `<article class="ot-card" data-drillschool="${esc(s.id)}" style="--mk:${mk}">
       <div class="ot-card-top">
         <span class="ot-mkt"><i style="background:${mk}"></i>${esc(s.market)}</span>
-        <span class="ot-status" data-rag="${r.key}"><i style="background:${r.color}"></i>${esc(statusLbl)}</span>
       </div>
       <h4 class="ot-title">${esc(s.display_label)}</h4>
       ${when ? `<p class="ot-when">${esc(when)}</p>` : ''}
@@ -395,7 +416,7 @@ function ganttBodyHtml() {
     </section>`;
   }).join('');
   return `<div class="ot">${body}</div>
-    <div class="ot-legend"><span><i class="rag" style="background:${RAG.none}"></i>Not started</span><span><i class="rag" style="background:${RAG.blue}"></i>In progress</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind</span><span><i class="rag" style="background:${RAG.green}"></i>Cleared</span><span class="muted">· click a school to open its milestones</span></div>`;
+    <div class="ot-legend"><span><i class="rag" style="background:${RAG.none}"></i>Not started</span><span><i class="rag" style="background:${RAG.blue}"></i>In progress</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind</span><span><i class="rag" style="background:${RAG.green}"></i>Cleared</span></div>`;
 }
 function renderTimeline() {
   // No H2 - sidebar already indicates active page. Action button floats right.
@@ -417,114 +438,12 @@ function renderTimeline() {
 function isExp(k) { return !!state.expanded[k]; }
 function chev(open) { return `<svg class="chev ${open ? 'open' : ''}" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>`; }
 
-function pmItem(m) {
-  const open = isExp('it:' + m.id), es = effectiveStatus(m), pcol = SM(es).color;
-  return `<div class="pm-item">
-    <div class="pm-item-head" data-toggle="it:${m.id}">
-      ${chev(open)}${statusDot(es)}
-      <span class="pm-title">${m.keyMilestone ? '★ ' : ''}${esc(m.activity)}<span class="dept-chip">${esc(m.functional_area)}</span></span>
-      ${personChip(m.owner, 'pchip-sm')}
-      <span class="pm-due">${dueBadge(m) || (m.due_date ? `<span class="due-ok">${fmtDate(m.due_date)}</span>` : '<span class="muted">-</span>')}</span>
-      <div class="pm-prog"><span style="width:${m.progress_percent || 0}%;background:${pcol}"></span></div>
-      <span class="pm-pct">${m.progress_percent || 0}%</span>
-    </div>
-    <div class="pm-body ${open ? '' : 'hide'}">
-      <div class="pm-meta"><b>Workstream:</b> ${esc(m.functional_area)} · <b>Market:</b> ${esc(m.market)} · <b>Detail:</b> ${esc(m.workstream)}</div>
-      ${m.dependency ? `<div class="pm-meta"><b>Depends on:</b> ${esc(m.dependency)}</div>` : ''}
-      ${m.notes ? `<div class="pm-meta">${esc(m.notes)}</div>` : ''}
-      <div style="margin-top:8px;display:flex;gap:8px"><button class="btn btn-tonal btn-sm" data-expand="${m.id}">Edit</button><button class="btn btn-text btn-sm" data-goplan="${m.id}">Open in Project Plan →</button></div>
-    </div>
-  </div>`;
-}
 const URANK = { overdue: 0, this_month: 1, soon: 2, ok: 3, none: 4, done: 5 };
 function bySortUrgency(a, b) { return (URANK[timingLevel(a)] - URANK[timingLevel(b)]) || ((a.targetFY || 9999) - (b.targetFY || 9999)); }
-function subGroup(gk, name, color, list) {
-  const open = isExp(gk), roll = rollupStatus(list);
-  const sorted = list.slice().sort(bySortUrgency);
-  return `<div class="pm-group">
-    <div class="pm-group-head" data-toggle="${esc(gk)}">${chev(open)}<span class="pm-gtitle">${color ? `<i class="gdot" style="background:${color}"></i>` : ''}${esc(name)}</span><span class="pm-gcount">${list.length}</span>${statusDot(roll)}<div class="pm-gprog"><span style="width:${progressAvg(list)}%;background:${SM(roll).color}"></span></div></div>
-    <div class="pm-group-body ${open ? '' : 'hide'}">${sorted.map(pmItem).join('')}</div>
-  </div>`;
-}
-function section(sk, title, subs, hint) {
-  const open = isExp(sk), total = subs.reduce((a, s) => a + s.list.length, 0);
-  return `<div class="pm-section">
-    <div class="pm-section-head" data-toggle="${esc(sk)}">${chev(open)}<h3>${esc(title)}</h3><span class="pm-scount">${total} items</span>${hint ? `<span class="muted pm-hint">${esc(hint)}</span>` : ''}</div>
-    <div class="pm-section-body ${open ? '' : 'hide'}">${subs.filter(s => s.list.length).map(s => subGroup(s.key, s.name, s.color, s.list)).join('') || '<div class="placeholder-note">No items.</div>'}</div>
-  </div>`;
-}
 
-/* ---- visualizations ---- */
-const STATUS_ORDER = ['complete', 'on_track', 'at_risk', 'behind', 'blocked', 'not_started'];
-function effCounts(list) { const c = {}; STATUS_ORDER.forEach(s => c[s] = 0); list.forEach(m => { const e = effectiveStatus(m); c[e] = (c[e] || 0) + 1; }); return c; }
-function groupsByDim(dim, list) {
-  const g = [];
-  if (dim === 'team') teams().forEach(t => { const l = list.filter(m => m.functional_area === t); if (l.length) g.push({ name: t, val: t, list: l }); });
-  else if (dim === 'market') markets().forEach(mk => { const l = list.filter(m => m.market === mk); if (l.length) g.push({ name: mk, val: mk, color: mkColor(mk), list: l }); });
-  else if (dim === 'state') statesMeta().forEach(s => { const l = list.filter(m => m.state === s.code); if (l.length) g.push({ name: s.name, val: s.code, color: stColor(s.code), list: l }); });
-  else if (dim === 'year') { const map = {}; list.forEach(m => { const k = m.targetFY || 'none'; (map[k] = map[k] || []).push(m); }); Object.keys(map).filter(k => k !== 'none').map(Number).sort((a, b) => a - b).forEach(fy => g.push({ name: 'FY ' + fyLabel(fy), val: fy, list: map[fy] })); if (map['none']) g.push({ name: 'No date', val: '', list: map['none'] }); }
-  else if (dim === 'school') { state.data.schools.forEach(s => { const l = list.filter(m => taskInSchool(m, s)); if (l.length) g.push({ name: s.market + ' · ' + s.display_label, val: s.id, color: mkColor(s.market), list: l, school: s }); }); g.sort((a, b) => ((a.school && a.school.openingFY) || 9999) - ((b.school && b.school.openingFY) || 9999)); }
-  return g;
-}
-function statusBar(list) { const c = effCounts(list), t = list.length || 1; return `<div class="sbar">${STATUS_ORDER.map(s => c[s] ? `<span style="width:${100 * c[s] / t}%;background:${SM(s).color}" title="${SM(s).label}: ${c[s]}"></span>` : '').join('')}</div>`; }
-function barsHtml(dim, list) {
-  const groups = groupsByDim(dim, list); if (!groups.length) return '<div class="placeholder-note">No data.</div>';
-  return `<div class="pbars">` + groups.map(g => `<div class="pbar-row drill" data-drilldim="${dim}" data-drillval="${esc(g.val)}" title="Click to see these items">${g.color ? `<span class="pbar-name"><i class="rp-dot" style="background:${g.color}"></i>${esc(g.name)}</span>` : `<span class="pbar-name">${esc(g.name)}</span>`}${statusBar(g.list)}<span class="pbar-pct">${pct(g.list)}%</span><span class="pbar-n">${g.list.length}</span></div>`).join('') + `</div>`;
-}
-function donutSVG(list) {
-  const c = effCounts(list), t = list.length || 1, r = 54, C = 2 * Math.PI * r; let acc = 0;
-  const segs = STATUS_ORDER.filter(s => c[s]).map(s => { const frac = c[s] / t, dash = frac * C, seg = `<circle cx="70" cy="70" r="${r}" fill="none" stroke="${SM(s).color}" stroke-width="22" stroke-dasharray="${dash.toFixed(2)} ${(C - dash).toFixed(2)}" stroke-dashoffset="${(-acc * C).toFixed(2)}" transform="rotate(-90 70 70)"/>`; acc += frac; return seg; }).join('');
-  return `<div class="donut-wrap"><svg viewBox="0 0 140 140" width="150" height="150" class="donut">${segs}<text x="70" y="66" text-anchor="middle" font-size="28" font-weight="700" fill="var(--on-surface)">${pct(list)}%</text><text x="70" y="88" text-anchor="middle" font-size="11" fill="var(--on-surface-variant)">complete</text></svg>
-    <div class="donut-legend">${STATUS_ORDER.map(s => `<span class="drill" data-drilldim="status" data-drillval="${s}" title="Click to filter to ${SM(s).label}"><i style="background:${SM(s).color}"></i>${SM(s).label} <b>${c[s]}</b></span>`).join('')}</div></div>`;
-}
-function columnChart(list) {
-  const map = {}; list.forEach(m => { if (m.targetFY) (map[m.targetFY] = map[m.targetFY] || []).push(m); });
-  const fys = Object.keys(map).map(Number).sort((a, b) => a - b); if (!fys.length) return '<div class="placeholder-note">No dated items.</div>';
-  const max = Math.max(...fys.map(fy => map[fy].length), 1);
-  const yrLbl = fy => fy ? `${fy - 1}–${String(fy).slice(2)}` : '-';   // school year, e.g. 2027–28 (no "FY" jargon)
-  return `<div class="colchart">` + fys.map(fy => { const l = map[fy], c = effCounts(l); return `<div class="col drill" data-drilldim="year" data-drillval="${fy}" title="Click to see ${yrLbl(fy)} school-year items"><div class="col-n">${l.length}</div><div class="col-bar" style="height:${Math.max(6, 100 * l.length / max)}%">${STATUS_ORDER.filter(s => c[s]).map(s => `<span style="height:${100 * c[s] / l.length}%;background:${SM(s).color}" title="${SM(s).label}: ${c[s]}"></span>`).join('')}</div><div class="col-lbl">${yrLbl(fy)}</div></div>`; }).join('') + `</div>`;
-}
-function chartsHtml(list) {
-  const dims = [['team', 'Workstream'], ['year', 'Year'], ['school', 'School opening'], ['market', 'Market'], ['state', 'State']];
-  const dimSeg = dims.map(([v, l]) => `<button class="seg ${state.progressDim === v ? 'on' : ''}" data-progressdim="${v}"><span>${l}</span></button>`).join('');
-  return `
-    <div class="chart-grid">
-      <div class="card"><div class="chart-head"><h3>Status overview</h3></div>${donutSVG(list)}</div>
-      <div class="card"><div class="chart-head"><h3>Milestones due by fiscal year</h3><span class="muted" style="font-size:12px">bars colored by live status</span></div>${columnChart(list)}</div>
-    </div>
-    <div class="card" style="margin-top:16px"><div class="chart-head"><h3>Progress by</h3><div class="segmented">${dimSeg}</div><span class="tb-spacer"></span><span class="muted" style="font-size:12px">bar = status mix · % = complete</span></div>${barsHtml(state.progressDim, list)}</div>`;
-}
 
 function progressBodyHtml() {
   return dashboardHtml(filtered());   // Dashboard is the only status view; drill-downs jump to the Project Plan
-}
-function progressBodyHtml_legacyList() {
-  const list = filtered();
-  const byArea = teams().map(t => ({ key: 'a:' + t, name: t, list: list.filter(m => m.functional_area === t) }));
-  const njMk = statesMeta().find(s => s.code === 'NJ').markets, flMk = statesMeta().find(s => s.code === 'FL').markets;
-  const byNJ = njMk.map(mk => ({ key: 'nj:' + mk, name: mk, color: mkColor(mk), list: list.filter(m => m.market === mk) }));
-  const byFL = flMk.map(mk => ({ key: 'fl:' + mk, name: mk, color: mkColor(mk), list: list.filter(m => m.market === mk) }));
-  const prio = list.filter(m => m.keyMilestone || m.greenlight || m.transition).slice().sort(bySortUrgency);
-  state._pmKeys = ['sec:prio', 'prio:all', 'sec:area', ...byArea.map(s => s.key), 'sec:nj', ...byNJ.map(s => s.key), 'sec:fl', ...byFL.map(s => s.key)];
-  const overdue = list.filter(m => timingLevel(m) === 'overdue').length, month = list.filter(m => timingLevel(m) === 'this_month').length;
-  const kpis = `<div class="kpi-grid" style="margin-bottom:16px">
-      <div class="kpi tone-b drill" data-drilldim="all" data-drillval="" title="See all shown items as a list"><div class="kpi-value">${list.length}</div><div class="kpi-label">Milestones shown</div><div class="kpi-foot">${M().length} total in plan</div></div>
-      <div class="kpi tone-g drill" data-drilldim="status" data-drillval="complete" title="See completed items"><div class="kpi-value">${pct(list)}%</div><div class="kpi-label">Complete</div><div class="kpi-foot">${list.filter(m => m.status === 'complete').length} done</div></div>
-      <div class="kpi ${overdue ? 'tone-r' : 'tone-g'} drill" data-drilldim="timing" data-drillval="overdue" title="See overdue items"><div class="kpi-value">${overdue}</div><div class="kpi-label">Overdue</div><div class="kpi-foot">${month} due this month</div></div>
-      <div class="kpi tone-y drill" data-drilldim="riskbehind" data-drillval="" title="See at-risk & behind items"><div class="kpi-value">${list.filter(m => ['behind', 'at_risk'].includes(effectiveStatus(m))).length}</div><div class="kpi-label">At risk / behind</div><div class="kpi-foot">need attention</div></div>
-    </div>`;
-  if (state.progressView === 'charts') return dashboardHtml(list);
-  // Filtered/drilled → show a flat results list so the matches are immediately visible.
-  if (activeCount() > 0) {
-    const items = list.slice().sort(bySortUrgency);
-    return kpis + `<div class="card"><div class="chart-head"><h3>${items.length} matching item${items.length === 1 ? '' : 's'}</h3><span class="tb-spacer"></span><button class="btn btn-text btn-sm" id="clearFilters2">Clear filters</button></div>
-      <div class="pm-items">${items.map(pmItem).join('') || '<div class="empty-state">No items match these filters.</div>'}</div></div>`;
-  }
-  return kpis + `<div class="pm-urgency"><span class="muted" style="font-size:12.5px">Click any section to expand · click a callout above to drill in</span><span class="tb-spacer"></span><button class="btn btn-text btn-sm" id="pmExpandAll">Expand all</button><button class="btn btn-text btn-sm" id="pmCollapseAll">Collapse all</button></div>
-    ${section('sec:prio', 'Key Milestones & Greenlights', [{ key: 'prio:all', name: 'Flagged milestones, greenlights & transitions', list: prio }], 'The decisions and gateways that unlock each opening')}
-    ${section('sec:area', 'By Workstream', byArea)}
-    ${section('sec:nj', 'By Market (New Jersey)', byNJ)}
-    ${section('sec:fl', 'By Market (Florida)', byFL)}`;
 }
 function renderProgress() {
   const printBtn = `<button class="btn btn-tonal" id="dashPrint"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Print / PDF</button>`;
@@ -533,7 +452,7 @@ function renderProgress() {
   // status/priority filters belong to the Project Plan (the dashboard IS the status/priority view).
   $('#view-progress').innerHTML = `
     <div class="view-actions">${printBtn}</div>
-    <div class="dash-filters" id="dashFilters">${filterBar(['states', 'markets', 'areas'], { right: appliedFilterChips() })}</div>
+    <div class="dash-filters" id="dashFilters">${filterBar(['states', 'markets', 'areas', 'owners'], { right: appliedFilterChips() })}</div>
     <div id="viewBody">${progressBodyHtml()}</div>`;
 }
 /* Applied-filter chips: shown inline in the filter bar so the current scope is visible at a glance
@@ -544,9 +463,10 @@ function appliedFilterChips() {
   f.states.forEach(v => push('State: ' + v, 'states:' + v));
   f.markets.forEach(v => push(v, 'markets:' + v));
   f.areas.forEach(v => push(v, 'areas:' + v));
+  f.owners.forEach(v => push('Owner: ' + v, 'owners:' + v));
   f.openingFYs.forEach(v => push('Fall ' + (v - 1), 'openingFYs:' + v));
   f.statuses.forEach(v => push(SM(v).label, 'statuses:' + v));
-  if (f.timing) push(f.timing === 'overdue' ? 'Overdue' : f.timing === 'this_month' ? 'Due this month' : 'Due soon', 'timing:');
+  if (f.timing) push(f.timing === 'overdue' ? 'Overdue' : f.timing === 'this_month' ? 'Due this month' : f.timing === 'due30' ? 'Due in 30 days' : 'Due soon', 'timing:');
   if (f.search) push('“' + f.search.slice(0, 24) + (f.search.length > 24 ? '…' : '') + '”', 'search:');
   if (f.schoolId) { const sc = schoolById(f.schoolId); if (sc) push(sc.market + ' · ' + sc.display_label, 'schoolId:'); }
   if (!chips.length) return '';
@@ -563,30 +483,37 @@ function removeAppliedFilter(spec) {
     else f[key].delete(val);
     if (key === 'states') { const ok = new Set(marketsForStates()); [...f.markets].forEach(mk => { if (!ok.has(mk)) f.markets.delete(mk); }); }
   }
+  if (key === 'areas') saveTeamScope();
 }
 
 /* ============================================================
    TAB 3 - PROJECT PLAN (Kanban)
    ============================================================ */
-function planCard(m) {
+function planCard(m, opts = {}) {
   const es = effectiveStatus(m), t = timingLevel(m), scol = SM(es).color;
   const urgent = t === 'overdue' || t === 'this_month';
   const nc = (m.noteLog || []).length;
   const mk = m.market ? mkColor(m.market) : '';
-  // Information order (top → bottom): TITLE (what) · CONTEXT market+workstream (where) · META
-  //   due date + priority (when/how important) · PROGRESS · OWNER (who). Never lead with a date.
-  const ctx = (m.market || m.functional_area) ? `<div class="kc-ctx">${m.market ? `<span class="kc-mkdot" style="background:${mk}"></span><span class="kc-mk">${esc(m.market)}</span>` : ''}${m.functional_area ? `<span class="kc-team">${esc(m.functional_area)}</span>` : ''}</div>` : '';
-  const due = dueBadge(m) || (m.due_date ? `<span class="kc-due"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>${fmtDate(m.due_date)}</span>` : '');
+  // Information order (top → bottom): TITLE (what) · CONTEXT region · school + due date (where/when,
+  //   one row) · PROGRESS · OWNER (who). Never lead with a date.
+  // Drop the team chip when the list is already grouped by team (redundant inside its own group).
+  const showTeam = m.functional_area && !opts.hideTeam;
+  // School label: prefer stable schoolIds, fall back to legacy `schools` codes (already short labels like "ES3").
+  let schoolNames = (Array.isArray(m.schoolIds) ? m.schoolIds : []).map(id => (state.data.schools.find(s => s.id === id) || {}).display_label).filter(Boolean);
+  if (!schoolNames.length && Array.isArray(m.schools)) schoolNames = m.schools.filter(Boolean);
+  const schoolLbl = schoolNames.length === 0 ? '' : schoolNames.length <= 2 ? schoolNames.join(', ') : `${schoolNames.length} schools`;
+  const place = [m.market, schoolLbl].filter(Boolean).join(' · ');
   const flag = m.priority === 'high' ? '<span class="kc-flag kc-flag-high" title="High priority">⚑</span>'
     : m.priority === 'low' ? '<span class="kc-flag kc-flag-low" title="Low priority">⚑</span>' : '';
-  const metaRow = (due || flag) ? `<div class="kc-metarow">${due || '<span></span>'}${flag}</div>` : '';
+  // Plain due date (no overdue / due-soon status badge) sharing the context row, pushed right.
+  const dueEl = m.due_date ? `<span class="kc-due"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>${esc(fmtDate(m.due_date))}</span>` : '';
+  const ctx = (place || showTeam || dueEl || flag) ? `<div class="kc-ctx">${m.market ? `<span class="kc-mkdot" style="background:${mk}"></span>` : ''}${place ? `<span class="kc-mk">${esc(place)}</span>` : ''}${showTeam ? `<span class="kc-team">${esc(m.functional_area)}</span>` : ''}${dueEl}${flag}</div>` : '';
   const pct = Math.max(0, Math.min(100, m.progress_percent || 0));
   const prog = `<div class="kc-prog"><div class="kc-prog-top"><span>Progress</span><b>${pct}%</b></div><div class="kc-prog-bar"><span style="width:${pct}%;background:${scol}"></span></div></div>`;
   const notes = nc ? `<span class="kc-notes" title="${nc} note${nc === 1 ? '' : 's'}"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${nc}</span>` : '';
   return `<div class="kcard kcard-v2 ${urgent ? 'urgent' : ''}" draggable="true" data-id="${m.id}" style="border-left-color:${scol}">
     <div class="kc-title" data-expand="${m.id}">${esc(m.activity)}</div>
     ${ctx}
-    ${metaRow}
     ${prog}
     <div class="kc-foot">${personChip(m.owner)}<span class="kc-foot-r">${notes}</span></div>
   </div>`;
@@ -626,7 +553,7 @@ function planListHtml() {
     const ck = 'pg:' + k, open = !!state.expanded[ck];
     const risk = g[k].filter(m => ['overdue', 'this_month'].includes(timingLevel(m)) || ['behind', 'at_risk'].includes(effectiveStatus(m))).length;
     const flag = risk ? `<span class="pm-gflag" title="${risk} need attention">${risk}</span>` : '';
-    return `<div class="plan-group ${open ? '' : 'is-collapsed'}"><div class="plan-group-head" data-toggle="${esc(ck)}">${chev(open)}<span class="pg-name">${esc(k)}</span>${flag}<span class="pm-gcount">${g[k].length}</span></div><div class="plan-cards ${open ? '' : 'hide'}">${g[k].map(planCard).join('')}</div></div>`;
+    return `<div class="plan-group ${open ? '' : 'is-collapsed'}"><div class="plan-group-head" data-toggle="${esc(ck)}">${chev(open)}<span class="pg-name">${esc(k)}</span>${flag}<span class="pm-gcount">${g[k].length}</span></div><div class="plan-cards ${open ? '' : 'hide'}">${g[k].map(m => planCard(m, { hideTeam: gb === 'team' })).join('')}</div></div>`;
   }).join('');
 }
 function planBodyHtml() {
@@ -640,12 +567,12 @@ function renderPlan() {
   const isBoard = state.planGroup === 'stage';
   const viewToggle = `<div class="plan-view-toggle"><button class="pvt ${!isBoard ? 'on' : ''}" data-planview="list" title="List view"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M3 14h4v-4H3v4zm0 5h4v-4H3v4zM3 9h4V5H3v4zm5 5h13v-4H8v4zm0 5h13v-4H8v4zM8 5v4h13V5H8z"/></svg></button><button class="pvt ${isBoard ? 'on' : ''}" data-planview="board" title="Board view"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M4 5v13h17V5H4zm4 11H6v-9h2v9zm4 0h-2v-9h2v9zm4 0h-2v-9h2v9zm3 0h-1v-9h1v9z"/></svg></button></div>`;
   const viewSel = isBoard ? '' : `<label class="tb-group ${state.planFocus ? 'is-dim' : ''}">Group by
-    <select id="planGroupSel" ${state.planFocus ? 'disabled' : ''}>${[['team', 'Workstream'], ['school', 'School opening'], ['market', 'Market'], ['year', 'Year']].map(([v, l]) => `<option value="${v}" ${state.planGroup === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`;
+    <select id="planGroupSel" ${state.planFocus ? 'disabled' : ''}>${[['team', 'Team'], ['school', 'School opening'], ['market', 'Market'], ['year', 'Year']].map(([v, l]) => `<option value="${v}" ${state.planGroup === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`;
   const expandBtns = (!state.planFocus && !isBoard) ? `<button class="btn btn-ghost btn-sm" id="planExpandAll">Expand all</button><button class="btn btn-ghost btn-sm" id="planCollapseAll">Collapse all</button>` : '';
   const right = `${viewToggle}${focusBtn}${viewSel}${expandBtns}<button class="btn btn-filled" id="newItem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>New milestone</button>`;
   // No H2 - all actions live in the filter bar's right slot.
   $('#view-plan').innerHTML = `
-    ${filterBar(['states', 'markets', 'fys', 'areas'], { school: true, right })}
+    ${filterBar(['states', 'markets', 'fys', 'areas', 'owners'], { school: true, right })}
     <div id="viewBody">${planBodyHtml()}</div>`;
 }
 
@@ -667,20 +594,11 @@ function schoolsInView() {
     .sort((a, b) => (a.openingFY - b.openingFY) || a.market.localeCompare(b.market));
 }
 function fmtMoney(n) { return n >= 1e6 ? '$' + (n / 1e6).toFixed(n % 1e6 ? 1 : 0) + 'M' : n >= 1e3 ? '$' + Math.round(n / 1e3) + 'K' : '$' + (n || 0); }
-function ragDot(st, title) { const c = st === 'x' ? '#C9CDD6' : SM(st).color; return `<span class="rag" style="background:${c}" title="${esc(title || (st === 'x' ? 'no milestones' : SM(st).label))}"></span>`; }
 /* consistent R/Y/G by milestone completion: <50% red · ≥50% yellow · all complete green */
 /* greenlight/gating status per domain - deliberately distinct from market brand colors.
    grey = not started · blue = in progress · green = cleared (gate met) · amber/red = off-track */
 // status palette drawn from the KIPP brand: green=complete, sky=on track, orange=at risk, red=behind
 const RAG = { green: '#4A8C1F', blue: '#43B0E6', yellow: '#F6A11C', red: '#E63E2F', none: '#C7CCD6' };
-function ragProgress(list) {
-  if (!list.length) return { key: 'none', color: RAG.none, label: 'No milestones yet', pct: null };
-  const done = list.filter(m => effectiveStatus(m) === 'complete').length, pctc = Math.round(100 * done / list.length);
-  if (done === list.length) return { key: 'green', color: RAG.green, label: 'All complete', pct: 100 };
-  if (done * 2 >= list.length) return { key: 'yellow', color: RAG.yellow, label: pctc + '% complete', pct: pctc };
-  return { key: 'red', color: RAG.red, label: pctc + '% complete', pct: pctc };
-}
-function ragDotP(list, prefix) { const r = ragProgress(list); return `<span class="rag" style="background:${r.color}" title="${esc((prefix ? prefix + ' - ' : '') + r.label)}"></span>`; }
 /* readiness = are we ON SCHEDULE (timing-aware), with % complete kept in the tooltip */
 function ragReady(list) {
   if (!list.length) return { key: 'none', color: RAG.none, label: 'Not started' };
@@ -691,8 +609,6 @@ function ragReady(list) {
   if (eff.some(s => s === 'on_track' || s === 'complete')) return { key: 'blue', color: RAG.blue, label: 'On track · ' + pctc + '% done' };
   return { key: 'none', color: RAG.none, label: 'Not started' };
 }
-function ragDotR(list, prefix) { const r = ragReady(list); return `<span class="rag" style="background:${r.color}" title="${esc((prefix ? prefix + ' - ' : '') + r.label)}"></span>`; }
-function exLi(m, flag) { return `<div class="ex-li nodot" data-expand="${m.id}"><span class="ex-li-t">${flag || ''}${esc(m.activity)}</span><span class="ex-li-m muted">${esc(m.market)} · ${esc(m.functional_area)}</span><span class="ex-li-d muted">${m.due_date ? fmtDate(m.due_date) : ''}</span></div>`; }
 // monthly trend snapshots (localStorage) → powers the KPI "vs last month" deltas
 function captureTrend() {
   const ym = new Date().toISOString().slice(0, 7);
@@ -702,44 +618,6 @@ function captureTrend() {
   const attention = cnt('red') + cnt('yellow'), onTrack = schools.length - attention, overdue = M().filter(m => timingLevel(m) === 'overdue').length;
   t.push({ ym, onTrack, attention, overdue }); if (t.length > 24) t = t.slice(-24);
   try { lsSet('ngc_trends', JSON.stringify(t)); } catch (e) {}
-}
-function trendPrev() { let t = []; try { t = JSON.parse(lsGet('ngc_trends') || '[]'); } catch (e) {} const ym = new Date().toISOString().slice(0, 7); return t.filter(x => x.ym < ym).slice(-1)[0] || null; }
-// Segmented status bar (Lintel-style): the whole milestone mix in one glance
-function statusPipeline(list) {
-  const order = ['not_started', 'on_track', 'at_risk', 'behind', 'blocked', 'complete'];
-  const c = {}; order.forEach(s => c[s] = 0);
-  list.forEach(m => { const es = effectiveStatus(m); if (c[es] == null) c[es] = 0; c[es]++; });
-  const seg = order.map(s => c[s] ? `<span class="pl-seg" style="flex:${c[s]};background:${SM(s).color}" title="${SM(s).label}: ${c[s]}"></span>` : '').join('') || '<span class="pl-seg" style="flex:1;background:var(--surface-container-high)"></span>';
-  const legend = order.filter(s => c[s]).map(s => `<span class="pl-leg"><i style="background:${SM(s).color}"></i>${SM(s).label}<b>${c[s]}</b></span>`).join('');
-  return `<section class="ex-card"><div class="ex-card-head"><div class="ex-cardhead-l"><h3>Milestone Status</h3></div><span class="muted ex-hint">${list.length} total</span></div>
-    <div class="pl-legend">${legend || '<span class="muted">No milestones in view.</span>'}</div><div class="pl-bar">${seg}</div></section>`;
-}
-// NORTH STAR - the charter's stakeholder answer, rendered ABOVE the filters so a busy exec
-// (often on a phone) sees "are we on track?" before any controls.
-function northStarHtml() {
-  const schools = schoolsInView();
-  const total = schools.length;
-  const rags = schools.map(s => ({ s, r: ragReady(schoolMs(s)) }));
-  const cnt = k => rags.filter(x => x.r.key === k).length;
-  const g = cnt('green'), b = cnt('blue'), y = cnt('yellow'), r = cnt('red'), none = cnt('none');
-  const seg = (v, c) => v ? `<span style="flex:${v};background:${c}"></span>` : '';
-  const attention = r + y;                 // behind or at risk = the only "off-track" states
-  const onTrack = total - attention;       // everything not slipping counts as on track
-  const inMotion = g + b;
-  const nsBar = `<div class="ns-bar" title="${g} cleared · ${b} in progress · ${none} not yet started · ${y} at risk · ${r} behind">${seg(g, RAG.green)}${seg(b, RAG.blue)}${seg(none, RAG.none)}${seg(y, RAG.yellow)}${seg(r, RAG.red)}</div>`;
-  return `<section class="north-star">
-    <div class="ns-lead">
-      <div class="ns-eyebrow">On track to open on schedule</div>
-      <div class="ns-big"><b>${onTrack}</b><span>of ${total} schools</span></div>
-    </div>
-    <div class="ns-right">
-      ${nsBar}
-      <div class="ns-chips">
-        ${attention ? `<button class="ns-chip att drill" data-drilldim="riskbehind" data-drillval="" title="See the tasks that need attention"><i></i>${attention} need attention</button>` : '<span class="ns-chip ok"><i></i>Nothing off-track</span>'}
-        ${inMotion ? `<span class="ns-chip ok"><i></i>${inMotion} actively in prep</span>` : ''}
-      </div>
-    </div>
-  </section>`;
 }
 /* ============================================================
    DASHBOARD building blocks (overview layout)
@@ -753,7 +631,6 @@ const EH_IC = {
 };
 function ehIc(k) { return `<svg class="eh-ic" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${EH_IC[k] || ''}</svg>`; }
 const RAG_SEV = { red: 4, yellow: 3, blue: 2, none: 1, green: 0 };
-function ragTonePill(r) { return `<span class="rt-pill rt-${r.key}"><i></i>${esc(r.label.split(' · ')[0])}</span>`; }
 
 /* ---- Progress monitoring by opening year (cohort) + by workstream ---- */
 // The focused opening year = the single value in the openingFYs filter (null = all years).
@@ -772,33 +649,6 @@ function setDashCohort(v) {
   if (typeof updateFilterBubble === 'function') updateFilterBubble();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-// High level: pre-opening milestone progress for each opening YEAR. Always shows every
-// cohort (computed from all schools); the focused one is highlighted.
-function cohortStrip() {
-  const years = openingYears();
-  if (!years.length) return '';
-  const focus = focusCohort(), now = Date.now();
-  const cards = years.map(fy => {
-    const cs = state.data.schools.filter(s => s.openingFY === fy);
-    const ms = cs.flatMap(schoolMs);
-    const total = ms.length, done = ms.filter(m => effectiveStatus(m) === 'complete').length;
-    const pctc = total ? Math.round(100 * done / total) : 0;
-    const c = effCounts(ms), behind = (c.behind || 0) + (c.blocked || 0), atRisk = c.at_risk || 0;
-    const firsts = cs.map(s => +parseDate(s.opening_date)).filter(n => !isNaN(n));
-    const mo = firsts.length ? Math.max(0, Math.round((Math.min(...firsts) - now) / 2.63e9)) : null;
-    const mkts = [...new Set(cs.map(s => s.market))];
-    const health = behind ? `<span class="coh-c r">${behind} behind</span>` : atRisk ? `<span class="coh-c y">${atRisk} at risk</span>` : total ? `<span class="coh-c g">on track</span>` : `<span class="coh-c muted">not scoped</span>`;
-    return `<button class="coh-card ${focus === fy ? 'is-focus' : ''}" data-cohort="${fy}" title="Focus Fall ${fy - 1} - scopes the dashboard, plan &amp; timeline">
-      <div class="coh-top"><span class="coh-fy">Fall ${fy - 1}</span>${mo != null ? `<span class="coh-mo">${mo <= 0 ? 'opening' : mo + ' mo out'}</span>` : ''}</div>
-      <div class="coh-meta">${cs.length} school${cs.length === 1 ? '' : 's'}${mkts.length ? ' · ' + esc(mkts.join(' · ')) : ''}</div>
-      <div class="coh-pct">${total ? pctc + '%' : '—'}<span>pre-opening complete</span></div>
-      <div class="coh-bar"><span style="width:${pctc}%"></span></div>
-      <div class="coh-foot">${health}<span class="coh-c muted">${done}/${total} done</span></div>
-    </button>`;
-  }).join('');
-  const right = focus ? '<button class="card-more" data-cohort="all">Show all years →</button>' : '<span class="muted ex-hint">Click a year to focus</span>';
-  return `<section class="ex-card coh-wrap"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('flag')}<h3>Progress by opening year</h3></div>${right}</div><div class="coh-grid">${cards}</div></section>`;
-}
 // Progress broken down by workstream (functional area), scoped to the current focus.
 function wsBreakdownRows(list) {
   const rows = teams().map(t => {
@@ -808,124 +658,90 @@ function wsBreakdownRows(list) {
     return { t, n: tl.length, done, pctc: Math.round(100 * done / tl.length), r: ragReady(tl) };
   }).filter(Boolean).sort((a, b) => (RAG_SEV[b.r.key] || 0) - (RAG_SEV[a.r.key] || 0) || a.pctc - b.pctc);
   if (!rows.length) return '<div class="muted ex-empty">No milestones in scope.</div>';
-  return `<div class="wb-list">${rows.map(x => `<button class="wb-row" data-drilldim="team" data-drillval="${esc(x.t)}" title="Open ${esc(x.t)} in the Project Plan">
+  return `<div class="wb-list">${rows.map(x => `<button class="wb-row" data-drilldim="team" data-drillval="${esc(x.t)}" title="Open ${esc(x.t)} in Milestones">
       <span class="wb-name">${esc(x.t)}</span>
       <span class="wb-bar"><span style="width:${x.pctc}%;background:${x.r.color}"></span></span>
       <span class="wb-pct">${x.pctc}%</span>
       <span class="wb-n">${x.done}/${x.n}</span>
-      ${ragTonePill(x.r)}
     </button>`).join('')}</div>`;
-}
-// Progress broken down by school opening, scoped to the current focus.
-function schoolBreakdownRows(schools) {
-  if (!schools.length) return '<div class="muted ex-empty">No openings in scope.</div>';
-  const rows = schools.map(s => {
-    const sm = schoolMs(s), r = ragReady(sm), n = sm.length;
-    const done = sm.filter(m => effectiveStatus(m) === 'complete').length;
-    return { s, r, n, pctc: n ? Math.round(100 * done / n) : 0, mk: mkColor(s.market), opens: s.openingFY ? 'Fall ' + (s.openingFY - 1) : '—', fy: s.openingFY || 9999, sev: RAG_SEV[r.key] || 0 };
-  }).sort((a, b) => a.fy - b.fy || b.sev - a.sev || a.s.market.localeCompare(b.s.market));
-  const body = rows.map(({ s, r, n, pctc, mk, opens }) => `<tr class="rt-row" data-drillschool="${esc(s.id)}" title="Open ${esc(s.display_label)}">
-      <td class="rt-name"><span class="rt-dot" style="background:${mk}"></span><span class="rt-nm"><b>${esc(s.display_label)}</b><small>${esc(s.market)}</small></span></td>
-      <td class="rt-st">${ragTonePill(r)}</td>
-      <td class="rt-pc"><div class="rt-prog"><div class="rt-bar"><span style="width:${pctc}%;background:${r.color}"></span></div><span class="rt-pct">${n ? pctc + '%' : '—'}</span></div></td>
-      <td class="rt-due">${esc(opens)}</td></tr>`).join('');
-  return `<div class="rt-wrap"><table class="rt-table"><thead><tr><th>School opening</th><th>Status</th><th>Progress</th><th>Opens</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 // Breakdown card with a By workstream / By school toggle.
 function breakdownCard(list, schools) {
-  const dim = state.dashBreakdown === 'school' ? 'school' : 'workstream';
   const focus = focusCohort();
   const scope = focus ? `Fall ${focus - 1}` : 'all openings';
-  const toggle = `<div class="segmented sm bd-toggle"><button class="seg ${dim === 'workstream' ? 'on' : ''}" data-dashbd="workstream">By workstream</button><button class="seg ${dim === 'school' ? 'on' : ''}" data-dashbd="school">By school</button></div>`;
-  const body = dim === 'school' ? schoolBreakdownRows(schools) : wsBreakdownRows(list);
-  return `<section class="ex-card bd-card"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('table')}<h3>Progress · ${esc(scope)}</h3></div>${toggle}</div>${body}</section>`;
+  // Progress by team is the one portfolio-health cut; per-school progress lives on the Openings page.
+  return `<section class="ex-card bd-card"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('table')}<h3>Progress · ${esc(scope)}</h3></div></div>${wsBreakdownRows(list)}</section>`;
 }
 
-// Needs attention - overdue / off-track / blocked, ranked by urgency (replaces the AI-insights slot)
-function needsAttentionCard(list) {
-  const items = list.filter(m => effectiveStatus(m) !== 'complete' && (['overdue', 'this_month'].includes(timingLevel(m)) || ['behind', 'at_risk', 'blocked'].includes(effectiveStatus(m))));
-  const rank = m => timingLevel(m) === 'overdue' ? 0 : (effectiveStatus(m) === 'behind' || effectiveStatus(m) === 'blocked') ? 1 : timingLevel(m) === 'this_month' ? 2 : 3;
-  items.sort((a, b) => rank(a) - rank(b) || (parseDate(a.due_date) || 9e15) - (parseDate(b.due_date) || 9e15));
-  const reason = m => {
-    const t = timingLevel(m), es = effectiveStatus(m), d = daysUntil(m.due_date);
-    if (t === 'overdue') return { c: 'na-tag-r', t: d != null ? Math.abs(d) + 'd overdue' : 'Overdue' };
-    if (es === 'blocked') return { c: 'na-tag-r', t: 'Blocked' };
-    if (es === 'behind') return { c: 'na-tag-r', t: 'Behind' };
-    if (es === 'at_risk') return { c: 'na-tag-y', t: 'At risk' };
-    if (t === 'this_month') return { c: 'na-tag-y', t: d != null && d >= 0 ? 'Due in ' + d + 'd' : 'Due soon' };
-    return { c: 'na-tag-y', t: 'Attention' };
-  };
-  const top = items.slice(0, 8);
-  const rows = top.map(m => { const z = reason(m); return `<div class="na-item" data-expand="${m.id}"><div class="na-main"><span class="na-title">${esc(m.activity)}</span><span class="na-meta">${esc([m.market, m.functional_area].filter(Boolean).join(' · '))}</span></div><span class="na-tag ${z.c}">${esc(z.t)}</span></div>`; }).join('');
-  const foot = items.length ? `<button class="na-more" data-showmore="focus">${items.length > top.length ? 'View all ' + items.length + ' →' : 'Open in Project Plan →'}</button>` : '';
-  return `<section class="ex-card na-card"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('warning')}<h3>Needs attention</h3></div><span class="dash-count ${items.length ? 'bad' : ''}">${items.length}</span></div>
-    <div class="na-body">${top.length ? rows : '<div class="muted ex-empty">Nothing overdue, off-track, or blocked right now.</div>'}</div>${foot}</section>`;
-}
 
-// My tasks (assigned to signed-in user) - falls back to upcoming key milestones when none/anonymous
-function myTasksCard(list) {
-  const name = currentDisplayName();
-  const mine = name ? myOpenTasks(list, name) : [];
-  if (mine.length) {
-    mine.sort(bySortUrgency);
-    const rows = mine.slice(0, 8).map(m => {
-      const due = dueBadge(m) || (m.due_date ? `<span class="mt-due">${fmtDate(m.due_date)}</span>` : '');
-      return `<div class="mt-item"><button class="mt-check" data-complete="${m.id}" title="Mark complete" aria-label="Mark complete"></button><div class="mt-main" data-expand="${m.id}"><span class="mt-title">${esc(m.activity)}</span><span class="mt-tags">${m.market ? `<span class="mt-tag">${esc(m.market)}</span>` : ''}${due}</span></div></div>`;
-    }).join('');
-    return `<section class="ex-card mt-card"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('check')}<h3>My tasks</h3></div><button class="card-more" data-drillmine="1">View all →</button></div><div class="mt-body">${rows}</div></section>`;
-  }
-  const soon = Date.now() + 90 * 864e5;
-  const up = list.filter(m => (m.keyMilestone || m.greenlight || m.transition) && m.due_date && parseDate(m.due_date) <= soon && effectiveStatus(m) !== 'complete')
-    .sort((a, b) => parseDate(a.due_date) - parseDate(b.due_date)).slice(0, 8);
-  const rows = up.map(m => {
-    const flag = m.greenlight ? '<span class="ex-flag ex-flag-green" title="Greenlight decision"></span>' : m.transition ? '<span class="ex-flag ex-flag-trans" title="Transition to Regional Ops"></span>' : '';
-    const due = dueBadge(m) || (m.due_date ? `<span class="mt-due">${fmtDate(m.due_date)}</span>` : '');
-    return `<div class="mt-item"><div class="mt-main" data-expand="${m.id}"><span class="mt-title">${flag}${esc(m.activity)}</span><span class="mt-tags">${m.market ? `<span class="mt-tag">${esc(m.market)}</span>` : ''}${due}</span></div></div>`;
+// Growth-capital priority strip. Surface, don't hide — the charter names capital as one of
+// three FY27 priorities ($7M SoFla + $1.5M Paterson). Compact horizontal bars so it earns a
+// row without stealing focus from the readiness headline above.
+function capitalPriorityStrip() {
+  const camps = (state.data.campaigns || []).filter(c => !state.filters.states.size || state.filters.states.has(c.state));
+  if (!camps.length) return '';
+  const items = camps.map(c => {
+    const p = c.target ? Math.min(100, Math.round(100 * c.raised / c.target)) : 0;
+    const gap = Math.max(0, (c.target || 0) - (c.raised || 0));
+    const tone = p >= 100 ? 'ok' : p >= 50 ? 'mid' : 'low';
+    return `<div class="cap-item cap-tone-${tone}">
+      <div class="cap-top"><span class="cap-name">${esc(c.name)}</span><span class="cap-vals"><b>${fmtMoney(c.raised)}</b><span class="muted"> of ${fmtMoney(c.target)}</span></span></div>
+      <div class="cap-bar"><span style="width:${p}%"></span></div>
+      <div class="cap-foot"><span class="cap-pct">${p}% raised</span><span class="muted">${p >= 100 ? 'Target met' : fmtMoney(gap) + ' to go'}</span></div>
+    </div>`;
   }).join('');
-  return `<section class="ex-card mt-card"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('flag')}<h3>Upcoming milestones</h3></div><span class="muted ex-hint">Next 90 days</span></div><div class="mt-body">${up.length ? rows : '<div class="muted ex-empty">Nothing due in the next 90 days.</div>'}</div></section>`;
+  return `<section class="ex-card cap-card">
+    <div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('flag')}<h3>Growth capital</h3><span class="muted ex-hint">FY27 priority · raise for near-term openings</span></div></div>
+    <div class="cap-grid">${items}</div>
+  </section>`;
 }
 
-// Team activity - the recent change feed, inline on the dashboard
-function teamActivityCard() {
-  const log = activityEntries(8);
-  const team = activityIsTeam();
-  const rows = log.map(e => {
-    const who = e.author || 'Someone';
-    const exists = e.itemId && findM(e.itemId);
-    const attr = exists ? ` data-openitem="${esc(e.itemId)}" title="Open milestone"` : '';
-    return `<div class="ta-item${exists ? ' ta-click' : ''}"${attr}>${personChip(e.author || '')}<div class="ta-main"><span class="ta-what"><b>${esc(who)}</b> ${esc(e.detail)}</span><span class="ta-when">${esc(fmtWhen(e.ts))}</span></div></div>`;
+// Owners with slipping work — the charter frames commitments per owner (attend YOUR block,
+// speak for YOUR function), and Aden's between-meetings job is to chase follow-ups. This card
+// answers "who do I need to unblock?" — the primary question at a biweekly stand-up.
+function ownersCard(list) {
+  const slip = list.filter(m => effectiveStatus(m) !== 'complete' && (['overdue', 'this_month'].includes(timingLevel(m)) || ['behind', 'at_risk', 'blocked'].includes(effectiveStatus(m))));
+  const byOwner = {};
+  slip.forEach(m => { const o = (m.owner || '').trim() || 'Unassigned'; (byOwner[o] = byOwner[o] || []).push(m); });
+  const rank = m => timingLevel(m) === 'overdue' ? 0 : (['behind', 'blocked'].includes(effectiveStatus(m)) ? 1 : 2);
+  const rows = Object.entries(byOwner).map(([owner, items]) => ({
+    owner, items,
+    worst: Math.min(...items.map(rank))
+  })).sort((a, b) => a.worst - b.worst || b.items.length - a.items.length);
+  const top = rows.slice(0, 6);
+  const html = top.map(({ owner, items }) => {
+    const areas = [...new Set(items.map(m => m.functional_area).filter(Boolean))].slice(0, 2).join(' · ');
+    const topItem = items.slice().sort(bySortUrgency)[0];
+    const attr = owner === 'Unassigned' ? '' : `data-drillowner="${esc(owner)}"`;
+    return `<button class="own-row" ${attr} title="${owner === 'Unassigned' ? 'Unassigned items' : "See " + esc(owner) + "'s items needing attention"}">
+      ${personChip(owner === 'Unassigned' ? '' : owner)}
+      <div class="own-main">
+        <div class="own-name">${esc(owner)}${areas ? `<span class="own-area muted"> · ${esc(areas)}</span>` : ''}</div>
+        <div class="own-top muted">${esc(topItem.activity)}</div>
+      </div>
+      <span class="own-n">${items.length}</span>
+    </button>`;
   }).join('');
-  const scope = team ? '<span class="ta-scope" title="Live from all signed-in members">Team-wide</span>' : '';
-  const empty = team ? 'No changes logged yet. Team edits will appear here.' : 'No activity yet. Changes you make will appear here.';
-  return `<section class="ex-card ta-card"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('people')}<h3>Team activity</h3>${scope}</div><button class="card-more" data-activityall="1">View all →</button></div><div class="ta-body">${log.length ? rows : `<div class="muted ex-empty">${empty}</div>`}</div></section>`;
+  const foot = rows.length > top.length || slip.length ? `<button class="card-more" data-drilldim="riskbehind" data-drillval="">See all ${slip.length} item${slip.length === 1 ? '' : 's'} needing attention →</button>` : '';
+  return `<section class="ex-card own-card">
+    <div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('people')}<h3>Needs attention by owner</h3></div><span class="dash-count ${rows.length ? 'bad' : ''}">${rows.length}</span></div>
+    <div class="own-body">${top.length ? html : '<div class="muted ex-empty">Everyone is caught up.</div>'}</div>
+    ${foot}
+  </section>`;
 }
 
-/* ============================================================
-   DASHBOARD - Chief/Board altitude
-   The dashboard answers ONE question: "How is the portfolio doing right now?"
-   It stays a level above the Openings tab (which schools are opening) and the
-   Project Plan (which tasks are being worked). Everything here either answers
-   that question, surfaces urgent action, or lets a viewer drill down.
-   Layout (top → bottom): Health banner (the singular headline) → 30-day pulse
-   → Cohort switcher chips → Focus cohort card (its schools' readiness) →
-   Where's-the-pressure breakdown + My tasks | Needs attention + Team activity
-   → Portfolio detail (collapsed: fundraising, workload, full status mix).
-   ============================================================ */
 function dashboardHtml(list) {
   const schools = schoolsInView();
-  const total = schools.length;
-  const rags = schools.map(s => ({ s, r: ragReady(schoolMs(s)) }));
-  const cnt = k => rags.filter(x => x.r.key === k).length;
-  const gC = cnt('green'), bC = cnt('blue'), yC = cnt('yellow'), rC = cnt('red'), noneC = cnt('none');
-  const attention = rC + yC;
-  const onTrack = total - attention;
+  // When a Team lens is active, readiness reflects THAT team's share of each school's
+  // pre-opening work, so a function leader sees "my function's readiness," not the network's.
+  const teamScope = [...state.filters.areas];
+  const sMs = s => teamScope.length ? schoolMs(s).filter(m => state.filters.areas.has(m.functional_area)) : schoolMs(s);
   const now = Date.now();
-  const seg = (v, c) => v ? `<span style="flex:${v};background:${c}"></span>` : '';
 
   // Cohort math — used by the switcher chips and the focus card.
   const cohorts = [...new Set(schools.map(s => s.openingFY))].filter(Boolean).sort((a, b) => a - b).map(fy => {
     const cs = schools.filter(s => s.openingFY === fy);
-    const ms = cs.flatMap(schoolMs);
+    const ms = cs.flatMap(sMs);
     const done = ms.filter(m => effectiveStatus(m) === 'complete').length;
     const firsts = cs.map(s => +parseDate(s.opening_date)).filter(n => !isNaN(n));
     const mo = firsts.length ? Math.max(0, Math.round((Math.min(...firsts) - now) / 2.63e9)) : null;
@@ -934,26 +750,10 @@ function dashboardHtml(list) {
   const focusFY = focusCohort();
   const focusC = cohorts.find(c => c.fy === focusFY) || cohorts.find(c => c.mo != null && c.mo >= 0) || cohorts[0];
 
-  // ─── 1. Portfolio Health Banner ── one lead statement + a health mix bar ───
-  const attnLine = attention
-    ? `<button class="ph-cta" data-drilldim="riskbehind" data-drillval="">${attention} school${attention === 1 ? '' : 's'} need attention →</button>`
-    : (total ? `<span class="ph-ok">Nothing off track right now.</span>` : `<span class="muted">No schools in scope. Adjust filters above.</span>`);
-  const healthBar = total ? `<div class="ph-bar" title="${gC} complete · ${bC} on track · ${noneC} not started · ${yC} at risk · ${rC} behind">${seg(gC, RAG.green)}${seg(bC, RAG.blue)}${seg(noneC, RAG.none)}${seg(yC, RAG.yellow)}${seg(rC, RAG.red)}</div>
-    <div class="ph-legend"><span><i style="background:${RAG.green}"></i>Complete <b>${gC}</b></span><span><i style="background:${RAG.blue}"></i>On track <b>${bC}</b></span><span><i style="background:${RAG.yellow}"></i>At risk <b>${yC}</b></span><span><i style="background:${RAG.red}"></i>Behind <b>${rC}</b></span>${noneC ? `<span><i style="background:${RAG.none}"></i>Not started <b>${noneC}</b></span>` : ''}</div>` : '';
-  const healthBanner = `<section class="ph-banner">
-    <div class="ph-lead">
-      <div class="ph-eyebrow">Portfolio health</div>
-      <div class="ph-headline"><b>${onTrack}</b><span class="ph-of"> of ${total}</span> school${total === 1 ? '' : 's'} on track to open on schedule</div>
-      <div class="ph-sub">${attnLine}</div>
-    </div>
-    <div class="ph-vis">${healthBar}</div>
-  </section>`;
-
-  // ─── 2. Pulse row ── the 30-day operational rhythm the committee runs on ───
+  // ─── Pulse row ── the 30-day operational rhythm the committee runs on ───
   const overdue = list.filter(m => timingLevel(m) === 'overdue' && effectiveStatus(m) !== 'complete');
-  const thisMonth = list.filter(m => timingLevel(m) === 'this_month' && effectiveStatus(m) !== 'complete');
-  const gates30 = list.filter(m => (m.keyMilestone || m.greenlight || m.transition) && m.due_date && effectiveStatus(m) !== 'complete')
-    .filter(m => { const d = daysUntil(m.due_date); return d != null && d >= -7 && d <= 30; })
+  const blocked = list.filter(m => effectiveStatus(m) === 'blocked');
+  const due30 = list.filter(m => { const d = daysUntil(m.due_date); return effectiveStatus(m) !== 'complete' && d != null && d >= 0 && d <= 30; })
     .sort((a, b) => parseDate(a.due_date) - parseDate(b.due_date));
   const pulseCard = (label, items, tone, drill, empty) => {
     const preview = items.slice(0, 3).map(m => `<div class="pu-item" data-expand="${m.id}"><span class="pu-t">${esc(m.activity)}</span><span class="pu-m">${esc([m.market, m.owner].filter(Boolean).join(' · '))}</span></div>`).join('');
@@ -964,67 +764,32 @@ function dashboardHtml(list) {
     </div>`;
   };
   const pulse = `<section class="pulse-row">
-    ${pulseCard('Overdue', overdue, 'r', 'data-drilldim="timing" data-drillval="overdue"', 'Nothing overdue.')}
-    ${pulseCard('Due this month', thisMonth, 'y', 'data-drilldim="timing" data-drillval="this_month"', 'Nothing due this month.')}
-    ${pulseCard('Key gates · next 30 days', gates30, 'b', 'data-showmore="focus"', 'No greenlights or key milestones in the next 30 days.')}
+    ${pulseCard('Overdue milestones', overdue, 'r', 'data-drilldim="timing" data-drillval="overdue"', 'Nothing overdue.')}
+    ${pulseCard('Needs attention', blocked, 'y', 'data-drilldim="status" data-drillval="blocked"', 'Nothing blocked.')}
+    ${pulseCard('Due in the next 30 days', due30, 'b', 'data-drilldim="timing" data-drillval="due30"', 'Nothing due in the next 30 days.')}
   </section>`;
 
   // ─── 3. Cohort switcher chips ── compact row (replaces the 6-card strip) ───
   const cohortChips = cohorts.length > 1 ? `<div class="ch-chips" role="tablist" aria-label="Opening cohort">
     <span class="ch-lbl">Focus cohort</span>
     ${cohorts.map(c => { const on = focusC && c.fy === focusC.fy && focusFY != null; return `<button class="ch-chip ${on ? 'on' : ''}" data-cohort="${c.fy}" role="tab" aria-selected="${on}">Fall ${c.fy - 1}<span class="ch-chip-n">${c.cs.length} school${c.cs.length === 1 ? '' : 's'}</span></button>`; }).join('')}
-    ${focusFY != null ? '<button class="ch-chip ch-all" data-cohort="all">Show all</button>' : '<span class="ch-hint muted">Click to scope the whole app</span>'}
+    ${focusFY != null ? '<button class="ch-chip ch-all" data-cohort="all">Show all</button>' : ''}
   </div>` : '';
 
-  // ─── 4. Focus card ── one hero: the cohort in focus with per-school RAG ───
-  const focusHtml = focusC ? (() => {
-    const rows = focusC.cs.slice().sort((a, b) => a.market.localeCompare(b.market) || a.display_label.localeCompare(b.display_label)).map(s => {
-      const sm = schoolMs(s), rr = ragReady(sm), n = sm.length, d = sm.filter(m => effectiveStatus(m) === 'complete').length;
-      const p = n ? Math.round(100 * d / n) : 0;
-      return `<button class="fc-row" data-drillschool="${esc(s.id)}" title="Open ${esc(s.display_label)}"><span class="fc-mk"><i style="background:${mkColor(s.market)}"></i>${esc(s.market)}</span><span class="fc-nm">${esc(s.display_label)}</span><span class="fc-bar"><span style="width:${p}%;background:${rr.color}"></span></span><span class="fc-pct">${n ? p + '%' : '—'}</span><span class="fc-pill">${ragTonePill(rr)}</span></button>`;
-    }).join('');
-    const scopedIndicator = focusFY != null ? '<span class="fc-scoped">App scoped to this cohort</span>' : '<span class="muted ex-hint">Preview · click a cohort chip above to scope the app</span>';
-    return `<section class="ex-card fc-card">
-      <div class="ex-card-head">
-        <div class="ex-cardhead-l">${ehIc('flag')}<h3>Fall ${focusC.fy - 1}</h3><span class="muted ex-hint">${focusC.cs.length} school${focusC.cs.length === 1 ? '' : 's'} · ${esc(focusC.mkts.join(' · '))}${focusC.mo != null ? ' · ' + (focusC.mo <= 0 ? 'opening now' : focusC.mo + ' mo out') : ''}</span></div>
-        <span class="fc-agg"><b>${focusC.pct}%</b><span class="muted"> pre-opening complete</span></span>
-      </div>
-      <div class="fc-body">${rows || '<div class="muted ex-empty">No schools scoped for this cohort yet.</div>'}</div>
-      <div class="fc-foot">${scopedIndicator}</div>
-    </section>`;
-  })() : '';
-
-  // ─── 5. Body grid: pressure + personal / needs attention + activity ───
-  // Two columns of equal weight — the dashboard doesn't privilege portfolio over people at this altitude.
-  const leftCol = `<div class="dash-col dash-col-main">${breakdownCard(list, schools)}${myTasksCard(list)}</div>`;
-  const rightCol = `<div class="dash-col dash-col-rail">${needsAttentionCard(list)}${teamActivityCard()}</div>`;
-
-  // ─── 6. Portfolio detail (collapsed) ── fundraising + workload + full mix ───
-  // These belong on the dashboard because they're portfolio-level, but they're
-  // secondary to health/pulse/focus — so they collapse by default.
-  const camps = (state.data.campaigns || []).filter(c => !state.filters.states.size || state.filters.states.has(c.state));
-  const dOpen = !!state.expanded['dash:detail'];
-  const fundHtml = camps.length ? `<div class="pd-block"><h4>Growth fundraising</h4><div class="ex-caps">${camps.map(c => { const p = c.target ? Math.min(100, Math.round(100 * c.raised / c.target)) : 0; return `<div class="ex-cap"><div class="ex-cap-top"><b>${esc(c.name)}</b><span>${fmtMoney(c.raised)} <span class="muted">/ ${fmtMoney(c.target)}</span></span></div><div class="ex-cap-bar"><span style="width:${p}%"></span></div><div class="ex-cap-foot muted">${p}% raised</div></div>`; }).join('')}</div></div>` : '';
-  const statusLegend = `<div class="pl-legend pl-legend-sm">${STATUS_ORDER.filter(s => list.some(m => effectiveStatus(m) === s)).map(s => `<span class="pl-leg"><i style="background:${SM(s).color}"></i>${SM(s).label}</span>`).join('')}</div>`;
-  const workloadHtml = `<div class="pd-block"><h4>Milestone workload by year</h4>${statusLegend}${columnChart(list)}</div>`;
-  // Inline the pipeline bar+legend (don't wrap statusPipeline's <section> — regex-stripping its
-  // nested divs was brittle and leaked sibling blocks out of the collapsed body).
-  const pipeOrder = ['not_started', 'on_track', 'at_risk', 'behind', 'blocked', 'complete'];
-  const pipeCounts = {}; pipeOrder.forEach(s => pipeCounts[s] = 0);
-  list.forEach(m => { const es = effectiveStatus(m); if (pipeCounts[es] == null) pipeCounts[es] = 0; pipeCounts[es]++; });
-  const pipeSeg = pipeOrder.map(s => pipeCounts[s] ? `<span class="pl-seg" style="flex:${pipeCounts[s]};background:${SM(s).color}" title="${SM(s).label}: ${pipeCounts[s]}"></span>` : '').join('') || '<span class="pl-seg" style="flex:1;background:var(--surface-container-high)"></span>';
-  const pipeLegend = pipeOrder.filter(s => pipeCounts[s]).map(s => `<span class="pl-leg"><i style="background:${SM(s).color}"></i>${SM(s).label}<b>${pipeCounts[s]}</b></span>`).join('');
-  const pipeHtml = `<div class="pd-block"><h4>Full milestone status mix</h4><div class="pl-legend">${pipeLegend || '<span class="muted">No milestones in view.</span>'}</div><div class="pl-bar">${pipeSeg}</div></div>`;
-  const detail = `<section class="ex-card pd-card"><div class="ex-card-head toggle" data-toggle="dash:detail"><div class="ex-cardhead-l">${chev(dOpen)}<h3>Portfolio detail</h3><span class="muted ex-hint">Fundraising · workload · full status mix</span></div></div><div class="ex-card-body ${dOpen ? '' : 'hide'}">${pipeHtml}${fundHtml}${workloadHtml}</div></section>`;
+  // ─── 5. Body grid: portfolio health (by team) + who's stuck (by owner) ───
+  // Lean dashboard: each piece of information lives in exactly one place. Dropped the
+  // duplicate overdue-item views (Upcoming milestones, Portfolio detail, Team activity) and
+  // the per-school Focus card (Openings owns per-school detail). Cohort chips stay as a scope control.
+  const leftCol = `<div class="dash-col dash-col-main">${breakdownCard(list, schools)}</div>`;
+  const rightCol = `<div class="dash-col dash-col-rail">${ownersCard(list)}</div>`;
 
   return `<div class="dash dash-v2">
     ${greetBanner(list)}
-    ${healthBanner}
+    <div class="dash-sec-head">Milestones to watch</div>
     ${pulse}
+    ${capitalPriorityStrip()}
     ${cohortChips}
-    ${focusHtml}
     <div class="dash-main">${leftCol}${rightCol}</div>
-    ${detail}
   </div>`;
 }
 
@@ -1098,7 +863,7 @@ function openModal(id) {
     <div class="field-row"><div class="field"><label>Owner</label><input id="mOwner" list="ownerRoster" value="${esc(m.owner)}" placeholder="Pick from the team or type a name"><datalist id="ownerRoster">${(meta().owners || []).map(o => `<option value="${esc(o.name)}">${esc(o.role || '')}</option>`).join('')}</datalist></div><div class="field"><label>Due date</label><input id="mDue" type="date" value="${esc(m.due_date || '')}"></div></div>
     <div class="field"><label>Status</label><select id="mStatus">${opt(meta().statuses.map(s => [s, SM(s).label]), m.status)}</select>
       <div class="help-text">Overdue or due-this-month milestones flag automatically, even if marked "On track."</div></div>
-    <div class="field-row"><div class="field"><label>Market / location</label><select id="mMarket">${opt(markets(), m.market)}</select></div><div class="field"><label>Workstream</label><select id="mTeam">${opt(teams(), m.functional_area)}</select></div></div>
+    <div class="field-row"><div class="field"><label>Market / location</label><select id="mMarket">${opt(markets(), m.market)}</select></div><div class="field"><label>Team</label><select id="mTeam">${opt(teams(), m.functional_area)}</select></div></div>
     <div class="field"><label>School(s) this belongs to</label>${schoolLinks}<div id="mSchools" class="check-box">${schoolChecks}</div></div>
     <div class="field"><label>Notes / next steps</label><textarea id="mNotes">${esc(m.notes)}</textarea></div>
     <details class="sm-details"><summary>More options</summary>
@@ -1187,10 +952,10 @@ function openSchoolModal(id) {
   const opt = (arr, val) => arr.map(x => Array.isArray(x) ? `<option value="${x[0]}" ${x[0] === val ? 'selected' : ''}>${esc(x[1])}</option>` : `<option ${x === val ? 'selected' : ''}>${esc(x)}</option>`).join('');
   const sm = isNew ? [] : schoolMs(s);
   const roll = sm.length ? rollupStatus(sm) : 'not_started';
-  const taskList = sm.length ? sm.slice().sort(bySortUrgency).map(m => `<div class="sm-task" data-expand="${m.id}">${statusDot(effectiveStatus(m))}<span class="sm-t-title">${esc(m.activity)}</span><span class="sm-t-team">${esc(m.functional_area || '')}</span><span class="sm-t-due">${dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : '-')}</span></div>`).join('') : '<div class="muted" style="font-size:12.5px">No milestones yet - add the first one below.</div>';
+  const taskList = sm.length ? sm.slice().sort(bySortUrgency).map(m => `<div class="sm-task" data-expand="${m.id}">${statusDot(effectiveStatus(m))}<span class="sm-t-title">${esc(m.activity)}</span><span class="sm-t-team">${esc(m.functional_area || '')}</span><span class="sm-t-due">${dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : '-')}</span></div>`).join('') : '<div class="muted" style="font-size:12.5px">No milestones yet.</div>';
   const summary = isNew ? '' : `<div class="sm-summary">
     <span><span class="state-badge sm" style="background:${stColor(s.state)}">${esc(s.state)}</span> <b>${esc(s.market)}</b> · Fall ${s.openingFY - 1}</span>
-    <span class="sm-summary-r"><span class="muted">${sm.length} milestone${sm.length === 1 ? '' : 's'}</span>${sm.length ? `<button class="btn btn-text btn-sm sm-openplan" data-openplanschool="${esc(s.id)}" title="See this school's tasks in the Project Plan (filtered)">Open in Project Plan →</button>` : ''}</span></div>`;
+    <span class="sm-summary-r"><span class="muted">${sm.length} milestone${sm.length === 1 ? '' : 's'}</span>${sm.length ? `<button class="btn btn-text btn-sm sm-openplan" data-openplanschool="${esc(s.id)}" title="See this school's tasks in Milestones (filtered)">Open in Milestones →</button>` : ''}</span></div>`;
   // plain calendar year - a school with openingFY=2028 opens in August 2027, so we show "2027"
   const fyField = `<div class="field"><label>Opens in - August of… <span class="req">*</span></label><select id="sFy">${fyList().map(fy => `<option value="${fy}" ${s.openingFY === fy ? 'selected' : ''}>${fy - 1}</option>`).join('')}</select></div>`;
   const qField = `<div class="field"><label>Opening quarter</label><select id="sQ">${opt(['Q1', 'Q2', 'Q3', 'Q4'], s.openingQuarter || 'Q1')}</select></div>`;
@@ -1214,11 +979,11 @@ function openSchoolModal(id) {
     : `
     ${summary}
     <div class="reschedule">
-      <div class="rs-head">Reschedule opening <span class="muted">- push it back or pull it forward as plans change</span></div>
+      <div class="rs-head">Reschedule opening</div>
       <div class="field-row">${fyField}${qField}</div>
       <label class="field-check"><input type="checkbox" id="sShift" checked> Also move this school's ${sm.length} milestone deadline${sm.length === 1 ? '' : 's'} by the same shift</label>
     </div>
-    <div class="field"><label>Milestones - click any to open</label><div class="sm-tasks">${taskList}</div>
+    <div class="field"><label>Milestones</label><div class="sm-tasks">${taskList}</div>
       <div class="sm-task-actions"><button class="btn btn-tonal btn-sm" id="addTaskForSchool">+ Add milestone</button>${templatesButton(s)}</div>${templatesPanel(s)}</div>
     <details class="sm-details"><summary>More school details</summary>
       ${labelField}
@@ -1487,10 +1252,10 @@ function renderDrawer() {
       <p class="dw-help">This one is just for you - teammates use the board password above but can't open Settings without this.</p>
     </section>
 
-    <details class="dw-sec dw-fold"><summary><span class="dw-num">3</span>Customize Markets, Workstreams &amp; Owners</summary>
+    <details class="dw-sec dw-fold"><summary><span class="dw-num">3</span>Customize Markets, Teams &amp; Owners</summary>
       <p class="dw-help">Rename or add your own; changes save everywhere. Anything in use can't be deleted until its items are reassigned.</p>
       ${czSection('State', 'markets', statesMeta().flatMap(s => s.markets.map(mk => ({ mk, st: s.code }))))}
-      ${czSection('Workstream', 'teams', teams().map(t => ({ mk: t })))}
+      ${czSection('Team', 'teams', teams().map(t => ({ mk: t })))}
       ${czOwners()}
     </details>
 
@@ -1635,7 +1400,7 @@ function setView(v, fromPop) {
   const pg = $('#planGroup'); if (pg) pg.classList.toggle('expanded', v === 'plan');
   $$('.nav-subitem').forEach(x => x.classList.toggle('active', v === 'plan' && (x.dataset.plan === 'focus' ? state.planFocus : (!state.planFocus && state.planGroup === x.dataset.plan))));
   $$('.view').forEach(s => { const on = s.id === 'view-' + v; s.classList.toggle('active', on); if (!on) s.innerHTML = ''; });
-  const cbPage = $('#cbPage'); if (cbPage) cbPage.textContent = v === 'progress' ? 'Dashboard' : v === 'timeline' ? 'Openings' : 'Project Plan';
+  const cbPage = $('#cbPage'); if (cbPage) cbPage.textContent = v === 'progress' ? 'Dashboard' : v === 'timeline' ? 'Openings' : 'Milestones';
   document.body.dataset.view = v;
   if (typeof closeFilterPanel === 'function') closeFilterPanel();
   updateGreeting();
@@ -1651,9 +1416,10 @@ function wireEvents() {
     if (si) { const p = si.dataset.plan; if (p === 'focus') state.planFocus = true; else { state.planGroup = p; state.planFocus = false; } return setView('plan'); }
     const t = e.target.closest('.nav-tab');
     if (t) {
-      // Manual sidebar nav resets filters so users aren't confused by leftover
-      // filters carried in from a KPI drill. Drills call setView() directly.
-      if (activeCount()) clearFilters();
+      // Manual sidebar nav clears transient filters so users aren't confused by leftover
+      // filters carried in from a KPI drill. The Team lens intentionally persists across tabs.
+      // Drills call setView() directly.
+      if (activeCount()) clearTransientFilters();
       setView(t.dataset.view);
     }
   });
@@ -1725,6 +1491,7 @@ function wireEvents() {
     }
     const es2 = e.target.closest('[data-editschool]'); if (es2) return openSchoolModal(es2.dataset.editschool);
     const ds = e.target.closest('[data-drillschool]'); if (ds) return openSchoolModal(ds.dataset.drillschool);
+    const dro = e.target.closest('[data-drillowner]'); if (dro) { clearFilters(); const nm = dro.dataset.drillowner; state.filters.search = nm; const cb = $('#cbSearch'); if (cb) cb.value = nm; setView('plan'); return; }
     const gp = e.target.closest('[data-goplan]'); if (gp) { const m = findM(gp.dataset.goplan); if (m) { state.filters.search = m.activity; const cb = $('#cbSearch'); if (cb) cb.value = m.activity; } setView('plan'); return; }
     if (e.target.closest('#planFocus')) { state.planFocus = !state.planFocus; return renderPlan(); }
     if (e.target.closest('#planExpandAll')) { (state._planKeys || []).forEach(k => state.expanded[k] = true); return refreshBody(); }
@@ -1947,14 +1714,11 @@ function updateGreeting() {
   // Per-page heading: the greeting lives on the Dashboard (where it sets the
   // day's tone); other pages get a clear title + a live count that earns the space.
   if (v === 'timeline') {
-    const openings = (state.data && state.data.schools || []).filter(s => s.openingFY);
-    const cohorts = new Set(openings.map(s => s.openingFY)).size;
-    dateEl.textContent = `${openings.length} schools · ${cohorts} cohorts`;
+    dateEl.textContent = '';
     line.innerHTML = `<b>Openings</b>`;
   } else if (v === 'plan') {
-    const n = (state.data && state.data.milestones || []).length;
-    dateEl.textContent = `${n} milestones`;
-    line.innerHTML = `<b>Project Plan</b>`;
+    dateEl.textContent = '';
+    line.innerHTML = `<b>Milestones</b>`;
   } else {
     const first = (currentDisplayName() || '').split(/\s+/)[0];
     dateEl.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -2237,7 +2001,7 @@ function buildCmdkItems(q) {
   const ic = (p) => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
   const items = [];
   items.push({ icon: ic('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>'), name: 'Go to Dashboard', hint: '', kbd: '', action: () => setView('progress') });
-  items.push({ icon: ic('<rect x="3" y="3" width="5.5" height="18" rx="1.5"/><rect x="10.25" y="3" width="5.5" height="11" rx="1.5"/><rect x="17.5" y="3" width="3.5" height="15" rx="1.5"/>'), name: 'Go to Project Plan', hint: '', kbd: '', action: () => setView('plan') });
+  items.push({ icon: ic('<rect x="3" y="3" width="5.5" height="18" rx="1.5"/><rect x="10.25" y="3" width="5.5" height="11" rx="1.5"/><rect x="17.5" y="3" width="3.5" height="15" rx="1.5"/>'), name: 'Go to Milestones', hint: '', kbd: '', action: () => setView('plan') });
   items.push({ icon: ic('<rect x="3" y="4.5" width="18" height="17" rx="2"/><path d="M8 2.5v4M16 2.5v4M3 10h18"/>'), name: 'Go to Openings', hint: '', kbd: '', action: () => setView('timeline') });
   items.push({ icon: ic('<path d="M12 5v14M5 12h14"/>'), name: 'New milestone', hint: '', kbd: 'N', action: () => addItem() });
   items.push({ icon: ic('<path d="M3 21V9l9-7 9 7v12h-6v-6h-6v6H3z"/>'), name: 'Add school opening', hint: '', kbd: '', action: () => openSchoolModal(null) });
@@ -2389,6 +2153,10 @@ function bootApp() {
   renderActivityPanel();
   updateActivityDot();
   window.addEventListener('popstate', () => setView((location.hash || '').replace('#', '') || 'progress', true));
+  // Direct hash edits and in-page #links fire 'hashchange', not 'popstate'. setView's own
+  // pushState doesn't fire either, so this routes deep links without double-rendering.
+  window.addEventListener('hashchange', () => { const v = (location.hash || '').replace('#', '') || 'progress'; if (v !== state.view) setView(v, true); });
+  restoreTeamScope();
   const initial = (location.hash || '').replace('#', '');
   setView(VIEWS.includes(initial) ? initial : 'progress', true);
   if (!location.hash) { try { history.replaceState({ v: state.view }, '', '#' + state.view); } catch (e) {} }

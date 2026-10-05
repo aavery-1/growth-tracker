@@ -2984,7 +2984,9 @@ body[data-view="progress"] #cbPillFilter { display: none; }
 .dash-main > *, .dash-sub > * { min-width: 0; }
 .dash-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 .dash-sub  { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
-@media (max-width: 1040px) { .dash-main, .dash-sub { grid-template-columns: 1fr; } }
+@media (max-width: 1040px) { .dash-sub { grid-template-columns: 1fr; } }
+/* Keep the two dashboard cards side by side down to tablet; stack only on phones. */
+@media (max-width: 700px) { .dash-main { grid-template-columns: 1fr; } }
 
 .dash-v2 .ex-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
 .dash-v2 .ex-cardhead-l { display: flex; align-items: center; gap: 9px; }
@@ -3269,6 +3271,14 @@ body[data-view="progress"] #cbPillFilter { display: none; }
 @media (max-width: 900px) { .ph-banner { grid-template-columns: 1fr; padding: 20px; } }
 
 /* — Pulse row — 30-day operational queues */
+.dash-sec-head {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--on-surface-variant);
+  margin: 2px 2px 10px;
+}
 .pulse-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -3390,3 +3400,61 @@ body[data-view="progress"] #cbPillFilter { display: none; }
   font-size: 13.5px; font-weight: 700; letter-spacing: -.1px;
   color: var(--on-surface); margin: 0 0 10px;
 }
+
+/* §34 — scope explainer under the readiness headline */
+.ph-note {
+  margin-top: 10px;
+  font-size: 12.5px; line-height: 1.55;
+  color: var(--on-surface-variant);
+  max-width: 62ch;
+}
+.ph-note b { color: var(--on-surface); font-weight: 600; }
+:root[data-theme="dark"] .ph-note b { color: #E4E9F4; }
+
+/* ============================================================
+   §35 Charter-aligned dashboard surfaces
+   Growth capital strip · owner accountability card
+   ============================================================ */
+
+/* — Growth capital: promoted from the collapsed drawer to a top surface — */
+.cap-card { padding: 18px 20px; }
+.cap-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px 28px; margin-top: 4px; }
+.cap-item { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.cap-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.cap-name { font-size: 13.5px; font-weight: 600; color: var(--on-surface); }
+.cap-vals { font-size: 13px; color: var(--on-surface-variant); white-space: nowrap; }
+.cap-vals b { font-size: 15px; font-weight: 700; color: var(--on-surface); }
+.cap-bar { display: block; height: 10px; border-radius: 999px; background: var(--surface-container-high, #EEF1F6); overflow: hidden; }
+.cap-bar > span { display: block; height: 100%; border-radius: 999px; transition: width .3s; background: linear-gradient(90deg, #16357F, #43B0E6); }
+.cap-tone-low .cap-bar > span { background: #E63E2F; }
+.cap-tone-mid .cap-bar > span { background: linear-gradient(90deg, #F6A11C, #43B0E6); }
+.cap-tone-ok .cap-bar > span { background: #4A8C1F; }
+.cap-foot { display: flex; align-items: center; justify-content: space-between; font-size: 12px; }
+.cap-pct { font-weight: 700; color: var(--on-surface); }
+
+/* — Owners with slipping work — */
+.own-card { padding: 18px 20px; }
+.own-body { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.own-row {
+  appearance: none; cursor: pointer; font: inherit; text-align: left;
+  display: grid;
+  grid-template-columns: 32px 1fr 42px;
+  align-items: center; gap: 12px;
+  padding: 10px 10px; margin: 0 -10px;
+  background: transparent; border: 0; border-radius: 10px;
+  transition: background .12s;
+}
+.own-row:hover { background: var(--surface-container, #F4F6FA); }
+.own-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.own-name { font-size: 13.5px; font-weight: 600; color: var(--on-surface); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.own-area { font-weight: 500; }
+.own-top { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.own-n {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 32px; height: 26px; padding: 0 8px;
+  border-radius: 999px;
+  background: #FDE7E4; color: #B01B0F;
+  font-size: 12.5px; font-weight: 700;
+}
+:root[data-theme="dark"] .own-row:hover { background: rgba(255,255,255,.05); }
+:root[data-theme="dark"] .own-n { background: rgba(230,62,47,.18); color: #F4A196; }
