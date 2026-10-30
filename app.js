@@ -1192,7 +1192,7 @@ function addTaskForSchool() {
 /* ============================================================
    SUPABASE LIVE SYNC (optional)
    ============================================================ */
-let sbPushTimer = null, sbLastPushed = new Map(), sbLastSchools = new Map();
+let sbPushTimer = null, sbLastPushed = new Map(), sbLastSchools = new Map(), sbLoaded = false;   // sbLoaded: never push before the shared data has loaded
 const S = () => state.data.schools;
 const SB_TABLE = { m: 'growth_milestones', s: 'growth_schools' };
 /* Pre-filled shared project so the committee auto-connects on load (publishable key is public by design). */
@@ -1206,6 +1206,8 @@ create policy "rw_m" on growth_milestones for all using (true) with check (true)
 create policy "rw_s" on growth_schools    for all using (true) with check (true);
 alter publication supabase_realtime add table growth_milestones;
 alter publication supabase_realtime add table growth_schools;`;
+// project settings to use: the built-in project wins over a stale saved copy of the same project
+function sbCfg() { const sc = sbSavedCfg(); return SB_DEFAULT.url && SB_DEFAULT.key && (!sc || !sc.url || sc.url === SB_DEFAULT.url) ? SB_DEFAULT : sc; }
 function sbSavedCfg() { try { return JSON.parse(lsGet(LS.supabase) || 'null'); } catch (e) { return null; } }
 async function sbConnect(url, key, silent) {
   const s = $('#sbStatus'); if (s && !silent) s.innerHTML = '<div class="status-note warn">Connecting…</div>';
@@ -1221,10 +1223,12 @@ async function sbConnect(url, key, silent) {
       if (s && !silent) s.innerHTML = '<div class="status-note ok">✓ Connected. Sign in to load the board.</div>';
       renderDrawer(); return true;
     }
-    await sbLoadData(client);
+    // A failed data load (expired session, network blip) must not drop the client, or sign-in breaks too
+    try { await sbLoadData(client); }
+    catch (e) { console.error('Supabase data load failed:', e); state.sb.lastError = e.message || String(e); toast("Couldn't load the board: " + state.sb.lastError, 'err'); renderDrawer(); return true; }
     const b = $('#saveState'); if (b) { b.textContent = 'Synced • live'; b.className = 'save-state saved'; }
     if (s) s.innerHTML = '<div class="status-note ok">✓ Connected. Edits &amp; schools sync live to everyone on this project.</div>'; renderDrawer(); return true;
-  } catch (e) { state.sb = { connected: false, client: null }; if (s) s.innerHTML = `<div class="status-note err">Couldn't connect: ${esc(e.message || e)}. Check URL/key and that you ran the SQL.</div>`; return false; }
+  } catch (e) { console.error('Supabase connect failed:', e); state.sb = { connected: false, client: null, lastError: e.message || String(e) }; if (s) s.innerHTML = `<div class="status-note err">Couldn't connect: ${esc(e.message || e)}. Check URL/key and that you ran the SQL.</div>`; return false; }
 }
 async function sbLoadData(client) {
   // milestones
@@ -1237,6 +1241,7 @@ async function sbLoadData(client) {
   if (rs.data && rs.data.length) state.data.schools = rs.data.map(r => r.doc).filter(Boolean);
   else { const r = await client.from(SB_TABLE.s).upsert(S().map(x => ({ id: x.id, doc: x, updated_at: new Date().toISOString() }))); if (r.error) throw r.error; }
   sbLastSchools = new Map(S().map(x => [x.id, JSON.stringify(x)]));
+  sbLoaded = true;
   if (!client._ngcChannels) {
     client.channel('gm_rt').on('postgres_changes', { event: '*', schema: 'public', table: SB_TABLE.m }, sbOnRemote).subscribe();
     client.channel('gs_rt').on('postgres_changes', { event: '*', schema: 'public', table: SB_TABLE.s }, sbOnRemote).subscribe();
@@ -1267,7 +1272,7 @@ async function sbPushTable(client, table, list, last) {
   return cur;
 }
 async function sbPush() {
-  if (!(state.sb && state.sb.connected)) return; const client = state.sb.client;
+  if (!(state.sb && state.sb.connected) || !sbLoaded || (authModeOn() && !state.auth.user)) return; const client = state.sb.client;
   try { sbLastPushed = await sbPushTable(client, SB_TABLE.m, M(), sbLastPushed); sbLastSchools = await sbPushTable(client, SB_TABLE.s, S(), sbLastSchools); }
   catch (e) { console.error(e); const b = $('#saveState'); if (b) { b.textContent = 'Saved locally · sync error'; b.className = 'save-state err'; } }
 }
@@ -1643,15 +1648,23 @@ async function bootstrapAuth(client) {
   updateUserBadge();
 }
 
+// get a live client, reconnecting with the saved or built-in project settings if the first attempt failed
+async function ensureSbClient() {
+  if (state.sb && state.sb.client) return state.sb.client;
+  const sc = sbCfg();
+  if (sc && sc.url && sc.key) await sbConnect(sc.url, sc.key, true);
+  if (state.sb && state.sb.client) return state.sb.client;
+  throw new Error("Can't reach the database" + (state.sb && state.sb.lastError ? ` (${state.sb.lastError})` : '') + '. Check your connection and try again.');
+}
 async function signInEmail(email, password) {
-  const client = state.sb && state.sb.client; if (!client) throw new Error('Supabase is not connected. Ask an admin.');
+  const client = await ensureSbClient();
   const { data, error } = await client.auth.signInWithPassword({ email: email.trim(), password });
   if (error) throw error;
   state.auth.user = data.user; await loadProfile(data.user.id);
   return data.user;
 }
 async function signUpEmail(email, password, first, last) {
-  const client = state.sb && state.sb.client; if (!client) throw new Error('Supabase is not connected. Ask an admin.');
+  const client = await ensureSbClient();
   first = (first || '').trim(); last = (last || '').trim();
   if (!first || !last) throw new Error('Enter both a first and last name.');
   const fullName = first + ' ' + last;
@@ -1931,8 +1944,7 @@ async function gateStart() {
   if (authModeOn()) {
     // Supabase auth mode - needs an active session, not a shared password.
     // sbConnect (from saved cfg) is fired async by bootApp normally; here we need it BEFORE gating.
-    let sc = sbSavedCfg();
-    if ((!sc || !sc.url || !sc.key) && SB_DEFAULT.url && SB_DEFAULT.key) sc = SB_DEFAULT;
+    const sc = sbCfg();
     if (!sc || !sc.url || !sc.key) return showAuthConfigNeeded();
     if (!state.sb.connected) { await sbConnect(sc.url, sc.key, true); }
     // bootstrapAuth (called from sbConnect on success) has now populated state.auth if there's a session
@@ -2347,7 +2359,7 @@ function bootApp() {
   const initial = (location.hash || '').replace('#', '');
   setView(VIEWS.includes(initial) ? initial : 'progress', true);
   if (!location.hash) { try { history.replaceState({ v: state.view }, '', '#' + state.view); } catch (e) {} }
-  let sc = sbSavedCfg(); if (SB_DEFAULT.url && (!sc || sc.url === SB_DEFAULT.url)) sc = SB_DEFAULT;
+  const sc = sbCfg();
   // In auth mode, gateStart already connected via sbConnect. Avoid a second connect that would recreate the client.
   if (sc && sc.url && sc.key && !state.sb.connected) sbConnect(sc.url, sc.key, true);
 }
