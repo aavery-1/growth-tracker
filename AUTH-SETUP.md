@@ -173,3 +173,17 @@ drop table if exists public.profiles;
 
 **Q: What if a user's account is deleted in Supabase?**
 Their profile row cascades and deletes. Their historical `created_by` / `updated_by` foreign keys become NULL (the audit rows retain their `changed_data` snapshots either way). Audit history is preserved.
+
+---
+
+## Link each account to its owner name
+
+The tool personalizes itself for whoever signs in: their own "Your milestones" numbers on the Dashboard, a **My milestones** filter (on by default for owners with open work, off for admins), and their name pre-filled on new milestones and notes.
+
+It links an account to an owner when the account's display name (`profiles.full_name`) matches the owner name exactly. Case, extra spaces and accents don't matter, but spelling does. "Doug Chu" and "Susie Chu" are kept separate.
+
+1. Create the accounts (**Authentication → Users → Add user**).
+2. Open `supabase-link-owners.sql`, replace each `EMAIL` with that person's login email, and run it in the **SQL Editor**.
+3. The query at the bottom lists every account as `linked` or `NOT LINKED`.
+
+Anyone not linked can still use the tool. Their profile menu says they aren't linked to an owner yet. If you add a new owner in **⚙ → Customize**, add a matching line to the SQL file and run it again.
