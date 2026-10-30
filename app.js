@@ -1209,10 +1209,24 @@ alter publication supabase_realtime add table growth_schools;`;
 // project settings to use: the built-in project wins over a stale saved copy of the same project
 function sbCfg() { const sc = sbSavedCfg(); return SB_DEFAULT.url && SB_DEFAULT.key && (!sc || !sc.url || sc.url === SB_DEFAULT.url) ? SB_DEFAULT : sc; }
 function sbSavedCfg() { try { return JSON.parse(lsGet(LS.supabase) || 'null'); } catch (e) { return null; } }
+// The Supabase library ships with the app (same site, pinned version), so connecting
+// never depends on a third-party CDN that a school network or browser extension might block.
+const SB_LIB_SRC = 'supabase-2.117.3.js';
+let sbLibPromise = null;
+function loadSupabaseLib() {
+  if (window.supabase && window.supabase.createClient) return Promise.resolve(window.supabase);
+  if (!sbLibPromise) sbLibPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script'); s.src = SB_LIB_SRC; s.async = true;
+    s.onload = () => (window.supabase && window.supabase.createClient) ? resolve(window.supabase) : reject(new Error('the database library did not start'));
+    s.onerror = () => { sbLibPromise = null; s.remove(); reject(new Error('could not load the database library')); };
+    document.head.appendChild(s);
+  });
+  return sbLibPromise;
+}
 async function sbConnect(url, key, silent) {
   const s = $('#sbStatus'); if (s && !silent) s.innerHTML = '<div class="status-note warn">Connecting…</div>';
   try {
-    const mod = await import('https://esm.sh/@supabase/supabase-js@2');
+    const mod = await loadSupabaseLib();
     const client = mod.createClient(url, key);
     state.sb = { connected: true, client };
     lsSet(LS.supabase, JSON.stringify({ url, key }));
