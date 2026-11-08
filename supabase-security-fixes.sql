@@ -18,6 +18,28 @@
 
 begin;
 
+-- 0. Only KIPP work emails can hold an account. Blocks any new or changed
+--    auth user whose email is not on an approved domain (invites included).
+create or replace function public.enforce_email_domain()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if lower(split_part(coalesce(new.email, ''), '@', 2))
+     not in ('kippnj.org', 'kippteamandfamily.org', 'kippmiami.org') then
+    raise exception 'Use a KIPP work email (@kippnj.org, @kippteamandfamily.org, or @kippmiami.org).';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists enforce_email_domain on auth.users;
+create trigger enforce_email_domain
+  before insert or update of email on auth.users
+  for each row execute function public.enforce_email_domain();
+
+
 -- 1. RLS helper functions move to a private schema the API does not expose,
 --    so nobody can call them directly; policies still can.
 create schema if not exists private;

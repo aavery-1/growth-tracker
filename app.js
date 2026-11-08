@@ -24,7 +24,6 @@ const state = {
   expanded: {},                  // progress section/item expand map
   filters: { states: new Set(), fys: new Set(), types: new Set(), areas: new Set(), owners: new Set(), markets: new Set(), statuses: new Set(), priorities: new Set(), openingFYs: new Set(), schoolId: '', search: '', timing: '' },
   sb: { connected: false, client: null },
-  adminUnlocked: false,
   auth: { user: null, profile: null, wired: false },
 };
 
@@ -89,22 +88,38 @@ function fmtDate(s) { const d = parseDate(s); return d ? d.toLocaleDateString('e
 /* ---------- threaded notes (attach to a task or school; surface wherever it's opened) ---------- */
 function fmtWhen(t) { try { return new Date(t).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } }
 function noteItemHtml(nt) { return `<div class="note-item"><div class="note-meta"><b>${nt.by ? esc(nt.by) : 'Someone'}</b> · ${esc(fmtWhen(nt.t))}</div><div class="note-text">${esc(nt.text)}</div></div>`; }
-function postNote(wrap) {
-  if (!wrap) return;
+async function postNote(wrap) {
+  if (!wrap || !guardEdit()) return;
   const kind = wrap.dataset.notekind, id = wrap.dataset.noteid;
-  const inp = wrap.querySelector('#noteInput'), au = wrap.querySelector('#noteAuthor');
+  const inp = wrap.querySelector('#noteInput'), au = wrap.querySelector('#noteAuthor'), btn = wrap.querySelector('#noteAdd');
   const text = (inp.value || '').trim(); if (!text) { inp.focus(); return; }
-  const by = (au.value || '').trim();
+  const by = ((au && au.value) || currentDisplayName() || '').trim();
   const ent = kind === 'school' ? (state.data.schools || []).find(x => x.id === id) : findM(id);
   if (!ent) return;
-  if (!Array.isArray(ent.noteLog)) ent.noteLog = [];
   const nt = { t: Date.now(), by, text };
-  ent.noteLog.push(nt);
-  if (by) lsSet('ngc_author', by);
-  autosave();
+  const live = state.sb && state.sb.connected && sbLoaded && state.auth.user;
+  if (live) {
+    // Notes are added on the server in one step, so two people posting at once both keep their note.
+    if (btn) btn.disabled = true;
+    try {
+      await sbFlush();   // a just-created record must exist on the server first
+      const table = kind === 'school' ? SB_TABLE.s : SB_TABLE.m, last = kind === 'school' ? sbLastSchools : sbLastPushed;
+      const r = await state.sb.client.rpc('growth_add_note', { p_table: table, p_id: id, p_note: nt });
+      if (r.error) throw r.error;
+      const base = last.has(id) ? JSON.parse(last.get(id)) : null;
+      mergeIncoming(ent, base, r.data); last.set(id, JSON.stringify(r.data));
+      autosaveWriteLocal();
+    } catch (e) {
+      console.error(e); if (btn) btn.disabled = false;
+      return toast("Couldn't post the note: " + syncErrorText(e), 'err');
+    }
+    if (btn) btn.disabled = false;
+  } else {
+    if (!Array.isArray(ent.noteLog)) ent.noteLog = [];
+    ent.noteLog.push(nt); autosave();
+  }
   const thread = wrap.querySelector('.note-thread');
-  const empty = thread.querySelector('.note-empty'); if (empty) empty.remove();
-  thread.insertAdjacentHTML('beforeend', noteItemHtml(nt));
+  thread.innerHTML = (ent.noteLog || []).slice().sort((x, y) => x.t - y.t).map(noteItemHtml).join('');
   inp.value = ''; inp.focus();
   thread.scrollTop = thread.scrollHeight;
 }
@@ -112,7 +127,7 @@ function notesSection(kind, id, log) {
   const items = (log || []).slice().sort((a, b) => a.t - b.t).map(noteItemHtml).join('') || '<div class="note-empty muted">No notes yet - add the first update.</div>';
   return `<div class="notes-field" data-notekind="${kind}" data-noteid="${esc(id)}"><label class="notes-label">Notes &amp; updates</label>
     <div class="note-thread">${items}</div>
-    <div class="note-add"><input id="noteAuthor" class="note-author" placeholder="Your name" value="${esc(currentDisplayName())}"><input id="noteInput" class="note-input" placeholder="Add a note or status update…"><button class="btn btn-filled btn-sm" id="noteAdd">Post</button></div></div>`;
+    <div class="note-add"><input id="noteAuthor" type="hidden" value="${esc(currentDisplayName())}"><input id="noteInput" class="note-input" placeholder="Add a note or status update…"><button class="btn btn-filled btn-sm" id="noteAdd">Post</button></div></div>`;
 }
 
 /* ---------- status meta ---------- */
@@ -848,7 +863,6 @@ function greetBanner() {
   if (!mine.length) return '';
   const stat = (n, label, timing, tone) => `<button class="my-stat ${n && tone ? 'my-' + tone : ''}" data-drillmine="${timing}"><span class="my-n">${n}</span><span class="my-l">${label}</span></button>`;
   return `<section class="my-strip"><div class="my-head">Your milestones</div><div class="my-stats">
-    ${stat(mine.length, 'Open', '', '')}
     ${stat(mine.filter(m => timingLevel(m) === 'overdue').length, 'Overdue', 'overdue', 'r')}
     ${stat(mine.filter(m => effectiveStatus(m) === 'blocked').length, 'Blocked', 'blocked', 'y')}
     ${stat(mine.filter(dueWithin30).length, 'Due in 30 days', 'due30', '')}
@@ -871,6 +885,7 @@ function applyDrill(dim, val) {
 function refreshResults() { refreshBody(); }
 
 function addItem(stage) {
+  if (!guardEdit()) return;
   snapshotForUndo('Create new milestone');
   const st = stage || 'to_do', done = st === 'complete';
   const m = { id: uid(), state: 'NJ', market: 'Paterson', team: teams()[0], functional_area: teams()[0], workstream: 'General', activity: 'New milestone', schools: [], schoolIds: [], targetFY: currentFY(), targetQuarter: '', openingFY: null, due_date: null, status: done ? 'complete' : 'not_started', stage: st, progress_percent: done ? 100 : 0, priority: 'medium', owner: myOwnerName(), dependency: '', keyMilestone: false, greenlight: false, transition: false, notes: '', tags: [] };
@@ -891,9 +906,25 @@ function openPopover(anchor, html) {
 }
 
 /* detail modal */
-let modalId = null, modalMode = 'task', schoolId = null;
+let modalId = null, modalMode = 'task', schoolId = null, modalOpenDoc = null;
+// Save writes only fields this person changed in the modal. Any field they left alone keeps its
+// current value, which may include a teammate's change that arrived while the modal was open.
+function keepTeammateEdits(obj, opened, current) {
+  if (!opened || !current) return;
+  Object.keys({ ...opened, ...current }).forEach(k => {
+    if (k === 'noteLog') return;
+    if (jeq(obj[k], opened[k]) && !jeq(current[k], opened[k])) { if (k in current) obj[k] = clone(current[k]); else delete obj[k]; }
+  });
+}
+// View-only accounts see the same modal with every field locked.
+function lockModalIfReadOnly() {
+  if (canEdit()) return;
+  $$('#modalBody input, #modalBody select, #modalBody textarea, #modalBody #mBlockBtn').forEach(el => { el.disabled = true; });
+  $('#modalTitle').textContent += ' (view only)';
+}
 function openModal(id) {
   modalMode = 'task'; modalId = id; modalDirty = false; const m = findM(id); if (!m) return;
+  modalOpenDoc = clone(m);
   $('#modalTitle').textContent = 'Milestone details';
   const opt = (arr, val) => arr.map(x => Array.isArray(x) ? `<option value="${x[0]}" ${x[0] === val ? 'selected' : ''}>${esc(x[1])}</option>` : `<option ${x === val ? 'selected' : ''}>${esc(x)}</option>`).join('');
   const schoolChecks = state.data.schools.filter(s => s.market === m.market).map(s => `<label class="field-check"><input type="checkbox" class="m-school" value="${esc(s.id)}" ${(m.schoolIds || []).includes(s.id) ? 'checked' : ''}> ${esc(s.display_label)} <span class="muted">${esc(fyLabel(s.openingFY))}</span></label>`).join('') || '<span class="muted">No schools in this market.</span>';
@@ -939,12 +970,15 @@ function openModal(id) {
   sel.addEventListener('change', () => { if (sel.value !== 'blocked') prior = sel.value; paintBlock(); });
   why.addEventListener('input', () => { dep.value = why.value; });
   dep.addEventListener('input', () => { why.value = dep.value; });
+  lockModalIfReadOnly();
   $('#modalBackdrop').classList.add('open');
 }
 function saveModal() {
+  if (!guardEdit()) return;
   if (modalMode === 'school') return saveSchool();
   const m = findM(modalId); if (!m) return;
   snapshotForUndo('Edit milestone: ' + (m.activity || '').slice(0, 40));
+  const current = clone(m);
   m.activity = $('#mAct').value.trim() || m.activity; m.market = $('#mMarket').value; m.state = stateOfMarket(m.market) || m.state;
   m.team = $('#mTeam').value; m.functional_area = m.team; m.workstream = $('#mWs').value.trim() || 'General';
   m.schoolIds = $$('#mSchools .m-school').filter(x => x.checked).map(x => x.value);
@@ -957,10 +991,12 @@ function saveModal() {
   syncFiscal(m);
   m.notes = $('#mNotes').value.trim(); m.keyMilestone = $('#mKey').checked; m.transition = $('#mTrans').checked;
   const os = m.schoolIds.length ? schoolById(m.schoolIds[0]) : null; if (os) m.openingFY = os.openingFY;
+  keepTeammateEdits(m, modalOpenDoc, current);
   logActivity('edit', 'Updated: ' + m.activity, { itemId: m.id });
   autosave(); closeModal(); rerender(); toast('Saved', 'ok');
 }
 function deleteModal() {
+  if (!guardEdit()) return;
   if (modalMode === 'school') return deleteSchool();
   if (!modalId) return; const m = findM(modalId), id = modalId;
   confirmDialog({ title: 'Delete this task?', message: `"${esc(m ? m.activity : 'this task')}" will be permanently removed.`, confirmLabel: 'Delete task', danger: true, onConfirm: () => { snapshotForUndo('Delete task: ' + (m ? m.activity : '')); logActivity('delete', 'Deleted: ' + (m ? m.activity : 'task')); state.data.milestones = M().filter(x => x.id !== id); autosave(); closeModal(); rerender(); toast('Task deleted', 'ok'); } });
@@ -1011,9 +1047,11 @@ function confirmDialog(opts) {
 function schoolById(id) { return state.data.schools.find(s => s.id === id); }
 function typeFromCode(code) { const m = /^([A-Za-z]+)(\d+)?/.exec(code || ''); const t = (m ? m[1] : '').toUpperCase(); return t === 'HS' ? 'HS' : t === 'ES' ? 'ES' : 'MS'; }
 function openSchoolModal(id) {
+  if (!id && !guardEdit()) return;
   modalMode = 'school'; schoolId = id; modalDirty = false;
   const isNew = !id;
-  const s = id ? schoolById(id) : { id: uid(), display_label: '', code: '', school_type: 'ES', pod_number: null, market: markets()[0], state: stateOfMarket(markets()[0]), openingFY: currentFY() + 1, openingQuarter: 'Q1', priority: false, confirmed: true, _new: true };
+  const s0 = id ? schoolById(id) : null; modalOpenDoc = s0 ? clone(s0) : null;
+  const s = s0 || { id: uid(), display_label: '', code: '', school_type: 'ES', pod_number: null, market: markets()[0], state: stateOfMarket(markets()[0]), openingFY: currentFY() + 1, openingQuarter: 'Q1', priority: false, confirmed: true, _new: true };
   $('#modalTitle').textContent = isNew ? 'Add a school opening' : `${s.market} ${s.display_label} - Milestones`;
   const opt = (arr, val) => arr.map(x => Array.isArray(x) ? `<option value="${x[0]}" ${x[0] === val ? 'selected' : ''}>${esc(x[1])}</option>` : `<option ${x === val ? 'selected' : ''}>${esc(x)}</option>`).join('');
   const sm = isNew ? [] : schoolMs(s);
@@ -1058,19 +1096,22 @@ function openSchoolModal(id) {
     </details>
     ${notesSection('school', s.id, s.noteLog)}`;
   $('#modalDelete').style.display = isNew ? 'none' : '';
+  lockModalIfReadOnly();
   $('#modalBackdrop').classList.add('open');
 }
 function shiftDateYears(iso, years) { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); if (!m) return iso; return `${Number(m[1]) + years}-${m[2]}-${m[3]}`; }
 function saveSchool() {
+  if (!guardEdit()) return;
   const isNew = !schoolById(schoolId);
   const s = isNew ? { id: schoolId || uid() } : schoolById(schoolId);
-  const old = { code: s.code, market: s.market, openingFY: s.openingFY };
+  const old = { code: s.code, market: s.market, openingFY: s.openingFY }, current = isNew ? null : clone(s);
   const label = ($('#sLabel').value.trim() || 'NEW').toUpperCase().replace(/\s+/g, '');
   s.display_label = label; s.code = label; s.school_type = $('#sType').value;
   s.pod_number = $('#sPod').value ? +$('#sPod').value : null;
   s.market = $('#sMarket').value; s.location = s.market; s.state = stateOfMarket(s.market);
   s.openingFY = +$('#sFy').value; s.fiscal_year = s.openingFY; s.openingQuarter = $('#sQ').value;
   s.opening_date = `${s.openingFY - 1}-08-01`; s.confirmed = $('#sConf').checked;
+  if (!isNew) keepTeammateEdits(s, modalOpenDoc, current);
   const shiftEl = $('#sShift');
   const shift = (old.openingFY && s.openingFY && (!shiftEl || shiftEl.checked)) ? (s.openingFY - old.openingFY) : 0;
   if (isNew) { delete s._new; state.data.schools.push(s); }
@@ -1093,6 +1134,7 @@ function saveSchool() {
   else { closeModal(); rerender(); const msg = shift ? `Opening moved ${shift > 0 ? 'back' : 'earlier'} ${Math.abs(shift)} yr - tasks shifted` : 'School saved'; toast(msg, 'ok'); }
 }
 function deleteSchool() {
+  if (!guardEdit()) return;
   const s = schoolById(schoolId); if (!s) return; const tasks = schoolMs(s), sid = s.id, mk = s.market, ofy = s.openingFY, cd = s.code;
   confirmDialog({ title: `Remove ${esc(s.display_label)}?`, message: `Remove <b>${esc(s.display_label)} (${esc(s.market)})</b> from the opening schedule.` + (tasks.length ? ` Its <b>${tasks.length} task(s)</b> will also be deleted.` : ''), confirmLabel: 'Remove school', danger: true, onConfirm: () => {
     state.data.schools = state.data.schools.filter(x => x.id !== sid);
@@ -1158,6 +1200,7 @@ function updateTplSelection() {
   if (btn) btn.disabled = checks.length === 0;
 }
 function applyTemplatesToSchool() {
+  if (!guardEdit()) return;
   const s = schoolById(schoolId); if (!s) return;
   const picked = Array.from(document.querySelectorAll('#tplPanel .tpl-check:checked')).map(c => c.dataset.tplid);
   if (!picked.length) return;
@@ -1184,6 +1227,7 @@ function applyTemplatesToSchool() {
 }
 
 function addTaskForSchool() {
+  if (!guardEdit()) return;
   const s = schoolById(schoolId); if (!s) return;
   const m = { id: uid(), state: s.state, market: s.market, team: teams()[0], functional_area: teams()[0], workstream: 'General', activity: 'New milestone', schools: [s.code], schoolIds: [s.id], targetFY: s.openingFY, targetQuarter: '', openingFY: s.openingFY, due_date: null, status: 'not_started', stage: 'to_do', progress_percent: 0, priority: s.priority ? 'high' : 'medium', owner: myOwnerName(), dependency: '', keyMilestone: false, greenlight: false, transition: false, notes: '', tags: [s.state, s.code, 'FY' + String(s.openingFY).slice(-2)] };
   M().push(m); autosave(); openModal(m.id);
@@ -1192,20 +1236,13 @@ function addTaskForSchool() {
 /* ============================================================
    SUPABASE LIVE SYNC (optional)
    ============================================================ */
-let sbPushTimer = null, sbLastPushed = new Map(), sbLastSchools = new Map(), sbLoaded = false;   // sbLoaded: never push before the shared data has loaded
+let sbPushTimer = null, sbLastPushed = new Map(), sbLastSchools = new Map(), sbLastSettings = new Map(), sbLoaded = false;   // sbLoaded: never push before the shared data has loaded
+let sbPushing = false, sbPushAgain = false, sbSettingsReady = false;
 const S = () => state.data.schools;
-const SB_TABLE = { m: 'growth_milestones', s: 'growth_schools' };
-/* Pre-filled shared project so the committee auto-connects on load (publishable key is public by design). */
+const SB_TABLE = { m: 'growth_milestones', s: 'growth_schools', settings: 'growth_settings' };
+/* Pre-filled shared project so the committee auto-connects on load (publishable key is public by design;
+   the row rules in Supabase decide who can read or change anything). */
 const SB_DEFAULT = { url: 'https://cwjmlunqfhaioyuijhkk.supabase.co', key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN3am1sdW5xZmhhaW95dWlqaGtrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjk3OTcsImV4cCI6MjEwMjc0NTc5N30.1OeHzNFoeCu7ezocqyqxvvpOinjYnnocGuwBGVbKynU' };
-const SB_SQL = `-- run once in Supabase → SQL Editor
-create table if not exists growth_milestones (id text primary key, doc jsonb not null, updated_at timestamptz default now());
-create table if not exists growth_schools    (id text primary key, doc jsonb not null, updated_at timestamptz default now());
-alter table growth_milestones enable row level security;
-alter table growth_schools    enable row level security;
-create policy "rw_m" on growth_milestones for all using (true) with check (true);
-create policy "rw_s" on growth_schools    for all using (true) with check (true);
-alter publication supabase_realtime add table growth_milestones;
-alter publication supabase_realtime add table growth_schools;`;
 // project settings to use: the built-in project wins over a stale saved copy of the same project
 function sbCfg() { const sc = sbSavedCfg(); return SB_DEFAULT.url && SB_DEFAULT.key && (!sc || !sc.url || sc.url === SB_DEFAULT.url) ? SB_DEFAULT : sc; }
 function sbSavedCfg() { try { return JSON.parse(lsGet(LS.supabase) || 'null'); } catch (e) { return null; } }
@@ -1232,131 +1269,229 @@ async function sbConnect(url, key, silent) {
     lsSet(LS.supabase, JSON.stringify({ url, key }));
     // Auth bootstrap FIRST - restores session if any, wires onAuthStateChange to load data on sign-in
     try { await bootstrapAuth(client); } catch (e) { console.warn('bootstrapAuth failed:', e); }
-    // In auth mode with no session, skip data ops - they'd fail RLS. Data loads after sign-in.
-    if (authModeOn() && !state.auth.user) {
+    // With no session, skip data ops - they'd fail the row rules. Data loads after sign-in.
+    if (!state.auth.user) {
       if (s && !silent) s.innerHTML = '<div class="status-note ok">✓ Connected. Sign in to load the board.</div>';
       renderDrawer(); return true;
     }
     // A failed data load (expired session, network blip) must not drop the client, or sign-in breaks too
     try { await sbLoadData(client); }
     catch (e) { console.error('Supabase data load failed:', e); state.sb.lastError = e.message || String(e); toast("Couldn't load the board: " + state.sb.lastError, 'err'); renderDrawer(); return true; }
-    const b = $('#saveState'); if (b) { b.textContent = 'Synced • live'; b.className = 'save-state saved'; }
-    if (s) s.innerHTML = '<div class="status-note ok">✓ Connected. Edits &amp; schools sync live to everyone on this project.</div>'; renderDrawer(); return true;
-  } catch (e) { console.error('Supabase connect failed:', e); state.sb = { connected: false, client: null, lastError: e.message || String(e) }; if (s) s.innerHTML = `<div class="status-note err">Couldn't connect: ${esc(e.message || e)}. Check URL/key and that you ran the SQL.</div>`; return false; }
+    setSaveBadge('Synced • live', 'saved');
+    if (s) s.innerHTML = '<div class="status-note ok">✓ Connected. Changes save for everyone.</div>'; renderDrawer(); return true;
+  } catch (e) { console.error('Supabase connect failed:', e); state.sb = { connected: false, client: null, lastError: e.message || String(e) }; if (s) s.innerHTML = `<div class="status-note err">Couldn't connect: ${esc(e.message || e)}. Check your internet connection and try again.</div>`; return false; }
 }
+function setSaveBadge(text, cls) { const b = $('#saveState'); if (b) { b.textContent = text; b.className = 'save-state ' + cls; } }
+
+/* ---------- shared settings (markets, teams, owners, statuses, starter templates, campaigns) ----------
+   Each group is one row in growth_settings, so everyone sees the same lists. Admins write them. */
+const SETTINGS_SECTIONS = {
+  markets: ['states', 'markets'],
+  teams: ['teams', 'functionalAreas'],
+  owners: ['owners'],
+  statuses: ['statuses', 'statusMeta', 'stages', 'priorities'],
+  templates: ['milestoneTemplates'],
+  campaigns: null   // stored at state.data.campaigns, not in meta
+};
+function settingsDocs() {
+  return Object.keys(SETTINGS_SECTIONS).map(id => {
+    const keys = SETTINGS_SECTIONS[id], doc = { id };
+    if (keys) keys.forEach(k => { if (meta()[k] !== undefined) doc[k] = meta()[k]; });
+    else doc.items = state.data.campaigns || [];
+    return JSON.parse(JSON.stringify(doc));
+  });
+}
+function applySettingsDoc(doc) {
+  if (!doc || !Object.prototype.hasOwnProperty.call(SETTINGS_SECTIONS, doc.id)) return;
+  const keys = SETTINGS_SECTIONS[doc.id];
+  if (keys) keys.forEach(k => { if (doc[k] !== undefined) meta()[k] = doc[k]; });
+  else if (Array.isArray(doc.items)) state.data.campaigns = doc.items;
+}
+
+/* ---------- field-level merge helpers ----------
+   A record is saved as only the fields this person changed, so two people editing
+   different fields of the same milestone both keep their edits. Notes (noteLog) are
+   never saved this way: they are appended on the server (growth_add_note). */
+const jeq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const clone = o => JSON.parse(JSON.stringify(o));
+function fieldDiff(base, next) {
+  const set = {}, unset = [];
+  Object.keys(next).forEach(k => { if (k !== 'noteLog' && !jeq(next[k], base[k])) set[k] = next[k]; });
+  Object.keys(base).forEach(k => { if (k !== 'noteLog' && !(k in next)) unset.push(k); });
+  return { set, unset };
+}
+// Bring a newer server copy into our record without losing our own unsaved changes:
+// fields we have not changed since `base` take the incoming value; fields we changed stay ours.
+function mergeIncoming(local, base, incoming) {
+  new Set([...Object.keys(local), ...Object.keys(incoming)]).forEach(k => {
+    if (k === 'noteLog' || jeq(local[k], base ? base[k] : undefined)) { if (k in incoming) local[k] = incoming[k]; else delete local[k]; }
+  });
+  return local;
+}
+// Keep a teammate's change in every undo snapshot, so Undo only reverses this person's own edits.
+function applyRemoteToUndo(kind, id, base, doc) {
+  if (typeof undoStack === 'undefined') return;
+  undoStack.forEach(en => {
+    const arr = en.snapshot && en.snapshot[kind]; if (!arr) return;
+    const i = arr.findIndex(x => x.id === id);
+    if (!doc) { if (i >= 0) arr.splice(i, 1); return; }
+    if (i < 0) { if (!base) arr.push(clone(doc)); return; }   // added by a teammate: keep it after undo
+    const keys = base ? Object.keys({ ...base, ...doc }).filter(k => !jeq(base[k], doc[k])) : Object.keys(doc);
+    keys.forEach(k => { if (k in doc) arr[i][k] = clone(doc[k]); else delete arr[i][k]; });
+  });
+}
+
 async function sbLoadData(client) {
   // milestones
   const rm = await client.from(SB_TABLE.m).select('id,doc'); if (rm.error) throw rm.error;
   if (rm.data && rm.data.length) state.data.milestones = rm.data.map(r => r.doc).filter(Boolean).map(syncFiscal);
-  else { const r = await client.from(SB_TABLE.m).upsert(M().map(m => ({ id: m.id, doc: m, updated_at: new Date().toISOString() }))); if (r.error) throw r.error; }
+  else if (canEdit()) { const r = await client.from(SB_TABLE.m).upsert(M().map(m => ({ id: m.id, doc: m, updated_at: new Date().toISOString() }))); if (r.error) throw r.error; }
   sbLastPushed = new Map(M().map(m => [m.id, JSON.stringify(m)]));
   // schools
   const rs = await client.from(SB_TABLE.s).select('id,doc'); if (rs.error) throw rs.error;
   if (rs.data && rs.data.length) state.data.schools = rs.data.map(r => r.doc).filter(Boolean);
-  else { const r = await client.from(SB_TABLE.s).upsert(S().map(x => ({ id: x.id, doc: x, updated_at: new Date().toISOString() }))); if (r.error) throw r.error; }
+  else if (canEdit()) { const r = await client.from(SB_TABLE.s).upsert(S().map(x => ({ id: x.id, doc: x, updated_at: new Date().toISOString() }))); if (r.error) throw r.error; }
   sbLastSchools = new Map(S().map(x => [x.id, JSON.stringify(x)]));
+  // shared settings (an admin's first sign-in after setup seeds any missing groups from their copy)
+  const rset = await client.from(SB_TABLE.settings).select('id,doc');
+  if (rset.error) { sbSettingsReady = false; console.warn('Shared settings unavailable - run supabase-team-sync.sql:', rset.error); }
+  else { sbSettingsReady = true; (rset.data || []).forEach(r => applySettingsDoc(r.doc)); sbLastSettings = new Map((rset.data || []).map(r => [r.id, JSON.stringify(r.doc)])); }
   sbLoaded = true;
   if (!client._ngcChannels) {
     client.channel('gm_rt').on('postgres_changes', { event: '*', schema: 'public', table: SB_TABLE.m }, sbOnRemote).subscribe();
     client.channel('gs_rt').on('postgres_changes', { event: '*', schema: 'public', table: SB_TABLE.s }, sbOnRemote).subscribe();
+    client.channel('gset_rt').on('postgres_changes', { event: '*', schema: 'public', table: SB_TABLE.settings }, sbOnRemote).subscribe();
     client._ngcChannels = true;
   }
-  autosaveWriteLocal(); rerender();
-  // Load the team-wide audit feed (account mode) so Team activity shows everyone's changes.
+  autosaveWriteLocal(); rerender(); applyRoleUI();
+  if (sbSettingsReady && isAdmin() && settingsDocs().some(d => !sbLastSettings.has(d.id))) sbPushDebounced();
+  // Load the team-wide audit feed so Team activity shows everyone's changes.
   refreshActivityViews();
 }
-function sbDisconnect() { try { if (state.sb.client) state.sb.client.removeAllChannels(); } catch (e) {} state.sb = { connected: false, client: null }; lsDel(LS.supabase); renderDrawer(); toast('Disconnected', 'ok'); }
+function quietRerender() { if (!$('#popover') && !$('#modalBackdrop').classList.contains('open')) rerender(); }
 function sbOnRemote(p) {
   try {
-    const isSchool = p.table === SB_TABLE.s;
+    if (p.table === SB_TABLE.settings) {
+      const doc = p.new && p.new.doc; if (!doc) return; const j = JSON.stringify(doc);
+      if (sbLastSettings.get(doc.id) === j) return;
+      sbLastSettings.set(doc.id, j); applySettingsDoc(doc); autosaveWriteLocal(); quietRerender();
+      if ($('#drawer').classList.contains('open') && !$('#drawer').contains(document.activeElement)) renderDrawer();
+      return;
+    }
+    const isSchool = p.table === SB_TABLE.s, kind = isSchool ? 'schools' : 'milestones';
     const arr = isSchool ? S() : M(), last = isSchool ? sbLastSchools : sbLastPushed;
-    if (p.eventType === 'DELETE') { const id = p.old && p.old.id; if (id) { const na = arr.filter(x => x.id !== id); if (isSchool) state.data.schools = na; else state.data.milestones = na; last.delete(id); } }
-    else { const doc = p.new && p.new.doc; if (!doc) return; const j = JSON.stringify(doc); if (last.get(doc.id) === j) return; const i = arr.findIndex(x => x.id === doc.id); if (i >= 0) arr[i] = doc; else arr.push(doc); last.set(doc.id, j); }
-    autosaveWriteLocal(); if (!$('#popover') && !$('#modalBackdrop').classList.contains('open')) rerender();
+    if (p.eventType === 'DELETE') {
+      const id = p.old && p.old.id; if (!id) return;
+      const na = arr.filter(x => x.id !== id); if (isSchool) state.data.schools = na; else state.data.milestones = na;
+      last.delete(id); applyRemoteToUndo(kind, id, null, null);
+    } else {
+      const doc = p.new && p.new.doc; if (!doc) return; const j = JSON.stringify(doc); if (last.get(doc.id) === j) return;
+      const base = last.has(doc.id) ? JSON.parse(last.get(doc.id)) : null;
+      const i = arr.findIndex(x => x.id === doc.id);
+      if (i >= 0 && base) mergeIncoming(arr[i], base, doc); else if (i >= 0) arr[i] = doc; else arr.push(doc);
+      applyRemoteToUndo(kind, doc.id, base, doc);
+      last.set(doc.id, j);
+    }
+    autosaveWriteLocal(); quietRerender();
     // A teammate changed data - pull the fresh audit so Team activity reflects who did it.
-    if (authModeOn()) sbFetchAudit(50).then(() => { renderActivityPanel(); if (state.view === 'progress' && !$('#modalBackdrop').classList.contains('open')) refreshBody(); });
+    sbFetchAudit(50).then(() => { renderActivityPanel(); if (state.view === 'progress' && !$('#modalBackdrop').classList.contains('open')) refreshBody(); });
   } catch (e) { console.error(e); }
 }
-async function sbPushTable(client, table, list, last) {
-  const cur = new Map(list.map(x => [x.id, JSON.stringify(x)])); const ups = [];
-  cur.forEach((j, id) => { if (last.get(id) !== j) ups.push({ id, doc: JSON.parse(j), updated_at: new Date().toISOString() }); });
-  const dels = []; last.forEach((_v, id) => { if (!cur.has(id)) dels.push(id); });
-  if (ups.length) { const r = await client.from(table).upsert(ups); if (r.error) throw r.error; }
-  if (dels.length) { const r = await client.from(table).delete().in('id', dels); if (r.error) throw r.error; }
-  return cur;
+// Saves only what changed since the last server copy. New records are inserted whole; changed
+// records send just their changed fields; records this person removed are deleted.
+async function sbPushTable(client, table, list, last, allowDelete) {
+  const ops = [];
+  list.forEach(x => {
+    const j = JSON.stringify(x), b = last.get(x.id);
+    if (b === j) return;
+    if (b === undefined) return ops.push({ x, sent: JSON.parse(j), set: JSON.parse(j), unset: [] });
+    const d = fieldDiff(JSON.parse(b), x);
+    if (Object.keys(d.set).length || d.unset.length) ops.push({ x, sent: JSON.parse(j), set: d.set, unset: d.unset });
+  });
+  const results = await Promise.all(ops.map(op => client.rpc('growth_patch', { p_table: table, p_id: op.x.id, p_set: op.set, p_unset: op.unset })));
+  results.forEach((r, i) => {
+    if (r.error) throw r.error;
+    const doc = r.data, op = ops[i]; if (!doc) return;
+    last.set(op.x.id, JSON.stringify(doc));
+    mergeIncoming(op.x, op.sent, doc);   // pick up teammates' fields the server already had
+  });
+  if (allowDelete) {
+    const ids = new Set(list.map(x => x.id)), dels = [];
+    last.forEach((_v, id) => { if (!ids.has(id)) dels.push(id); });
+    if (dels.length) { const r = await client.from(table).delete().in('id', dels); if (r.error) throw r.error; dels.forEach(id => last.delete(id)); }
+  }
+}
+function syncErrorText(e) {
+  const msg = (e && (e.message || e.details)) || String(e);
+  if (e && (e.code === 'PGRST202' || /growth_patch|growth_add_note/.test(msg))) return 'the database needs the team-sync update (supabase-team-sync.sql)';
+  if (e && (e.code === '42501' || /row-level security|permission/i.test(msg))) return 'your account does not have permission to make that change';
+  return msg;
 }
 async function sbPush() {
-  if (!(state.sb && state.sb.connected) || !sbLoaded || (authModeOn() && !state.auth.user)) return; const client = state.sb.client;
-  try { sbLastPushed = await sbPushTable(client, SB_TABLE.m, M(), sbLastPushed); sbLastSchools = await sbPushTable(client, SB_TABLE.s, S(), sbLastSchools); }
-  catch (e) { console.error(e); const b = $('#saveState'); if (b) { b.textContent = 'Saved locally · sync error'; b.className = 'save-state err'; } }
+  if (!(state.sb && state.sb.connected) || !sbLoaded || !state.auth.user) return;
+  const client = state.sb.client;
+  if (!canEdit()) return sbDiscardLocal(client);
+  if (sbPushing) { sbPushAgain = true; return; }
+  sbPushing = true;
+  try {
+    await sbPushTable(client, SB_TABLE.m, M(), sbLastPushed, true);
+    await sbPushTable(client, SB_TABLE.s, S(), sbLastSchools, true);
+    if (sbSettingsReady && isAdmin()) await sbPushTable(client, SB_TABLE.settings, settingsDocs(), sbLastSettings, false);
+    autosaveWriteLocal();
+    setSaveBadge('Synced • live', 'saved');
+  } catch (e) {
+    console.error(e); setSaveBadge('Saved locally · sync error', 'err');
+    toast("Couldn't save to the shared board: " + syncErrorText(e), 'err');
+  } finally {
+    sbPushing = false;
+    if (sbPushAgain) { sbPushAgain = false; sbPushDebounced(); }
+  }
+}
+// View-only accounts never write. If anything changed on this screen, reload the shared copy.
+async function sbDiscardLocal(client) {
+  const dirty = M().some(m => sbLastPushed.get(m.id) !== JSON.stringify(m)) || S().some(s => sbLastSchools.get(s.id) !== JSON.stringify(s)) || M().length !== sbLastPushed.size || S().length !== sbLastSchools.size;
+  if (!dirty) return;
+  toast('You have view-only access, so that change was not saved.', 'err');
+  try { await sbLoadData(client); setSaveBadge('View only', 'saved'); } catch (e) { console.error(e); }
 }
 function sbPushDebounced() { clearTimeout(sbPushTimer); sbPushTimer = setTimeout(sbPush, 400); }
+// Send any pending edits now (used before posting a note on a just-created record).
+async function sbFlush() { clearTimeout(sbPushTimer); if (sbPushing) { await new Promise(r => setTimeout(r, 300)); } await sbPush(); }
 
 /* ---------- drawer / export ---------- */
-function ghConfig() { try { return JSON.parse(lsGet(LS.gh) || '{}'); } catch (e) { return {}; } }
 function renderDrawer() {
-  const cfg = ghConfig(), sc = sbSavedCfg() || SB_DEFAULT, connected = state.sb && state.sb.connected;
+  const connected = state.sb && state.sb.connected && sbLoaded, admin = isAdmin(), p = currentProfile();
+  let n = 0; const num = () => `<span class="dw-num">${++n}</span>`;
+  const who = p ? (p.full_name || p.email) : (state.auth.user ? state.auth.user.email : '');
   $('#drawerBody').innerHTML = `
-    <p class="dw-intro">Every change saves automatically on this device. To share <b>one live board</b> with the whole committee, connect Supabase once below.</p>
-
     <section class="dw-sec">
-      <div class="dw-h"><span class="dw-num">1</span><h4>Share with the Committee</h4></div>
-      ${connected ? `<div class="status-note ok">● Live - everyone connected to <span class="mono">${esc((sc.url || '').replace(/^https?:\/\//, ''))}</span> shares this board.</div><div class="dw-btns"><button class="btn btn-tonal" id="sbDisconnect">Disconnect</button></div>`
-      : `<p class="dw-help">Paste your Supabase <b>Project URL</b> and <b>anon public key</b> (Supabase → Project Settings → API). First time only: open <b>SQL setup</b> and run it once in Supabase.</p>
-         <div class="field"><label>Project URL</label><input id="sbUrl" class="mono" placeholder="https://xxxx.supabase.co" value="${esc(sc.url || '')}"></div>
-         <div class="field"><label>Anon public key</label><input id="sbKey" type="password" class="mono" value="${esc(sc.key || '')}"></div>
-         <div class="dw-btns"><button class="btn btn-filled" id="sbConnect">Connect &amp; go live</button><button class="btn btn-text" id="sbShowSql">SQL setup</button></div>
-         <pre class="sql-box hide" id="sbSqlBox">${esc(SB_SQL)}</pre>`}
+      <div class="dw-h">${num()}<h4>Your account</h4></div>
+      ${who ? `<div class="status-note ok">Signed in as <b>${esc(who)}</b> · role: <b>${esc(currentRole() || 'viewer')}</b></div>` : ''}
+      <p class="dw-help">${connected ? 'Connected to the shared board. Changes save for everyone.' : 'Not connected to the shared board right now. Changes on this screen will not reach your team.'}</p>
+      ${canEdit() ? '' : '<p class="dw-help">You have view-only access. Ask an admin to make you an editor.</p>'}
+      ${connected ? '' : '<div class="dw-btns"><button class="btn btn-filled" id="sbReconnect">Reconnect</button></div>'}
       <div id="sbStatus"></div>
-      <details class="dw-adv"><summary>No Supabase? Publish via GitHub instead</summary>
-        <div class="field"><label>Repository (owner/repo)</label><input id="ghRepo" class="mono" placeholder="kippnj/ngc-tracker" value="${esc(cfg.repo || '')}"></div>
-        <div class="field-row"><div class="field"><label>Branch</label><input id="ghBranch" class="mono" value="${esc(cfg.branch || 'main')}"></div><div class="field"><label>Token</label><input id="ghToken" type="password" class="mono" value="${esc(cfg.token || '')}"></div></div>
-        <div class="dw-btns"><button class="btn btn-filled" id="ghSave">Commit</button></div><div id="ghStatus"></div>
-      </details>
     </section>
 
-    <section class="dw-sec">
-      <div class="dw-h"><span class="dw-num">2</span><h4>Access &amp; Accounts</h4></div>
-      <div class="auth-mode-block">
-        <label class="field-check"><input type="radio" name="authMode" value="password" ${!authModeOn() ? 'checked' : ''}> <b>Shared password</b> <span class="muted">- one password for the whole team (legacy)</span></label>
-        <label class="field-check"><input type="radio" name="authMode" value="supabase" ${authModeOn() ? 'checked' : ''}> <b>Individual accounts</b> <span class="muted">- each person signs in; edits are attributed. Requires Supabase configured with saved URL/key.</span></label>
-        ${authModeOn() && state.auth.user ? `<div class="status-note ok" style="margin-top:8px">Signed in as <b>${esc(state.auth.profile ? state.auth.profile.full_name || state.auth.profile.email : state.auth.user.email)}</b> · role: <b>${esc(currentRole() || 'viewer')}</b></div>` : ''}
-      </div>
-      <div class="dw-divider"></div>
-      <div class="dw-sublabel">Shared password (used when Individual accounts is off)</div>
-      <label class="field-check"><input type="checkbox" id="gateEnable" ${gateOn() ? 'checked' : ''}> Require a shared password to open the board</label>
-      <div class="field" style="margin-top:10px"><label>Change the password</label><input id="gateNew" type="text" autocomplete="off" placeholder="Leave blank to keep the current one"></div>
-      <div class="dw-btns"><button class="btn btn-filled" id="gateSave">Save</button><button class="btn btn-text" id="gateLock">Lock &amp; sign out</button></div>
-      <div id="gateStatus"></div>
-      <p class="dw-help">After changing it, Connect (or Commit) so everyone gets the new password. A light gate to keep casual visitors out - not strong security.</p>
-      <div class="dw-divider"></div>
-      <div class="dw-sublabel">Admin lock - protects this Settings panel</div>
-      <label class="field-check"><input type="checkbox" id="adminEnable" ${adminOn() ? 'checked' : ''}> Require an admin password to open Settings (only you)</label>
-      <div class="field" style="margin-top:10px"><label>Change the admin password</label><input id="adminNew" type="text" autocomplete="off" placeholder="Leave blank to keep the current one"></div>
-      <div class="dw-btns"><button class="btn btn-filled" id="adminSave">Save admin password</button></div>
-      <div id="adminStatus"></div>
-      <p class="dw-help">This one is just for you - teammates use the board password above but can't open Settings without this.</p>
-    </section>
-
-    <details class="dw-sec dw-fold"><summary><span class="dw-num">3</span>Customize Markets, Teams &amp; Owners</summary>
-      <p class="dw-help">Anything in use can't be deleted until its items are reassigned.</p>
+    ${admin ? `<details class="dw-sec dw-fold"><summary>${num()}Customize Markets, Teams &amp; Owners</summary>
+      <p class="dw-help">These lists are shared with everyone. Anything in use can't be deleted until its items are reassigned.</p>
+      ${sbSettingsReady ? '' : '<div class="status-note warn">Shared settings are not set up yet. Run supabase-team-sync.sql in Supabase, then reload. Until then, changes here stay on this device.</div>'}
       ${czSection('State', 'markets', statesMeta().flatMap(s => s.markets.map(mk => ({ mk, st: s.code }))))}
       ${czSection('Team', 'teams', teams().map(t => ({ mk: t })))}
       ${czOwners()}
     </details>
 
-    <details class="dw-sec dw-fold"><summary><span class="dw-num">4</span>Manage School Openings</summary>
-      
+    <details class="dw-sec dw-fold"><summary>${num()}Manage School Openings</summary>
       ${schoolsPanel()}
       <div class="ms-bulk">
         <div class="ms-bulk-warn">Bulk delete removes every school opening <b>and</b> every milestone tied to those schools. Milestones with no school attached remain untouched.</div>
         <button class="btn btn-danger-solid" id="msDeleteAll" ${state.data.schools.length ? '' : 'disabled'}>Delete ALL school openings</button>
       </div>
-    </details>
+    </details>` : ''}
 
-    <details class="dw-sec dw-fold"><summary><span class="dw-num">5</span>Back Up &amp; Restore Data</summary>
-      
-      <div class="dw-btns"><button class="btn" id="expBtn">Export data.json</button><button class="btn" id="impBtn">Import</button><input type="file" id="impFile" accept="application/json" class="hide"></div>
+    <details class="dw-sec dw-fold"><summary>${num()}Back Up${admin ? ' &amp; Restore' : ''} Data</summary>
+      <p class="dw-help">${admin ? 'Export saves a copy of the board. Import adds and updates milestones and schools from a file; it never deletes anything.' : 'Export saves a copy of the board to your computer.'}</p>
+      <div class="dw-btns"><button class="btn" id="expBtn">Export data.json</button>${admin ? '<button class="btn" id="impBtn">Import</button><input type="file" id="impFile" accept="application/json" class="hide">' : ''}</div>
     </details>
 
     <div class="dw-about">Network Growth Hub · ${M().length} milestones · ${state.data.schools.length} schools · v${meta().version || 1}</div>`;
@@ -1379,6 +1514,7 @@ function schoolsPanel() {
   return `<div class="ms-list">${rows}</div>`;
 }
 function bulkDeleteAllSchools() {
+  if (!guardAdmin()) return;
   const n = state.data.schools.length;
   const nTasks = M().filter(m => (m.schoolIds || []).length).length;
   if (!n) return;
@@ -1424,6 +1560,7 @@ function czOwners() {
 }
 function czInUse(type, val) { return type === 'markets' ? M().filter(m => m.market === val).length + state.data.schools.filter(s => s.market === val).length : M().filter(m => m.functional_area === val).length; }
 function czRename(type, oldV, newV) {
+  if (!guardAdmin()) return;
   newV = newV.trim(); if (!newV || newV === oldV) return;
   if (type === 'markets') {
     if (markets().includes(newV)) return toast('That market already exists', 'err');
@@ -1442,6 +1579,7 @@ function czRename(type, oldV, newV) {
   autosave(); rerender(); renderDrawer();
 }
 function czRemove(type, val) {
+  if (!guardAdmin()) return;
   const n = type === 'owner' ? 0 : czInUse(type, val);
   if (n) return toast(`${val} is used by ${n} item(s) - reassign them first`, 'err');
   confirmDialog({ title: `Remove "${esc(val)}"?`, message: `This removes the ${type === 'markets' ? 'market' : type === 'teams' ? 'team' : 'person'} from your lists.`, confirmLabel: 'Remove', danger: true, onConfirm: () => {
@@ -1452,6 +1590,7 @@ function czRemove(type, val) {
   } });
 }
 function czAdd(type) {
+  if (!guardAdmin()) return;
   const v = ($('#czNew-' + type) || {}).value ? $('#czNew-' + type).value.trim() : '';
   if (!v) return;
   if (type === 'markets') { if (markets().includes(v)) return toast('Already exists', 'err'); const st = $('#czNewState').value; markets().push(v); const s = statesMeta().find(x => x.code === st); if (s) s.markets.push(v); }
@@ -1459,20 +1598,31 @@ function czAdd(type) {
   else if (type === 'owner') { (meta().owners = meta().owners || []).push({ name: v, role: ($('#czNewRole') || {}).value || '' }); }
   autosave(); rerender(); renderDrawer();
 }
-async function commitToGitHub() {
-  const repo = $('#ghRepo').value.trim(), branch = $('#ghBranch').value.trim() || 'main', token = $('#ghToken').value.trim(), st = $('#ghStatus');
-  lsSet(LS.gh, JSON.stringify({ repo, branch, token }));
-  if (!repo || !token) { st.innerHTML = '<div class="status-note err">Enter repo and token.</div>'; return; }
-  const [owner, name] = repo.split('/'); const api = `https://api.github.com/repos/${owner}/${name}/contents/data.json`; const h = { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' };
-  st.innerHTML = '<div class="status-note warn">Committing…</div>';
-  try { let sha = null; const c = await fetch(`${api}?ref=${branch}`, { headers: h }); if (c.ok) sha = (await c.json()).sha; else if (c.status !== 404) throw new Error('Read ' + c.status);
-    const content = btoa(unescape(encodeURIComponent(JSON.stringify(state.data, null, 2))));
-    const r = await fetch(api, { method: 'PUT', headers: h, body: JSON.stringify({ message: 'Update tracker data', content, branch, sha }) }); if (!r.ok) throw new Error((await r.json()).message || r.status);
-    st.innerHTML = '<div class="status-note ok">✓ Committed.</div>'; toast('Committed', 'ok');
-  } catch (e) { st.innerHTML = `<div class="status-note err">${esc(e.message)}</div>`; }
-}
 function exportJson() { const b = new Blob([JSON.stringify(state.data, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'data.json'; a.click(); URL.revokeObjectURL(a.href); toast('Exported', 'ok'); }
-function importJson(file) { const r = new FileReader(); r.onload = () => { try { const d = JSON.parse(r.result); if (!d.milestones) throw 0; state.data = d; autosave(); rerender(); renderDrawer(); toast('Imported', 'ok'); } catch (e) { toast('Invalid file', 'err'); } }; r.readAsText(file); }
+// Admin only. Adds and updates records from a backup file; never deletes anything, so
+// teammates' newer work stays. Shared settings in the file are not changed.
+function importJson(file) {
+  if (!guardAdmin()) return;
+  const r = new FileReader();
+  r.onload = () => {
+    let d; try { d = JSON.parse(r.result); if (!Array.isArray(d.milestones)) throw 0; } catch (e) { return toast('That file is not a Growth Hub export.', 'err'); }
+    const ms = d.milestones.filter(x => x && x.id), ss = (Array.isArray(d.schools) ? d.schools : []).filter(x => x && x.id);
+    const newM = ms.filter(x => !findM(x.id)).length, newS = ss.filter(x => !schoolById(x.id)).length;
+    confirmDialog({
+      title: 'Import this file?',
+      message: `Adds <b>${newM}</b> and updates <b>${ms.length - newM}</b> milestones. Adds <b>${newS}</b> and updates <b>${ss.length - newS}</b> schools. Nothing else on the board is deleted or changed.`,
+      confirmLabel: 'Import',
+      onConfirm: () => {
+        snapshotForUndo('Import from file');
+        const put = (arr, x) => { const i = arr.findIndex(y => y.id === x.id); if (i >= 0) arr[i] = x; else arr.push(x); };
+        ms.forEach(x => put(M(), syncFiscal(x))); ss.forEach(x => put(S(), x));
+        logActivity('edit', `Imported ${ms.length} milestones and ${ss.length} schools`);
+        autosave(); rerender(); renderDrawer(); toast('Imported', 'ok');
+      }
+    });
+  };
+  r.readAsText(file);
+}
 
 /* ---------- toast / theme / nav ---------- */
 function toast(msg, kind) { const w = $('#toastWrap'), t = document.createElement('div'); t.className = 'toast' + (kind ? ' ' + kind : ''); t.textContent = msg; w.appendChild(t); setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 300); }, 2400); }
@@ -1512,7 +1662,6 @@ function wireEvents() {
   const nt = $('#navToggle'); if (nt) nt.addEventListener('click', () => { const on = document.body.classList.toggle('nav-collapsed'); lsSet('ngc_nav', on ? '1' : '0'); nt.title = on ? 'Expand menu' : 'Collapse menu'; const lbl = nt.querySelector('.nav-util-lbl'); if (lbl) lbl.textContent = on ? 'Expand' : 'Collapse'; });
   const showDrawer = () => { renderDrawer(); $('#drawer').classList.add('open'); $('#drawerBackdrop').classList.add('open'); };
   const openDrawer = () => {
-    if (adminOn() && !state.adminUnlocked) return promptPassword({ title: 'Admin settings', message: 'Enter the settings password.', verify: v => pwHash(v) === String(meta().adminHash), onOk: () => { state.adminUnlocked = true; showDrawer(); } });
     showDrawer();
   };
   const closeDrawer = () => { $('#drawer').classList.remove('open'); $('#drawerBackdrop').classList.remove('open'); };
@@ -1542,11 +1691,11 @@ function wireEvents() {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) rerender(); });
   setInterval(() => { const t = new Date().toDateString(); if (t !== _day) { _day = t; rerender(); } }, 60000);
 
-  document.addEventListener('dragstart', e => { const c = e.target.closest('.kcard'); if (c) { e.dataTransfer.setData('text/plain', c.dataset.id); c.classList.add('dragging'); } });
+  document.addEventListener('dragstart', e => { const c = e.target.closest('.kcard'); if (c && !canEdit()) { e.preventDefault(); return; } if (c) { e.dataTransfer.setData('text/plain', c.dataset.id); c.classList.add('dragging'); } });
   document.addEventListener('dragend', e => { const c = e.target.closest('.kcard'); if (c) c.classList.remove('dragging'); $$('.kcol-body.over').forEach(b => b.classList.remove('over')); });
   document.addEventListener('dragover', e => { const b = e.target.closest('.kcol-body'); if (b) { e.preventDefault(); b.classList.add('over'); } });
   document.addEventListener('dragleave', e => { const b = e.target.closest('.kcol-body'); if (b && !b.contains(e.relatedTarget)) b.classList.remove('over'); });
-  document.addEventListener('drop', e => { const b = e.target.closest('.kcol-body'); if (b) { e.preventDefault(); b.classList.remove('over'); const m = findM(e.dataTransfer.getData('text/plain')); if (m && m.stage !== b.dataset.kstage) { snapshotForUndo('Move task: ' + (m.activity || '').slice(0, 30)); logActivity('move', `Moved "${m.activity}" to ${b.dataset.kstage}`, { itemId: m.id }); m.stage = b.dataset.kstage; if (m.stage === 'complete') { m.status = 'complete'; m.progress_percent = 100; } autosave(); refreshResults(); } } });
+  document.addEventListener('drop', e => { const b = e.target.closest('.kcol-body'); if (b) { e.preventDefault(); b.classList.remove('over'); const m = findM(e.dataTransfer.getData('text/plain')); if (m && m.stage !== b.dataset.kstage && guardEdit()) { snapshotForUndo('Move task: ' + (m.activity || '').slice(0, 30)); logActivity('move', `Moved "${m.activity}" to ${b.dataset.kstage}`, { itemId: m.id }); m.stage = b.dataset.kstage; if (m.stage === 'complete') { m.status = 'complete'; m.progress_percent = 100; } autosave(); refreshResults(); } } });
 
   $('.container').addEventListener('click', e => {
     const fm = e.target.closest('.fb-menu'); if (fm) return openFilterMenu(fm, fm.dataset.fmenu);
@@ -1565,7 +1714,7 @@ function wireEvents() {
     const gv = e.target.closest('[data-goview]'); if (gv) { window.scrollTo({ top: 0, behavior: 'smooth' }); return setView(gv.dataset.goview); }
     if (e.target.closest('[data-activityall]')) return toggleActivity();
     const as = e.target.closest('[data-addstage]'); if (as) return addItem(as.dataset.addstage);
-    const cp = e.target.closest('[data-complete]'); if (cp) { const m = findM(cp.dataset.complete); if (m) { snapshotForUndo('Complete: ' + (m.activity || '').slice(0, 30)); m.status = 'complete'; m.progress_percent = 100; m.stage = 'complete'; logActivity('status', `Completed "${m.activity}"`, { itemId: m.id }); autosave(); rerender(); toast('Marked complete', 'ok'); } return; }
+    const cp = e.target.closest('[data-complete]'); if (cp) { if (!guardEdit()) { e.preventDefault(); return; } const m = findM(cp.dataset.complete); if (m) { snapshotForUndo('Complete: ' + (m.activity || '').slice(0, 30)); m.status = 'complete'; m.progress_percent = 100; m.stage = 'complete'; logActivity('status', `Completed "${m.activity}"`, { itemId: m.id }); autosave(); rerender(); toast('Marked complete', 'ok'); } return; }
     const sm = e.target.closest('[data-showmore]'); if (sm) { const p = sm.dataset.showmore; if (p === 'focus') state.planFocus = true; else { state.planGroup = p; state.planFocus = false; } return setView('plan'); }
     const tg = e.target.closest('[data-toggle]'); if (tg) { const k = tg.dataset.toggle; state.expanded[k] = !state.expanded[k]; return refreshBody(); }
     const ex = e.target.closest('[data-expand]'); if (ex) return openModal(ex.dataset.expand);
@@ -1598,13 +1747,11 @@ function wireEvents() {
   });
 
   $('#drawerBody').addEventListener('click', e => {
-    if (e.target.id === 'sbConnect') { const u = $('#sbUrl').value.trim(), k = $('#sbKey').value.trim(); if (!u || !k) $('#sbStatus').innerHTML = '<div class="status-note err">Enter URL and key.</div>'; else sbConnect(u, k); }
-    else if (e.target.id === 'sbDisconnect') sbDisconnect(); else if (e.target.id === 'sbShowSql') $('#sbSqlBox').classList.toggle('hide');
-    else if (e.target.id === 'ghSave') commitToGitHub(); else if (e.target.id === 'expBtn') exportJson(); else if (e.target.id === 'impBtn') $('#impFile').click();
-    else if (e.target.id === 'gateSave') return saveGateSettings();
-    else if (e.target.id === 'adminSave') return saveAdminSettings();
-    else if (e.target.id === 'gateLock') return lockNow();
-    else if (e.target.id === 'msDeleteAll') return bulkDeleteAllSchools();
+    if (e.target.id === 'sbReconnect') { const sc = sbCfg(); if (sc && sc.url && sc.key) sbConnect(sc.url, sc.key); return; }
+    if (e.target.id === 'expBtn') return exportJson();
+    if (e.target.id === 'impBtn') { if (guardAdmin()) $('#impFile').click(); return; }
+    if ((e.target.id === 'msDeleteAll' || e.target.closest('[data-msdel], [data-czadd], .cz-del')) && !guardAdmin()) return;
+    if (e.target.id === 'msDeleteAll') return bulkDeleteAllSchools();
     const msE = e.target.closest('[data-msedit]'); if (msE) { $('#drawer').classList.remove('open'); $('#drawerBackdrop').classList.remove('open'); return openSchoolModal(msE.dataset.msedit); }
     const msD = e.target.closest('[data-msdel]'); if (msD) { const sid = msD.dataset.msdel; const s = schoolById(sid); if (!s) return; const tasks = schoolMs(s); confirmDialog({ title: `Remove ${esc(s.display_label)}?`, message: `Remove <b>${esc(s.display_label)} (${esc(s.market)})</b>` + (tasks.length ? ` and its <b>${tasks.length} task${tasks.length === 1 ? '' : 's'}</b>` : '') + ' from the schedule.', confirmLabel: 'Remove school', danger: true, onConfirm: () => { snapshotForUndo('Remove school: ' + s.display_label); const cd = s.code; state.data.schools = state.data.schools.filter(x => x.id !== sid); state.data.milestones = M().filter(m => { if (!(m.schoolIds || []).includes(sid)) return true; m.schoolIds = m.schoolIds.filter(id => id !== sid); m.schools = (m.schools || []).filter(c => c !== cd); return m.schoolIds.length > 0; }); autosave(); rerender(); renderDrawer(); toast('School removed', 'ok'); } }); return; }
     const cza = e.target.closest('[data-czadd]'); if (cza) return czAdd(cza.dataset.czadd);
@@ -1612,27 +1759,34 @@ function wireEvents() {
   });
   $('#drawerBody').addEventListener('change', e => {
     if (e.target.id === 'impFile' && e.target.files[0]) return importJson(e.target.files[0]);
-    if (e.target.name === 'authMode') { meta().authMode = e.target.value; autosave(); renderDrawer(); toast(e.target.value === 'supabase' ? 'Account mode ON - sign in required next load' : 'Shared-password mode restored', 'ok'); return; }
+    if (e.target.closest('.cz-row, .cz-add') && !guardAdmin()) return renderDrawer();
     if (e.target.classList.contains('cz-name')) return czRename(e.target.dataset.cztype, e.target.dataset.czold, e.target.value);
     if (e.target.classList.contains('cz-state')) { const mk = e.target.dataset.czmarket, to = e.target.value; statesMeta().forEach(s => s.markets = s.markets.filter(x => x !== mk)); const s = statesMeta().find(x => x.code === to); if (s && !s.markets.includes(mk)) s.markets.push(mk); M().forEach(m => { if (m.market === mk) m.state = to; }); state.data.schools.forEach(x => { if (x.market === mk) x.state = to; }); autosave(); rerender(); renderDrawer(); return; }
     if (e.target.classList.contains('cz-role')) { const o = (meta().owners || []).find(x => x.name === e.target.dataset.czowner); if (o) { o.role = e.target.value; autosave(); } return; }
   });
 }
 
-/* ---------- shared access gate ----------
-   A lightweight shared password to keep casual visitors out of the committee board.
-   NOTE: this is client-side only - it deters, it does not encrypt. Anyone technical can
-   read past it by viewing source. For real access control, use Supabase Auth. */
 /* ============================================================
-   SUPABASE AUTH - Phase 1
-   Real accounts, session persistence, attribution via DB triggers.
-   Toggled by meta.authMode:  'password' (legacy shared gate) | 'supabase' (auth)
+   ACCOUNTS (Supabase Auth)
+   Everyone signs in with their own invited account. Roles live in the profiles table.
+   The database's row rules enforce them; the app hides edit controls to match.
    ============================================================ */
-function authModeOn() { return meta().authMode === 'supabase'; }
+// Read once at load, before the auth library clears an invite or reset link from the address bar.
+const AUTH_LINK = (() => {
+  const h = (location.hash || '') + '&' + (location.search || '');
+  const t = /[#&?]type=(recovery|invite)\b/.exec(h), er = /error_description=([^&]+)/.exec(h);
+  return { type: t ? t[1] : null, error: er ? decodeURIComponent(er[1].replace(/\+/g, ' ')) : null };
+})();
+function authModeOn() { return true; }
 function currentProfile() { return state.auth && state.auth.profile; }
 function currentRole() { const p = currentProfile(); return p ? p.role : null; }
 function isEditor() { const r = currentRole(); return r === 'editor' || r === 'admin'; }
 function isAdmin() { return currentRole() === 'admin'; }
+function canEdit() { return isEditor(); }
+function guardEdit() { if (canEdit()) return true; toast('You have view-only access. Ask an admin to make you an editor.', 'err'); return false; }
+function guardAdmin() { if (isAdmin()) return true; toast('Only admins can change shared settings.', 'err'); return false; }
+// Hide edit controls for view-only accounts (CSS keys off body.read-only).
+function applyRoleUI() { document.body.classList.toggle('read-only', !!(state.auth && state.auth.user) && !canEdit()); }
 
 async function loadProfile(userId) {
   const client = state.sb && state.sb.client; if (!client || !userId) return null;
@@ -1649,6 +1803,7 @@ async function bootstrapAuth(client) {
   const { data: { session } } = await client.auth.getSession();
   if (session && session.user) { state.auth.user = session.user; await loadProfile(session.user.id); }
   client.auth.onAuthStateChange(async (event, sess) => {
+    if (event === 'PASSWORD_RECOVERY') { state.auth.needsPassword = true; if (state._booted) setTimeout(() => showAuthScreen(null, 'setpw'), 0); }
     if (sess && sess.user) {
       state.auth.user = sess.user; await loadProfile(sess.user.id);
       // First sign-in in auth mode: pull the board now that RLS lets us
@@ -1656,8 +1811,8 @@ async function bootstrapAuth(client) {
         try { await sbLoadData(client); } catch (e) { console.warn('post-signin data load failed:', e); }
       }
     } else { state.auth.user = null; state.auth.profile = null; }
-    updateUserBadge();
-    if (authModeOn() && !state.auth.user && state._booted) return showAuthScreen();   // signed out mid-session
+    updateUserBadge(); applyRoleUI();
+    if (!state.auth.user && state._booted) return showAuthScreen();   // signed out mid-session
   });
   updateUserBadge();
 }
@@ -1677,84 +1832,80 @@ async function signInEmail(email, password) {
   state.auth.user = data.user; await loadProfile(data.user.id);
   return data.user;
 }
-async function signUpEmail(email, password, first, last) {
-  const client = await ensureSbClient();
-  first = (first || '').trim(); last = (last || '').trim();
-  if (!first || !last) throw new Error('Enter both a first and last name.');
-  const fullName = first + ' ' + last;
-  const { data, error } = await client.auth.signUp({
-    email: email.trim(), password,
-    // full_name feeds the handle_new_user trigger → profiles.full_name (what the app shows).
-    options: { data: { full_name: fullName, first_name: first, last_name: last } }
-  });
-  if (error) throw error;
-  return data;   // if Confirm email is on, data.session is null until they click the link
-}
-
 async function signOutUser() {
   const client = state.sb && state.sb.client; if (!client) return;
   await client.auth.signOut();
   state.auth.user = null; state.auth.profile = null;
-  if (authModeOn()) showAuthScreen(); else location.reload();
+  showAuthScreen();
 }
 
 function showAuthScreen(err, mode, info) {
-  mode = mode || 'signin';   // 'signin' | 'signup'
+  mode = mode || 'signin';   // 'signin' | 'forgot' | 'setpw'
   let g = $('#gateScreen');
   if (!g) { g = document.createElement('div'); g.id = 'gateScreen'; g.className = 'gate-screen'; document.body.appendChild(g); }
   const logoSrc = (document.querySelector('.brand-logo') || {}).src || '';
-  const isSignup = mode === 'signup';
+  const intro = { signin: 'Sign in with your KIPP work email.', forgot: "Enter your work email. We'll send a link to reset your password.", setpw: 'Choose a password for your account.' }[mode];
+  const fields = mode === 'signin' ? `
+        <input id="authEmail" type="email" placeholder="Work email" autocomplete="username" required>
+        <input id="authPw" type="password" placeholder="Password" autocomplete="current-password" required>
+        <button type="submit" class="btn btn-filled" id="authSubmit">Sign in</button>`
+    : mode === 'forgot' ? `
+        <input id="authEmail" type="email" placeholder="Work email" autocomplete="username" required>
+        <button type="submit" class="btn btn-filled" id="authSubmit">Send reset link</button>`
+    : `
+        <input type="email" autocomplete="username" value="${esc((state.auth.user && state.auth.user.email) || '')}" hidden>
+        <input id="authPw" type="password" placeholder="New password (12+ characters)" autocomplete="new-password" required minlength="12">
+        <input id="authPw2" type="password" placeholder="Confirm new password" autocomplete="new-password" required minlength="12">
+        <button type="submit" class="btn btn-filled" id="authSubmit">Save password</button>`;
+  const foot = mode === 'signin' ? '<button type="button" class="auth-link" data-authmode="forgot">Forgot password?</button><div>Accounts are by invitation. Ask the Growth Hub admin for an invite.</div>'
+    : mode === 'forgot' ? '<button type="button" class="auth-link" data-authmode="signin">Back to sign in</button>'
+    : '<div>Use 12 or more characters with an uppercase letter, a lowercase letter, a number, and a symbol.</div>';
   g.innerHTML = `<div class="gate-card auth-card">
       <img class="gate-logo" src="${logoSrc}" alt="KIPP">
       <h1>Network Growth Hub</h1>
-      <p>${isSignup ? 'Create your account with a KIPP work email.' : 'Sign in with your work email.'}</p>
-      <div class="auth-tabs">
-        <button type="button" class="auth-tab ${!isSignup ? 'on' : ''}" data-authmode="signin">Sign in</button>
-        <button type="button" class="auth-tab ${isSignup ? 'on' : ''}" data-authmode="signup">Create account</button>
-      </div>
-      <form id="authForm" autocomplete="on">
-        ${isSignup ? '<div class="auth-namerow"><input id="authFirst" type="text" placeholder="First name" autocomplete="given-name" required><input id="authLast" type="text" placeholder="Last name" autocomplete="family-name" required></div>' : ''}
-        <input id="authEmail" type="email" placeholder="Email (@kippnj.org, @kippteamandfamily.org, @kippmiami.org)" autocomplete="username" required autofocus>
-        <input id="authPw" type="password" placeholder="Password (12+ chars)" autocomplete="${isSignup ? 'new-password' : 'current-password'}" required minlength="6">
-        <button type="submit" class="btn btn-filled" id="authSubmit">${isSignup ? 'Create account' : 'Sign in'}</button>
-      </form>
+      <p>${intro}</p>
+      <form id="authForm" autocomplete="on">${fields}</form>
       ${err ? `<div class="gate-err">${esc(err)}</div>` : ''}
       ${info ? `<div class="gate-info">${esc(info)}</div>` : ''}
-      <div class="auth-foot">${isSignup ? 'After signup, verify via the email we send. You start as a viewer; an admin can promote you.' : 'Only KIPP work emails can create accounts.'}</div>
+      <div class="auth-foot">${foot}</div>
     </div>`;
   g.querySelectorAll('[data-authmode]').forEach(b => b.addEventListener('click', () => showAuthScreen(null, b.dataset.authmode)));
-  const f = $('#authForm'), sub = $('#authSubmit');
+  const f = $('#authForm'), sub = $('#authSubmit'), label = sub.textContent;
   f.addEventListener('submit', async e => {
     e.preventDefault();
-    sub.disabled = true; sub.textContent = isSignup ? 'Creating…' : 'Signing in…';
+    sub.disabled = true; sub.textContent = 'One moment…';
     try {
-      if (isSignup) {
-        const first = ($('#authFirst').value || '').trim(), last = ($('#authLast').value || '').trim();
-        if (!first || !last) {
-          sub.disabled = false; sub.textContent = 'Create account';
-          let ie = $('#authInlineErr'); const msg = 'Enter both a first and last name.';
-          if (ie) { ie.textContent = msg; } else { ie = document.createElement('div'); ie.id = 'authInlineErr'; ie.className = 'gate-err'; ie.textContent = msg; f.after(ie); }
-          (first ? $('#authLast') : $('#authFirst')).focus();
-          return;
-        }
-        const res = await signUpEmail($('#authEmail').value, $('#authPw').value, first, last);
-        if (res.session) {
-          g.remove();
-          if (!state._booted) { state._booted = true; bootApp(); } else { updateUserBadge(); rerender(); toast('Account created', 'ok'); }
-        } else {
-          showAuthScreen(null, 'signin', 'Account created - check your email for the verification link, then sign in.');
-        }
-      } else {
-        await signInEmail($('#authEmail').value, $('#authPw').value);
-        g.remove();
-        if (!state._booted) { state._booted = true; bootApp(); } else { updateUserBadge(); rerender(); toast('Signed in', 'ok'); }
+      if (mode === 'forgot') {
+        await sendPasswordReset($('#authEmail').value);
+        return showAuthScreen(null, 'signin', 'If that email has an account, a reset link is on its way. Check your inbox.');
       }
+      if (mode === 'setpw') {
+        const pw = $('#authPw').value, pw2 = $('#authPw2').value;
+        const missing = PW_RULES.filter(([, ok]) => !ok(pw)).map(([t]) => t.toLowerCase());
+        if (missing.length) throw new Error('Your password needs: ' + missing.join(', ') + '.');
+        if (pw !== pw2) throw new Error('The two passwords do not match.');
+        const client = await ensureSbClient();
+        const { error } = await client.auth.updateUser({ password: pw }); if (error) throw error;
+        state.auth.needsPassword = false; AUTH_LINK.type = null;
+        try { history.replaceState(null, '', location.pathname + '#progress'); } catch (e2) {}
+        g.remove(); return enterApp('Password saved');
+      }
+      await signInEmail($('#authEmail').value, $('#authPw').value);
+      g.remove(); enterApp('Signed in');
     } catch (ex) {
-      sub.disabled = false; sub.textContent = isSignup ? 'Create account' : 'Sign in';
-      showAuthScreen(ex.message || (isSignup ? 'Signup failed.' : 'Sign-in failed. Check your email and password.'), mode);
+      sub.disabled = false; sub.textContent = label;
+      const email = $('#authEmail') ? $('#authEmail').value : '';
+      showAuthScreen(ex.message || 'Something went wrong. Try again.', mode);
+      if (email && $('#authEmail')) $('#authEmail').value = email;
     }
   });
-  setTimeout(() => { const i = $(isSignup ? '#authFirst' : '#authEmail'); if (i && !i.value) i.focus(); }, 30);
+  setTimeout(() => { const i = $(mode === 'setpw' ? '#authPw' : '#authEmail'); if (i && !i.value) i.focus(); }, 30);
+}
+function enterApp(msg) { if (!state._booted) { state._booted = true; bootApp(); } else { updateUserBadge(); rerender(); toast(msg, 'ok'); } }
+async function sendPasswordReset(email) {
+  const client = await ensureSbClient();
+  const { error } = await client.auth.resetPasswordForEmail((email || '').trim(), { redirectTo: location.origin + location.pathname });
+  if (error) throw error;
 }
 
 /* ============================================================
@@ -1814,6 +1965,7 @@ function currentDisplayName() { const p = currentProfile(); return (p && (p.full
 function currentRoleLabel() { const p = currentProfile(); if (p && p.role) return p.role; return 'Editor'; }
 
 function updateUserBadge() {
+  applyRoleUI();
   const btn = $('#cbUser'); if (!btn) return;
   const p = currentProfile();
   const name = (p && (p.full_name || p.email)) || lsGet('ngc_author') || '';
@@ -1951,22 +2103,15 @@ function openPasswordDialog() {
   paint(); cur.focus();
 }
 
-/* ---------- shared-password gate (legacy fallback when authMode !== 'supabase') ---------- */
-function pwHash(str) { let h1 = 0xdeadbeef, h2 = 0x41c6ce57; for (let i = 0, ch; i < str.length; i++) { ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); } h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507); h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909); h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507); h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909); return String(4294967296 * (2097151 & h2) + (h1 >>> 0)); }
-function gateOn() { return !!(meta().gateEnabled && meta().gateHash); }
 async function gateStart() {
-  if (authModeOn()) {
-    // Supabase auth mode - needs an active session, not a shared password.
-    // sbConnect (from saved cfg) is fired async by bootApp normally; here we need it BEFORE gating.
-    const sc = sbCfg();
-    if (!sc || !sc.url || !sc.key) return showAuthConfigNeeded();
-    if (!state.sb.connected) { await sbConnect(sc.url, sc.key, true); }
-    // bootstrapAuth (called from sbConnect on success) has now populated state.auth if there's a session
-    if (state.auth.user) { state._booted = true; return bootApp(); }
-    return showAuthScreen();
-  }
-  if (!gateOn() || lsGet(LS.gate) === String(meta().gateHash)) return bootApp();
-  showGate();
+  const sc = sbCfg();
+  if (!sc || !sc.url || !sc.key) return showAuthConfigNeeded();
+  if (!state.sb.connected) await sbConnect(sc.url, sc.key, true);
+  if (!state.sb.connected) return showAuthScreen("Can't reach the database right now. Check your connection, then reload the page.");
+  // Arrived from an invite or password-reset email: set a password before entering.
+  if (state.auth.user && (state.auth.needsPassword || AUTH_LINK.type)) return showAuthScreen(null, 'setpw');
+  if (state.auth.user) { state._booted = true; return bootApp(); }
+  return showAuthScreen(AUTH_LINK.error);
 }
 function showAuthConfigNeeded() {
   let g = $('#gateScreen');
@@ -1974,59 +2119,8 @@ function showAuthConfigNeeded() {
   g.innerHTML = `<div class="gate-card auth-card">
       <img class="gate-logo" src="${(document.querySelector('.brand-logo') || {}).src || ''}" alt="KIPP">
       <h1>Setup needed</h1>
-      <p>Account mode is on, but Supabase isn't configured yet. An admin must connect Supabase in Settings first.</p>
+      <p>The database connection is missing. Contact the Growth Hub admin.</p>
     </div>`;
-}
-function showGate(err) {
-  let g = $('#gateScreen');
-  if (!g) { g = document.createElement('div'); g.id = 'gateScreen'; g.className = 'gate-screen'; document.body.appendChild(g); }
-  g.innerHTML = `<div class="gate-card">
-      <img class="gate-logo" src="${(document.querySelector('.brand-logo') || {}).src || ''}" alt="KIPP">
-      <h1>Network Growth Hub</h1>
-      <p>Enter the password.</p>
-      <form id="gateForm" autocomplete="off"><input id="gatePw" type="password" placeholder="Password" autofocus>
-        <button type="submit" class="btn btn-filled">Unlock</button></form>
-      ${err ? '<div class="gate-err">Incorrect password. Try again.</div>' : ''}
-    </div>`;
-  const f = $('#gateForm'), inp = $('#gatePw');
-  f.addEventListener('submit', e => { e.preventDefault(); const v = inp.value; if (pwHash(v) === String(meta().gateHash)) { lsSet(LS.gate, String(meta().gateHash)); g.remove(); bootApp(); } else { showGate(true); } });
-  setTimeout(() => { const i = $('#gatePw'); if (i) i.focus(); }, 30);
-}
-function lockNow() { lsDel(LS.gate); location.reload(); }
-/* admin gate - protects the ⚙ Settings drawer (admin-only) */
-function adminOn() { return !!(meta().adminEnabled && meta().adminHash); }
-function promptPassword(opts) {
-  closeConfirm();
-  const w = document.createElement('div'); w.className = 'confirm-backdrop'; w.id = 'confirmBackdrop';
-  w.innerHTML = `<div class="confirm-box"><div class="confirm-ic">🔒</div><h3>${esc(opts.title)}</h3>
-    ${opts.message ? `<div class="confirm-msg">${esc(opts.message)}</div>` : ''}
-    <input id="pwPromptInput" type="password" class="pw-prompt" placeholder="${esc(opts.placeholder || 'Password')}" autocomplete="off">
-    <div class="pw-prompt-err hide" id="pwPromptErr">That password didn't match.</div>
-    <div class="confirm-actions"><button class="btn btn-tonal" id="cfgCancel">Cancel</button><button class="btn btn-filled" id="cfgOk">${esc(opts.confirmLabel || 'Unlock')}</button></div></div>`;
-  document.body.appendChild(w);
-  const input = $('#pwPromptInput');
-  const submit = () => { if (opts.verify(input.value)) { closeConfirm(); opts.onOk && opts.onOk(); } else { $('#pwPromptErr').classList.remove('hide'); input.select(); } };
-  w.addEventListener('click', e => { if (e.target === w || e.target.id === 'cfgCancel') closeConfirm(); else if (e.target.id === 'cfgOk') submit(); });
-  w.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
-  setTimeout(() => input.focus(), 40);
-}
-function saveAdminSettings() {
-  const enabled = $('#adminEnable').checked, pw = ($('#adminNew').value || '').trim();
-  meta().adminEnabled = enabled;
-  if (pw) meta().adminHash = pwHash(pw);
-  if (enabled && !meta().adminHash) { meta().adminEnabled = false; $('#adminStatus').innerHTML = '<div class="status-note err">Set a password first.</div>'; return; }
-  autosave();
-  $('#adminStatus').innerHTML = `<div class="status-note ok">✓ Saved${pw ? ' - new admin password set' : ''}. Commit/Export so it applies for you everywhere.</div>`;
-  const nb = $('#adminNew'); if (nb) nb.value = '';
-}
-function saveGateSettings() {
-  const enabled = $('#gateEnable').checked, pw = ($('#gateNew').value || '').trim();
-  meta().gateEnabled = enabled;
-  if (pw) { meta().gateHash = pwHash(pw); lsSet(LS.gate, String(meta().gateHash)); }
-  if (!meta().gateHash) { meta().gateEnabled = false; $('#gateStatus').innerHTML = '<div class="status-note err">Set a password first.</div>'; return; }
-  autosave();
-  $('#gateStatus').innerHTML = `<div class="status-note ok">✓ Saved${pw ? ' - new password set' : ''}. ${enabled ? 'Password is required' : 'Gate is off'}. Commit or Export so everyone gets it.</div>`;
-  const nb = $('#gateNew'); if (nb) nb.value = '';
 }
 
 /* ============================================================
@@ -2035,13 +2129,18 @@ function saveGateSettings() {
 const undoStack = [];
 const UNDO_LIMIT = 30;
 function snapshotForUndo(label) {
-  undoStack.push({ label, snapshot: JSON.parse(JSON.stringify(state.data)), ts: Date.now() });
+  // Only milestones and schools: shared settings are never rolled back by Undo.
+  undoStack.push({ label, snapshot: { milestones: clone(M()), schools: clone(S()) }, ts: Date.now() });
   if (undoStack.length > UNDO_LIMIT) undoStack.shift();
 }
 function undo() {
   if (!undoStack.length) { toast('Nothing to undo'); return; }
+  if (!guardEdit()) return;
   const entry = undoStack.pop();
-  state.data = entry.snapshot;
+  // Teammates' changes are copied into every snapshot as they arrive (applyRemoteToUndo),
+  // so restoring it reverses only this person's own edits, and only the changed fields are saved.
+  state.data.milestones = entry.snapshot.milestones;
+  state.data.schools = entry.snapshot.schools;
   autosave();
   rerender();
   toast(`Undone: ${entry.label}`, 'ok');
@@ -2076,6 +2175,7 @@ function auditDetail(a) {
   const v = a.action === 'insert' ? 'Created' : a.action === 'delete' ? 'Deleted' : 'Updated';
   if (a.entity_type === 'milestone') { const m = findM(a.entity_id); return `${v} ${m ? '"' + m.activity + '"' : 'a milestone'}`; }
   if (a.entity_type === 'school') { const s = schoolById(a.entity_id); return `${v} ${s ? esc(s.display_label) + ' (' + esc(s.market) + ')' : 'a school'}`; }
+  if (a.entity_type === 'growth_settings') return `${v} shared settings (${esc(a.entity_id)})`;
   return `${v} ${esc(a.entity_type || 'record')}`;
 }
 // Unified, newest-first entries: { author, action, detail, ts, itemId }
@@ -2291,6 +2391,8 @@ async function init() {
   document.documentElement.setAttribute('data-theme', 'light');
   if (lsGet('ngc_nav') === '1') { document.body.classList.add('nav-collapsed'); const nt = $('#navToggle'); if (nt) { nt.title = 'Expand menu'; const lbl = nt.querySelector('.nav-util-lbl'); if (lbl) lbl.textContent = 'Expand'; } }
   const data = await loadData(); if (!data) return; state.data = data;
+  ['gateEnabled', 'gateHash', 'adminEnabled', 'adminHash', 'authMode'].forEach(k => { delete state.data.meta[k]; });
+  [LS.gh, LS.gate].forEach(k => lsDel(k));
   state.data.schools.forEach(s => { if (!s.id) s.id = uid(); });
   try { captureTrend(); } catch (e) {}
   gateStart();

@@ -30,6 +30,11 @@
 - Audit triggers: every INSERT/UPDATE/DELETE on milestones/schools writes an audit row
 - RLS policies: authenticated users can read; only editor+admin can write; audit is read-only from the client
 
+Then run these two files the same way, in this order (both are safe to re-run):
+
+5. `supabase-security-fixes.sql`: tighter row rules, and blocks any account that isn't a KIPP work email (@kippnj.org, @kippteamandfamily.org, @kippmiami.org).
+6. `supabase-team-sync.sql`: shared settings (markets, teams, owners, statuses, starter templates, campaigns), field-level saves so two people editing one milestone don't overwrite each other, and notes that are never lost when two people post at once. **Run this before publishing the Nov 2026 app update**, or saves will show "sync error".
+
 ---
 
 ## Step 2 — Configure Auth settings (2 min)
@@ -51,7 +56,12 @@ In Supabase dashboard:
    - **Require:** lowercase, uppercase, digits, symbols (check all four)
    - Save
 
-4. **Authentication → Providers → MFA**
+4. **Authentication → URL Configuration**
+   - **Site URL:** `https://aavery-1.github.io/growth-tracker/`
+   - **Redirect URLs:** add the same address. Invite and "Forgot password" emails send people back here to choose a password.
+   - Save
+
+5. **Authentication → Providers → MFA**
    - Enable **TOTP** (Time-based one-time password)
    - Optional at this stage — will be exposed as an enrollment flow in Phase 3
    - Save
@@ -132,7 +142,7 @@ reset role;
 
 Once you've run the SQL and confirmed with the queries above, tell me — I'll wire the client code (turn 2):
 
-- **Sign-in screen** replaces the shared-password gate (togglable via a setting so nothing breaks mid-migration)
+- **Sign-in screen** replaces the shared-password gate (the shared password and admin lock were removed in Nov 2026; accounts are required)
 - **User badge** in the header shows your name + role, with a sign-out control
 - **Attribution flows automatically** — no client-side changes needed; the DB triggers stamp everything
 - **Old activity log keeps working** locally; Phase 2 will point it at the DB `growth_audit_v` view instead

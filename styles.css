@@ -3550,3 +3550,13 @@ input, select, textarea, button { font-family: inherit; }
 @media (max-width: 640px) { .wb-row { grid-template-columns: 1fr 44px auto; } }
 .filterbar #planExpandAll, .filterbar #planCollapseAll, .filterbar #dashPrint { border-radius: 999px !important; }
 .field-row { row-gap: 0 !important; column-gap: 14px; }
+
+/* ===== §34 Team readiness (Nov 2026): view-only accounts + sign-in links ===== */
+body.read-only #newItem, body.read-only #addSchool, body.read-only .kcol-add, body.read-only [data-addstage],
+body.read-only [data-complete], body.read-only #addTaskForSchool, body.read-only #tplToggle, body.read-only .note-add,
+body.read-only #modalSave, body.read-only #modalDelete { display: none !important; }
+body.read-only .kcard { cursor: pointer; }
+body.read-only .kcard::after { display: none !important; }
+.auth-foot { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.auth-link { background: none; border: 0; padding: 2px 4px; font: inherit; font-weight: 600; color: var(--primary, #16357F); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.auth-link:hover { opacity: .8; }

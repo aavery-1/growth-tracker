@@ -158,10 +158,6 @@
       "Talent",
       "Marketing & Recruitment"
     ],
-    "gateEnabled": true,
-    "gateHash": "1774240092958723",
-    "adminEnabled": true,
-    "adminHash": "6991410205949042",
     "milestoneTemplates": [
       {
         "id": "tpl_re_broker",
