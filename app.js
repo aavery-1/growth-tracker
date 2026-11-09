@@ -408,10 +408,17 @@ function filterOpts(key) {
   return [];
 }
 function activeCount() { let n = 0; ['states', 'types', 'markets', 'fys', 'areas', 'owners', 'statuses', 'priorities', 'openingFYs'].forEach(k => n += state.filters[k].size); if (state.filters.schoolId) n++; if (state.filters.search) n++; if (state.filters.timing) n++; if (state.filters.flag) n++; return n; }
+/* Readable name for a selected filter value ("Florida", "Fall 2027"), so filter buttons say what is on */
+function fbValueLabel(k, v) {
+  if (v === undefined) v = [...state.filters[k]][0];
+  if (v === '__none__') return 'Unassigned';
+  let o; try { o = filterOpts(k).find(x => String(x[0]) === String(v)); } catch (e) {}
+  return o ? o[1] : String(v);
+}
 function filterBar(menus, opts = {}) {
   // #fSearch removed - #cbSearch in the header content-bar is the single, wired search across every view
   const search = '';
-  const btns = menus.map(k => { const n = state.filters[k].size; return `<button class="fb-menu ${n ? 'on' : ''}" data-fmenu="${k}"><span>${FILTER_LABEL[k]}</span>${n ? `<span class="fb-count">${n}</span>` : ''}<svg class="fb-chev" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button>`; }).join('');
+  const btns = menus.map(k => { const n = state.filters[k].size; const show = k === 'owners' && mineOn() ? 0 : n, val = show ? fbValueLabel(k) : ''; return `<button class="fb-menu ${n ? 'on' : ''}" data-fmenu="${k}"${val ? ` title="${esc(FILTER_LABEL[k] + ': ' + [...state.filters[k]].map(v => fbValueLabel(k, v)).join(', '))}"` : ''}><span class="fb-name">${FILTER_LABEL[k]}</span>${val ? `<span class="fb-val">${esc(val)}</span>` : ''}${show > 1 ? `<span class="fb-count">+${show - 1}</span>` : ''}<svg class="fb-chev" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button>`; }).join('');
   const school = opts.school ? `<select id="dashSchool" class="fb-select"><option value="">All schools</option>${state.data.schools.filter(s => s.openingFY && schoolFacetPass(s, null) && (!state.filters.fys.size || state.filters.fys.has(s.openingFY))).sort((a, b) => (a.openingFY - b.openingFY) || a.market.localeCompare(b.market)).map(s => `<option value="${s.id}" ${state.filters.schoolId === s.id ? 'selected' : ''}>${esc(s.market)} · ${esc(s.display_label)}</option>`).join('')}</select>` : '';
   const me = menus.includes('owners') ? myOwnerName() : '';
   const mine = me ? `<button class="fb-mine ${mineOn() ? 'on' : ''}" id="mineToggle" aria-pressed="${mineOn()}" title="Show only milestones owned by ${esc(me)}">${mineOn() ? '✓ ' : ''}Assigned to you</button>` : '';
@@ -514,12 +521,13 @@ function progressBodyHtml() {
   return dashboardHtml(filtered());   // Dashboard is the only status view; drill-downs jump to the Project Plan
 }
 function renderProgress() {
-  const printBtn = `<button class="btn btn-ghost btn-sm" id="dashPrint"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Print report</button>`;
+  const printBtn = `<button class="btn btn-ghost btn-sm" id="dashPrint" title="Print report"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg><span class="pr-l">Print report</span></button>`;
   // Filter bar is always visible on the dashboard: it's a primary scoping control, not an occasional detour.
   // Menus kept to what changes the STATUS picture: State, Market, Workstream. Opening year lives on the cohort strip;
   // status/priority filters belong to the Project Plan (the dashboard IS the status/priority view).
   $('#view-progress').innerHTML = `
-    <div class="dash-filters" id="dashFilters">${filterBar(['openingFYs', 'states', 'markets', 'areas', 'owners'], { right: appliedFilterChips() + printBtn })}</div>
+    <div class="dash-filters" id="dashFilters">${filterBar(['openingFYs', 'states', 'markets', 'areas', 'owners'], { right: appliedFilterChips({ hiddenOnly: true }) + printBtn })}</div>
+    <div class="mast-status" id="mastStatus"><div class="ms-l"><div class="ms-greet" id="msGreet"></div><div class="cb-brief" id="cbBrief" aria-label="Today at a glance"></div></div><div class="cb-quarter" id="cbQuarter"></div></div>
     <div id="viewBody">${progressBodyHtml()}</div>`;
 }
 /* Applied-filter chips: shown inline in the filter bar so the current scope is visible at a glance
@@ -2229,7 +2237,7 @@ function updateGreeting() {
   } else {
     const first = (currentDisplayName() || '').split(/\s+/)[0];
     const fq = fiscalQuarter();
-    dateEl.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ` · ${fqLabel(fq)} · ${fq.daysLeft === 0 ? 'last day of quarter' : fq.daysLeft + ' day' + (fq.daysLeft === 1 ? '' : 's') + ' left'}`;
+    dateEl.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
     line.innerHTML = first ? `${esc(timeGreeting())}, <b>${esc(first)}</b>` : `<b>Dashboard</b>`;
   }
 }
@@ -2445,6 +2453,7 @@ function updateActivityDot() {
 
 /* ---------- Floating filter bubble: opens the real filter bar as a panel ---------- */
 function updateFilterBubble() {
+  renderCtxBar(); renderMasthead();
   const btn = $('#cbPillFilter'); if (!btn) return;
   const n = activeCount();
   const badge = $('#cbPillFilterCount');
@@ -2658,7 +2667,7 @@ function initContentBar() {
   const onScroll = () => {
     if (!ticking) {
       requestAnimationFrame(() => {
-        const fbar = document.querySelector('.view.active .filterbar'); document.body.classList.toggle('header-pinned', fbar ? fbar.getBoundingClientRect().bottom < 0 : window.scrollY > 60);   // show the floating tools only once the filters scroll away
+        updateSticky();   // pins the context bar and floating tools once the filters scroll away
         ticking = false;
       });
       ticking = true;
@@ -2668,6 +2677,7 @@ function initContentBar() {
   onScroll();
 
   // Floating bubbles: search (universal ⌘K), filters, alerts.
+  const ctxT = $('#ctxTitle'); if (ctxT) ctxT.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
   const pillSearch = $('#cbPillSearch'); if (pillSearch) pillSearch.addEventListener('click', () => openCmdk());
   const pillAct = $('#cbPillActivity'); if (pillAct) pillAct.addEventListener('click', toggleActivity);
   const pillFilter = $('#cbPillFilter'); if (pillFilter) pillFilter.addEventListener('click', e => { e.stopPropagation(); toggleFilterPanel(); });
@@ -3055,12 +3065,101 @@ document.addEventListener('change', e => {
 /* Sticky section headings: pinned while their group is on screen, then they scroll away with it.
    --sticky-top keeps them below a pinned top bar (narrow layouts); 0 when the nav is a sidebar. */
 function updateSticky() {
-  const h = document.querySelector('.app-header'); let top = 0;
-  if (h) { const r = h.getBoundingClientRect(), pos = getComputedStyle(h).position; if ((pos === 'sticky' || pos === 'fixed') && r.width > innerWidth * 0.6 && r.top <= 1) top = Math.max(0, Math.round(r.bottom)); }
+  const h = document.querySelector('.app-header'); let top = 0, left = 0;
+  if (h) {
+    const r = h.getBoundingClientRect(), pos = getComputedStyle(h).position;
+    if ((pos === 'sticky' || pos === 'fixed') && r.width > innerWidth * 0.6 && r.top <= 1) top = Math.max(0, Math.round(r.bottom));
+    else if (r.width < innerWidth * 0.6 && r.left <= 1) left = Math.max(0, Math.round(r.right));   // sidebar nav: the bar starts where it ends
+  }
+  // Context bar: shown once the page title and filters have scrolled under it. While the
+  // filter panel is open the filter bar floats, so keep whatever state we were in.
+  const bar = $('#ctxBar'), barH = bar ? bar.offsetHeight : 0, body = document.body;
+  if (!body.classList.contains('filters-open')) {
+    const fbar = document.querySelector('.view.active .filterbar');
+    body.classList.toggle('header-pinned', fbar ? fbar.getBoundingClientRect().bottom < top + barH : window.scrollY > 60);
+  }
+  const pinned = body.classList.contains('header-pinned');
+  if (bar) bar.setAttribute('aria-hidden', pinned ? 'false' : 'true');
+  const ctxH = pinned ? barH : 0;
   document.documentElement.style.setProperty('--sticky-top', top + 'px');
-  document.querySelectorAll('.view.active .plan-group-head, .view.active .ot-term-h, .view.active .kcol-head, .view.active .dt thead th').forEach(el => {
-    el.classList.toggle('is-stuck', window.scrollY > 0 && Math.abs(el.getBoundingClientRect().top - top) < 1.5);
+  document.documentElement.style.setProperty('--ctx-left', left + 'px');
+  document.documentElement.style.setProperty('--ctx-h', ctxH + 'px');
+  // Dashboard cards: column headings pin just under their card's title row
+  document.querySelectorAll('.view.active .dash .ex-card').forEach(c => { const hd = c.querySelector(':scope > .ex-card-head'); c.style.setProperty('--hd-h', (hd ? hd.offsetHeight : 0) + 'px'); });
+  document.querySelectorAll('.view.active .plan-group-head, .view.active .ot-term-h, .view.active .kcol-head, .view.active .dt thead th, .view.active .dash .ex-card-head').forEach(el => {
+    const want = parseFloat(getComputedStyle(el).top) || 0;
+    el.classList.toggle('is-stuck', window.scrollY > 0 && getComputedStyle(el).position === 'sticky' && Math.abs(el.getBoundingClientRect().top - want) < 1.5);
   });
+}
+/* Dashboard masthead: three facts that answer "where do we stand?" plus how much of the quarter is left.
+   Every fact is a link to the place that explains it. */
+function renderMasthead() {
+  const brief = $('#cbBrief'), qt = $('#cbQuarter'); if (!brief || !qt) return;
+  if (state.view !== 'progress' || !state.data) { brief.innerHTML = ''; qt.innerHTML = ''; return; }
+  const items = [];
+  try {
+    const schools = schoolsInView();
+    const sMs = s => state.filters.areas.size ? schoolMs(s).filter(m => state.filters.areas.has(m.functional_area)) : schoolMs(s);
+    if (schools.length) {
+      const keys = schools.map(s => ragReady(sMs(s)).key), onT = keys.filter(k => k === 'green' || k === 'blue').length;
+      const tone = onT === schools.length ? 'ok' : keys.includes('red') ? 'bad' : 'warn';
+      items.push(`<button class="mb-fact" data-mb="openings"><i class="mb-dot mb-${tone}"></i><b>${onT} of ${schools.length}</b> openings on track</button>`);
+    }
+    const att = attentionItems(filtered()).length;
+    items.push(`<button class="mb-fact" data-mb="attention"><i class="mb-dot mb-${att ? 'warn' : 'ok'}"></i>${att ? `<b>${att}</b> need${att === 1 ? 's' : ''} attention` : 'Nothing needs attention'}</button>`);
+    const sig = committeeSignals();
+    if (sig.next) {
+      const d = sig.daysToNext, when = d === 0 ? 'today' : d < 0 ? `was ${fmtDate(sig.next)}` : d === 1 ? 'tomorrow' : `in ${d} days`;
+      items.push(`<button class="mb-fact" data-mb="meeting"><i class="mb-dot mb-info"></i>Next meeting <b>${esc(when)}</b></button>`);
+    } else if (isAdmin()) items.push(`<button class="mb-fact" data-mb="setmeeting"><i class="mb-dot mb-none"></i>Next meeting not set</button>`);
+  } catch (e) {}
+  brief.innerHTML = items.join('');
+  const gr = $('#msGreet');
+  if (gr) { const first = (currentDisplayName() || '').split(/\s+/)[0]; gr.innerHTML = first ? `${esc(timeGreeting())}, <b>${esc(first)}</b>` : 'Dashboard'; }
+  const fq = fiscalQuarter(), total = Math.max(1, daysBetween(fq.start, fq.end) + 1), done = Math.min(total, Math.max(0, total - fq.daysLeft - 1));
+  const pctQ = Math.round(100 * done / total), md = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const todayL = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  qt.innerHTML = `<div class="mq-top"><span><b>${fqLabel(fq)}</b> · ${esc(todayL)}</span><span>${fq.daysLeft === 0 ? 'Last day' : fq.daysLeft + ' day' + (fq.daysLeft === 1 ? '' : 's') + ' left'}</span></div>
+    <div class="mq-track" role="img" aria-label="${pctQ}% of ${fqLabel(fq)} has passed"><span style="width:${pctQ}%"></span></div>
+    <div class="mq-ends"><span>${md(fq.start)}</span><span>${md(fq.end)}</span></div>`;
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('[data-mb]'); if (!b) return;
+  const go = sel => { const el = document.querySelector(sel); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); el.classList.remove('mb-flash'); void el.offsetWidth; el.classList.add('mb-flash'); } };
+  const k = b.dataset.mb;
+  if (k === 'openings') go('#view-progress .dt-card');
+  else if (k === 'attention') go('#view-progress .al-card');
+  else if (k === 'meeting') go('#view-progress .cm-card');
+  else if (k === 'setmeeting') { const s = document.querySelector('[data-open-settings]'); if (s) s.click(); else go('#view-progress .cm-card'); }
+});
+/* Context bar text: page name, then the active filters and how many results they leave */
+function ctxScopeParts() {
+  const f = state.filters, p = [];
+  if (mineOn()) p.push('Assigned to you'); else f.owners.forEach(v => p.push(v === '__none__' ? 'Unassigned' : v));
+  f.states.forEach(v => p.push(fbValueLabel('states', v))); f.markets.forEach(v => p.push(v)); f.areas.forEach(v => p.push(v));
+  f.openingFYs.forEach(v => p.push('Fall ' + (v - 1)));
+  f.fys.forEach(v => p.push('Due ' + fyLabel(+v)));
+  f.types.forEach(v => p.push(v));
+  f.statuses.forEach(v => p.push(SM(v).label));
+  f.priorities.forEach(v => p.push((PRIORITY[v] ? PRIORITY[v].label : v) + ' priority'));
+  if (f.timing) p.push(f.timing === 'overdue' ? 'Overdue' : f.timing === 'this_month' ? 'Due within 2 weeks' : f.timing === 'due30' ? 'Due in 30 days' : f.timing === 'dueQ' ? 'Due by end of ' + fiscalQuarter().q : 'Due soon');
+  if (f.flag) p.push(FLAG_LABEL[f.flag] || f.flag);
+  if (f.schoolId) { const sc = schoolById(f.schoolId); if (sc) p.push(sc.market + ' ' + sc.display_label); }
+  if (f.search) p.push('“' + f.search.slice(0, 24) + (f.search.length > 24 ? '…' : '') + '”');
+  return p;
+}
+function renderCtxBar() {
+  const t = $('#ctxTitle'), sc = $('#ctxScope'); if (!t || !sc) return;
+  const v = state.view, parts = ctxScopeParts();
+  t.textContent = v === 'timeline' ? 'Openings' : v === 'plan' ? 'Milestones' : 'Dashboard';
+  let count = '';
+  try {
+    if (v === 'plan') { const n = filtered().length; count = n + ' milestone' + (n === 1 ? '' : 's'); }
+    else if (v === 'timeline') { const n = ganttSchools().filter(s => s.openingFY).length; count = n + ' school' + (n === 1 ? '' : 's'); }
+  } catch (e) {}
+  const scope = parts.length ? parts.join(' · ') : (v === 'progress' ? 'All markets and teams' : '');
+  sc.textContent = [scope, count].filter(Boolean).join(' · ');
+  sc.title = sc.textContent;
 }
 let stickyRaf = 0;
 window.addEventListener('scroll', () => { if (!stickyRaf) stickyRaf = requestAnimationFrame(() => { stickyRaf = 0; updateSticky(); }); }, { passive: true });
