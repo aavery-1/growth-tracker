@@ -3384,6 +3384,6 @@ a.brand-lockup { text-decoration: none !important; }
 .app-header .ws-home:focus-visible { outline: 2px solid var(--ds-border-focused, #4688EC) !important; outline-offset: 2px; }
 .app-header .ws-home svg { flex: none; width: 18px; height: 18px; }
 :root[data-theme="dark"] .app-header .ws-home { border-color: #85B8FF !important; color: #85B8FF !important; }
-body.nav-collapsed .app-header .ws-home { justify-content: center; width: 40px !important; min-width: 40px; height: 40px; margin: 16px auto 0 !important; padding: 0 !important; align-self: center; }
+body.nav-collapsed .app-header .ws-home { justify-content: center; width: 40px !important; min-width: 40px; height: 40px; margin: 52px auto 0 !important; padding: 0 !important; align-self: center; }
 body.nav-collapsed .app-header .ws-home-lbl { display: none !important; }
 @media (min-width: 1000px) { body:not(.nav-collapsed) .app-header #navToggle { top: 59px !important; } }
