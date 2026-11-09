@@ -28,13 +28,14 @@ const state = {
 };
 
 /* ---------- palette (spec colors) ---------- */
-const STATE_COLOR = { NJ: '#16357F', FL: '#0F766E' };
-// KIPP brand palette: navy #16357F · sky #43B0E6 (reserved for status "on track") · green #4A8C1F · orange #F6A11C · red #E63E2F
+const STATE_COLOR = { NJ: '#002D9C', FL: '#009D9A' }; // Carbon categorical: Blue 80, Teal 50
+// Brand: KIPP indigo #16357F (primary actions). Status: Atlassian semantic colors (see RAG). Categories: Carbon palette.
 // Market palette: distinct hues, deliberately non-overlapping with status colors
-const MARKET_COLOR = { Newark: '#16357F', Paterson: '#1B6EA5', Camden: '#5B7DB8', Broward: '#C77700', 'Miami-Dade': '#5E7D00', Orange: '#8A5000', Orlando: '#8A5000' };
-const TYPE_COLOR = { ES: '#1B6EA5', MS: '#C77400', HS: '#5F3DC4' };
-const mkColor = m => MARKET_COLOR[m] || '#5A6B8C';
-const stColor = s => STATE_COLOR[s] || '#5A6B8C';
+// Category colors follow Carbon's data visualization palette (carbondesignsystem.com). Reds are skipped: red means "behind".
+const MARKET_COLOR = { Newark: '#6929C4', Paterson: '#1192E8', Camden: '#005D5D', Broward: '#9F1853', 'Miami-Dade': '#198038', Orange: '#002D9C', Orlando: '#002D9C' };
+const TYPE_COLOR = { ES: '#1192E8', MS: '#005D5D', HS: '#6929C4' };
+const mkColor = m => MARKET_COLOR[m] || '#6B6E76';
+const stColor = s => STATE_COLOR[s] || '#6B6E76';
 const PRIORITY = { high: { label: 'High', color: '#D62828' }, medium: { label: 'Medium', color: '#FFA500' }, low: { label: 'Low', color: '#6C757D' } };
 
 /* ---------- utils ---------- */
@@ -71,7 +72,7 @@ function syncFiscal(m) {
 }
 function initials(n) { return String(n || '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase(); }
 // deterministic per-person avatar color (Asana/Jira-style), so each owner is visually distinct
-const AVATAR_COLORS = ['#2563EB', '#7C3AED', '#059669', '#D97706', '#DB2777', '#0891B2', '#4F46E5', '#65A30D', '#DC2626', '#0D9488'];
+const AVATAR_COLORS = ['#002D9C', '#6929C4', '#005D5D', '#9F1853', '#8A3800', '#0072C3', '#198038', '#491D8B', '#004144', '#00539A']; // Carbon, all 4.5:1+ with white initials
 function avatarColor(n) { const s = String(n || ''); let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return AVATAR_COLORS[h % AVATAR_COLORS.length]; }
 // initials-only person chip: colored circle, full name on hover. `unassigned` = neutral dashed circle.
 // everyone accountable for a milestone: the owner plus any co-owners
@@ -131,8 +132,14 @@ function notesSection(kind, id, log) {
 }
 
 /* ---------- status meta ---------- */
-const SM = k => (state.data.meta.statusMeta[k] || { label: k, color: '#ccc', text: '#000' });
-function statusPill(k) { const m = SM(k); return `<span class="stpill" style="background:${m.color}22;color:${m.color === '#E0E0E0' ? '#5A5A5A' : m.color}"><i style="background:${m.color}"></i>${esc(m.label)}</span>`; }
+// Display-time status colors: the original default colors map to Atlassian's semantic colors.
+// A color someone customized in Settings is left as they set it. Stored data is not changed.
+const ADS_STATUS = { not_started: '#B7B9BE', on_track: '#357DE8', at_risk: '#E06C00', behind: '#C9372C', complete: '#6A9A23', blocked: '#AE2E24' };
+const LEGACY_STATUS = { not_started: '#C7CCD6', on_track: '#43B0E6', at_risk: '#F6A11C', behind: '#E63E2F', complete: ['#4A8C1F', '#79A81E'], blocked: '#B3261E' };
+const SM = k => { const m = state.data.meta.statusMeta[k] || { label: k, color: '#ccc', text: '#000' }; const old = LEGACY_STATUS[k];
+  return old && [].concat(old).includes(String(m.color).toUpperCase()) ? Object.assign({}, m, { color: ADS_STATUS[k] }) : m; };
+// Atlassian lozenge for the standard statuses; custom statuses keep their own color with readable text.
+function statusPill(k) { const m = SM(k); return ADS_STATUS[k] ? `<span class="stpill st-${k}"><i style="background:${m.color}"></i>${esc(m.label)}</span>` : `<span class="stpill" style="background:${m.color}22;color:var(--ds-text)"><i style="background:${m.color}"></i>${esc(m.label)}</span>`; }
 function statusDot(k) { return `<i class="stdot" style="background:${SM(k).color}"></i>`; }
 
 /* ---------- timing (live, date-driven urgency) ---------- */
@@ -672,7 +679,8 @@ function fmtMoney(n) { n = +n || 0; const a = Math.abs(n), sg = n < 0 ? '-' : ''
 /* greenlight/gating status per domain - deliberately distinct from market brand colors.
    grey = not started · blue = in progress · green = cleared (gate met) · amber/red = off-track */
 // status palette drawn from the KIPP brand: green=complete, sky=on track, orange=at risk, red=behind
-const RAG = { green: '#4A8C1F', blue: '#43B0E6', yellow: '#F6A11C', red: '#E63E2F', none: '#C7CCD6' };
+// Atlassian semantic icon colors (3:1+ on white). Must match --status-* in styles.css.
+const RAG = { green: '#6A9A23', blue: '#357DE8', yellow: '#E06C00', red: '#C9372C', none: '#B7B9BE' };
 /* readiness = are we ON SCHEDULE (timing-aware), with % complete kept in the tooltip */
 function ragReady(list) {
   if (!list.length) return { key: 'none', color: RAG.none, label: 'Not started' };
@@ -2113,7 +2121,7 @@ async function sendPasswordReset(email) {
    Level-up polish (Aug 22 2026): avatar palette, greeting,
    personalized My-tasks + inline Activity, rich user chip
    ============================================================ */
-const _AVATAR_PAL = ['#16357F','#B03A5B','#0F7B6C','#8A5B14','#7A3A9B','#0B4E7F','#B04E00','#3A6B14','#5B2A85','#9B2C55','#155F8A','#7B4600','#0E5D9E','#7B1E3C'];
+const _AVATAR_PAL = ['#16357F','#6929C4','#005D5D','#9F1853','#8A3800','#0072C3','#198038','#491D8B','#004144','#00539A','#012749','#002D9C'];
 function avatarColor(seed) { if (!seed) return '#75778B'; let h = 0; for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0; return _AVATAR_PAL[Math.abs(h) % _AVATAR_PAL.length]; }
 function paintAvatars(root) {
   (root || document).querySelectorAll('.owner-avatar:not(.unassigned):not(.painted), .dact-avatar:not(.painted), .cb-user-avatar:not(.painted)').forEach(el => {
