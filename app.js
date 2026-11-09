@@ -12,13 +12,17 @@
    teams, starter templates and capital campaigns are kept per board. */
 const WS = window.NGC_WS || 'readiness';
 const WS_PAGE = { readiness: 'readiness.html', enabling: 'enabling.html' };
-const WS_OWN_SETTINGS = ['teams', 'templates', 'campaigns'];
+const WS_OWN_SETTINGS = ['teams', 'templates', 'campaigns', 'seeded'];
 const WS_SEED = {
-  enabling: {
-    title: 'Enabling Work',
-    teams: ['Growth', 'Operations', 'Data', 'Accounting', 'FP&A', 'Purchasing', 'Finance & Tech', 'HR Operations', 'Talent Acquisition', 'SRE']
-  }
+  // url: starting tasks, teams and owners (built from the Enabling Work sheet of the
+  // "KTAF - New School Openings - Workspace" workbook). Loaded into the shared board once.
+  enabling: { title: 'Enabling Work', url: 'enabling-seed.json' }
 };
+function mergeOwners(list) {
+  const own = meta().owners || (meta().owners = []), have = new Set(own.map(o => o.name));
+  let added = 0; (list || []).forEach(o => { if (o && o.name && !have.has(o.name)) { own.push({ name: o.name, role: o.role || '' }); have.add(o.name); added++; } });
+  return added;
+}
 const inWs = d => !!d && (d.ws || 'readiness') === WS;
 const wsOtherIds = new Map();   // id -> workstream, for records that belong to another board
 try { localStorage.setItem('ngc_last_ws', WS); } catch (e) {}   // "Last opened" on the home page
@@ -262,17 +266,23 @@ async function loadData() {
   let base;
   if (window.__EMBEDDED_DATA__) base = JSON.parse(JSON.stringify(window.__EMBEDDED_DATA__));
   else { try { base = await (await fetch('data.json', { cache: 'no-store' })).json(); } catch (e) { $('.container').innerHTML = '<div class="empty-state">Could not load <span class="mono">data.json</span>. Run a local server (see README).</div>'; return null; } }
-  if (WS !== 'readiness') {   // a new board starts empty: shared schools/owners/statuses, its own teams
-    const seed = WS_SEED[WS] || {};
-    base.milestones = []; base.campaigns = [];
+  if (WS !== 'readiness') {   // another board: shared schools/owners/statuses, its own tasks and teams
+    const cfg = WS_SEED[WS] || {};
+    let seed = null;
+    if (cfg.url) { try { seed = await (await fetch(cfg.url, { cache: 'no-store' })).json(); } catch (e) { console.warn('Board starting data not found:', e); } }
+    state.wsSeed = seed;
+    base.milestones = seed && seed.milestones ? JSON.parse(JSON.stringify(seed.milestones)) : [];
+    base.campaigns = [];
     if (base.meta) {
       base.meta.milestoneTemplates = [];
-      if (seed.title) base.meta.title = seed.title;
-      if (seed.teams) { base.meta.teams = seed.teams.slice(); base.meta.functionalAreas = seed.teams.slice(); }
+      if (cfg.title) base.meta.title = cfg.title;
+      if (seed && seed.teams) { base.meta.teams = seed.teams.slice(); base.meta.functionalAreas = seed.teams.slice(); }
+      if (seed && seed.owners) { const o = base.meta.owners || (base.meta.owners = []), have = new Set(o.map(x => x.name)); seed.owners.forEach(x => { if (!have.has(x.name)) o.push({ name: x.name, role: x.role || '' }); }); }
     }
   }
   try {
     const s = JSON.parse(lsGet(LS.data) || 'null');
+    if (s && s.milestones && WS !== 'readiness' && !s.milestones.length && base.milestones.length) throw 0;   // an empty early copy: use the starting data
     if (s && s.milestones) {
       const baseV = (base.meta && base.meta.version) || 0;
       const cachedV = s.__baseVersion || 0;
@@ -1491,12 +1501,13 @@ const SETTINGS_SECTIONS = {
   statuses: ['statuses', 'statusMeta', 'stages', 'priorities'],
   templates: ['milestoneTemplates'],
   meeting: ['meeting'],   // committee meeting date and update cadence
-  campaigns: null   // stored at state.data.campaigns, not in meta
+  campaigns: null,   // stored at state.data.campaigns, not in meta
+  seeded: ['wsSeeded']   // other boards only: set once the starting tasks are loaded
 };
 // Teams, templates and campaigns are saved per workstream ("teams@enabling"); the rest is shared.
 const wsSettingsId = id => (WS !== 'readiness' && WS_OWN_SETTINGS.includes(id)) ? id + '@' + WS : id;
 function settingsDocs() {
-  return Object.keys(SETTINGS_SECTIONS).map(id => {
+  return Object.keys(SETTINGS_SECTIONS).filter(id => id !== 'seeded' || WS !== 'readiness').map(id => {
     const keys = SETTINGS_SECTIONS[id], doc = { id: wsSettingsId(id) };
     if (keys) keys.forEach(k => { if (meta()[k] !== undefined) doc[k] = meta()[k]; });
     else doc.items = state.data.campaigns || [];
@@ -1563,6 +1574,23 @@ async function sbLoadData(client) {
   const rset = await client.from(SB_TABLE.settings).select('id,doc');
   if (rset.error) { sbSettingsReady = false; console.warn('Shared settings unavailable - run supabase-team-sync.sql:', rset.error); }
   else { sbSettingsReady = true; (rset.data || []).forEach(r => applySettingsDoc(r.doc)); sbLastSettings = new Map((rset.data || []).map(r => [r.id, JSON.stringify(r.doc)])); }
+  // Another board's first open by an editor: load its starting tasks, teams and owners into the shared data.
+  const seed = state.wsSeed;
+  if (WS !== 'readiness' && seed && seed.milestones && seed.milestones.length && !M().length && canEdit()
+      && sbSettingsReady && !sbLastSettings.has(wsSettingsId('seeded'))) {
+    state.data.milestones = clone(seed.milestones).map(m => syncFiscal(Object.assign(m, { ws: WS })));
+    const r = await client.from(SB_TABLE.m).upsert(M().map(m => ({ id: m.id, doc: m, updated_at: new Date().toISOString() })));
+    if (r.error) throw r.error;
+    sbLastPushed = new Map(M().map(m => [m.id, JSON.stringify(m)]));
+    if (seed.teams) { meta().teams = seed.teams.slice(); meta().functionalAreas = seed.teams.slice(); }
+    mergeOwners(seed.owners);
+    meta().wsSeeded = new Date().toISOString();
+    if (isAdmin()) sbPushDebounced();   // saves this board's teams, the new owners and the "loaded" marker
+  } else if (WS !== 'readiness' && seed && seed.owners && isAdmin() && sbSettingsReady) {
+    // Owners assigned on this board but missing from the shared roster (e.g. an editor loaded the tasks): add them.
+    const assigned = new Set(); M().forEach(m => { if (m.owner) assigned.add(m.owner); (m.coOwners || []).forEach(n => assigned.add(n)); });
+    if (mergeOwners(seed.owners.filter(o => assigned.has(o.name)))) sbPushDebounced();
+  }
   sbLoaded = true;
   if (!client._ngcChannels) {
     client.channel('gm_rt').on('postgres_changes', { event: '*', schema: 'public', table: SB_TABLE.m }, sbOnRemote).subscribe();

@@ -3369,14 +3369,21 @@ body[data-view="progress"] .mast-status::after { display: none }
   body.nav-collapsed .app-header .header-actions #settingsBtn .nav-util-lbl { display: none !important }
  }
 
-/* ===== Workstreams: way back to the home page (Nov 9 2026) ===== */
+/* ===== Workstreams: way back to the home page (Nov 9 2026) =====
+   Placement follows NN/g (logo top-left links home + an explicit Home link) and the
+   Atlassian start slot (logo + switcher top-left). Order reads parent to child:
+   logo > All workstreams > current workstream > its pages. Secondary style so it
+   does not compete with the selected page. */
 a.brand-lockup { text-decoration: none !important; }
 .app-header .brand-sub b { display: block; }
-.app-header .ws-home { display: flex !important; align-items: center; gap: 12px; height: 40px; margin: 16px 12px 0; padding: 0 8px; border-radius: 6px;
-  background: var(--ds-background-brand-bold, #16357F) !important; color: #FFFFFF !important;
+.app-header .ws-home { display: flex !important; align-items: center; gap: 8px; height: 36px; margin: 16px 52px 4px 20px; padding: 0 12px; border-radius: 6px;
+  background: transparent !important; border: 1px solid var(--ds-border-brand, #16357F) !important; color: var(--ds-text-brand, #16357F) !important;
   font: 600 14px/20px var(--ds-font-family-body) !important; text-decoration: none !important; white-space: nowrap; flex: none; }
-.app-header .ws-home:hover { background: var(--ds-background-brand-bold-hovered, #0F2A6B) !important; color: #FFFFFF !important; }
+.app-header .ws-home:hover { background: var(--ds-background-brand-subtlest, #E9F2FF) !important; }
+.app-header .ws-home:active { background: var(--ds-background-brand-subtlest-pressed, #CFE1FD) !important; }
 .app-header .ws-home:focus-visible { outline: 2px solid var(--ds-border-focused, #4688EC) !important; outline-offset: 2px; }
-.app-header .ws-home svg { flex: none; }
-body.nav-collapsed .app-header .ws-home { justify-content: center; width: 40px !important; min-width: 40px; margin: 16px auto 0 !important; padding: 0 !important; align-self: center; }
+.app-header .ws-home svg { flex: none; width: 18px; height: 18px; }
+:root[data-theme="dark"] .app-header .ws-home { border-color: #85B8FF !important; color: #85B8FF !important; }
+body.nav-collapsed .app-header .ws-home { justify-content: center; width: 40px !important; min-width: 40px; height: 40px; margin: 16px auto 0 !important; padding: 0 !important; align-self: center; }
 body.nav-collapsed .app-header .ws-home-lbl { display: none !important; }
+@media (min-width: 1000px) { body:not(.nav-collapsed) .app-header #navToggle { top: 59px !important; } }
