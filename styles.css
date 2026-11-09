@@ -3387,3 +3387,9 @@ a.brand-lockup { text-decoration: none !important; }
 body.nav-collapsed .app-header .ws-home { justify-content: center; width: 40px !important; min-width: 40px; height: 40px; margin: 52px auto 0 !important; padding: 0 !important; align-self: center; }
 body.nav-collapsed .app-header .ws-home-lbl { display: none !important; }
 @media (min-width: 1000px) { body:not(.nav-collapsed) .app-header #navToggle { top: 59px !important; } }
+/* Top-bar layout (narrow windows): icon-only home button so the bar never wraps to a second row
+   (wrapping on load pushed the whole page down, Nov 9 2026). */
+@media (max-width: 999px) {
+  .app-header .ws-home { width: 36px !important; min-width: 36px; height: 36px; margin: 0 4px !important; padding: 0 !important; justify-content: center; }
+  .app-header .ws-home-lbl { display: none !important; }
+}
