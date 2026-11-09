@@ -5,7 +5,26 @@
    ============================================================ */
 'use strict';
 
-const LS = { theme: 'ngc_theme', data: 'ngc_data', gh: 'ngc_gh', supabase: 'ngc_supabase', ui: 'ngc_ui', gate: 'ngc_gate', team: 'ngc_team' };
+/* ---------- workstreams ----------
+   One app serves several workstream boards. The page sets window.NGC_WS before app.js loads
+   (readiness.html = 'readiness', enabling.html = 'enabling'). Milestones share one table and carry
+   `ws`; records without it belong to Growth Readiness. Schools and owners are shared across boards;
+   teams, starter templates and capital campaigns are kept per board. */
+const WS = window.NGC_WS || 'readiness';
+const WS_PAGE = { readiness: 'readiness.html', enabling: 'enabling.html' };
+const WS_OWN_SETTINGS = ['teams', 'templates', 'campaigns'];
+const WS_SEED = {
+  enabling: {
+    title: 'Enabling Work',
+    teams: ['Growth', 'Operations', 'Data', 'Accounting', 'FP&A', 'Purchasing', 'Finance & Tech', 'HR Operations', 'Talent Acquisition', 'SRE']
+  }
+};
+const inWs = d => !!d && (d.ws || 'readiness') === WS;
+const wsOtherIds = new Map();   // id -> workstream, for records that belong to another board
+try { localStorage.setItem('ngc_last_ws', WS); } catch (e) {}   // "Last opened" on the home page
+function stampWs() { if (WS !== 'readiness' && state.data) (state.data.milestones || []).forEach(m => { if (!m.ws) m.ws = WS; }); }
+
+const LS = { theme: 'ngc_theme', data: WS === 'readiness' ? 'ngc_data' : 'ngc_data_' + WS, gh: 'ngc_gh', supabase: 'ngc_supabase', ui: 'ngc_ui', gate: 'ngc_gate', team: 'ngc_team' };
 /* Safe storage - sandboxed iframes (e.g. the published artifact) throw on any localStorage access.
    Never let that break app init / event wiring. */
 function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -243,6 +262,15 @@ async function loadData() {
   let base;
   if (window.__EMBEDDED_DATA__) base = JSON.parse(JSON.stringify(window.__EMBEDDED_DATA__));
   else { try { base = await (await fetch('data.json', { cache: 'no-store' })).json(); } catch (e) { $('.container').innerHTML = '<div class="empty-state">Could not load <span class="mono">data.json</span>. Run a local server (see README).</div>'; return null; } }
+  if (WS !== 'readiness') {   // a new board starts empty: shared schools/owners/statuses, its own teams
+    const seed = WS_SEED[WS] || {};
+    base.milestones = []; base.campaigns = [];
+    if (base.meta) {
+      base.meta.milestoneTemplates = [];
+      if (seed.title) base.meta.title = seed.title;
+      if (seed.teams) { base.meta.teams = seed.teams.slice(); base.meta.functionalAreas = seed.teams.slice(); }
+    }
+  }
   try {
     const s = JSON.parse(lsGet(LS.data) || 'null');
     if (s && s.milestones) {
@@ -264,7 +292,7 @@ async function loadData() {
   return normalizeData(base);
 }
 let saveTimer = null;
-function autosaveWriteLocal() { try { const c = JSON.parse(JSON.stringify(state.data)); c.__baseVersion = state.data.meta && state.data.meta.version; lsSet(LS.data, JSON.stringify(c)); return true; } catch (e) { return false; } }
+function autosaveWriteLocal() { stampWs(); try { const c = JSON.parse(JSON.stringify(state.data)); c.__baseVersion = state.data.meta && state.data.meta.version; lsSet(LS.data, JSON.stringify(c)); return true; } catch (e) { return false; } }
 function autosave() {
   const b = $('#saveState'), live = state.sb && state.sb.connected;
   if (b) { b.textContent = live ? 'Syncing…' : 'Saving…'; b.className = 'save-state saving'; }
@@ -1465,17 +1493,22 @@ const SETTINGS_SECTIONS = {
   meeting: ['meeting'],   // committee meeting date and update cadence
   campaigns: null   // stored at state.data.campaigns, not in meta
 };
+// Teams, templates and campaigns are saved per workstream ("teams@enabling"); the rest is shared.
+const wsSettingsId = id => (WS !== 'readiness' && WS_OWN_SETTINGS.includes(id)) ? id + '@' + WS : id;
 function settingsDocs() {
   return Object.keys(SETTINGS_SECTIONS).map(id => {
-    const keys = SETTINGS_SECTIONS[id], doc = { id };
+    const keys = SETTINGS_SECTIONS[id], doc = { id: wsSettingsId(id) };
     if (keys) keys.forEach(k => { if (meta()[k] !== undefined) doc[k] = meta()[k]; });
     else doc.items = state.data.campaigns || [];
     return JSON.parse(JSON.stringify(doc));
   });
 }
+function settingsIdHere(id) { const [sid, sws] = id.split('@'); return sws ? sws === WS : wsSettingsId(sid) === sid; }
 function applySettingsDoc(doc) {
-  if (!doc || !Object.prototype.hasOwnProperty.call(SETTINGS_SECTIONS, doc.id)) return;
-  const keys = SETTINGS_SECTIONS[doc.id];
+  if (!doc || typeof doc.id !== 'string' || !settingsIdHere(doc.id)) return;   // another workstream's settings
+  const sid = doc.id.split('@')[0];
+  if (!Object.prototype.hasOwnProperty.call(SETTINGS_SECTIONS, sid)) return;
+  const keys = SETTINGS_SECTIONS[sid];
   if (keys) keys.forEach(k => { if (doc[k] !== undefined) meta()[k] = doc[k]; });
   else if (Array.isArray(doc.items)) state.data.campaigns = doc.items;
 }
@@ -1516,8 +1549,10 @@ function applyRemoteToUndo(kind, id, base, doc) {
 async function sbLoadData(client) {
   // milestones
   const rm = await client.from(SB_TABLE.m).select('id,doc'); if (rm.error) throw rm.error;
-  if (rm.data && rm.data.length) state.data.milestones = rm.data.map(r => r.doc).filter(Boolean).map(syncFiscal);
-  else if (canEdit()) { const r = await client.from(SB_TABLE.m).upsert(M().map(m => ({ id: m.id, doc: m, updated_at: new Date().toISOString() }))); if (r.error) throw r.error; }
+  const rows = (rm.data || []).map(r => r.doc).filter(Boolean);
+  rows.forEach(d => { if (!inWs(d)) wsOtherIds.set(d.id, d.ws || 'readiness'); });
+  if (rows.length) state.data.milestones = rows.filter(inWs).map(syncFiscal);
+  else if (canEdit()) { stampWs(); const r = await client.from(SB_TABLE.m).upsert(M().map(m => ({ id: m.id, doc: m, updated_at: new Date().toISOString() }))); if (r.error) throw r.error; }
   sbLastPushed = new Map(M().map(m => [m.id, JSON.stringify(m)]));
   // schools
   const rs = await client.from(SB_TABLE.s).select('id,doc'); if (rs.error) throw rs.error;
@@ -1552,6 +1587,11 @@ function sbOnRemote(p) {
     }
     const isSchool = p.table === SB_TABLE.s, kind = isSchool ? 'schools' : 'milestones';
     const arr = isSchool ? S() : M(), last = isSchool ? sbLastSchools : sbLastPushed;
+    if (!isSchool) {   // another workstream's record: remember it, never show or merge it here
+      const nd = p.new && p.new.doc, oid = p.old && p.old.id;
+      if (nd && !inWs(nd)) { wsOtherIds.set(nd.id, nd.ws || 'readiness'); return; }
+      if (p.eventType === 'DELETE' && oid && !arr.some(x => x.id === oid)) return;
+    }
     if (p.eventType === 'DELETE') {
       const id = p.old && p.old.id; if (!id) return;
       const na = arr.filter(x => x.id !== id); if (isSchool) state.data.schools = na; else state.data.milestones = na;
@@ -1606,6 +1646,7 @@ async function sbPush() {
   if (sbPushing) { sbPushAgain = true; return; }
   sbPushing = true;
   try {
+    stampWs();
     await sbPushTable(client, SB_TABLE.m, M(), sbLastPushed, true);
     await sbPushTable(client, SB_TABLE.s, S(), sbLastSchools, true);
     if (sbSettingsReady && isAdmin()) await sbPushTable(client, SB_TABLE.settings, settingsDocs(), sbLastSettings, false);
@@ -1668,7 +1709,7 @@ function renderDrawer() {
       <div class="dw-btns"><button class="btn" id="expBtn">Download backup</button><button class="btn" id="csvBtn">Export milestones to CSV</button>${admin ? '<button class="btn" id="impBtn">Import</button><input type="file" id="impFile" accept="application/json" class="hide">' : ''}</div>
     </details>
 
-    <div class="dw-about">Network Growth Hub · ${M().length} milestones · ${state.data.schools.length} schools · v${meta().version || 1}</div>`;
+    <div class="dw-about">${WS_SEED[WS] ? WS_SEED[WS].title : 'Growth Readiness'} · ${M().length} milestones · ${state.data.schools.length} schools · v${meta().version || 1}</div>`;
 }
 
 /* ---------- schools management panel (drawer section 4) ---------- */
@@ -2088,7 +2129,7 @@ function showAuthScreen(err, mode, info) {
     : '<div>12+ characters with upper and lowercase, a number and a symbol</div>';
   g.innerHTML = `<div class="gate-card auth-card">
       <img class="gate-logo" src="${logoSrc}" alt="KIPP">
-      <h1>Network Growth Hub</h1>
+      <h1>${WS_SEED[WS] ? WS_SEED[WS].title : 'Growth Readiness'}</h1>
       ${intro ? `<p>${intro}</p>` : ''}
       <form id="authForm" autocomplete="on">${fields}</form>
       ${err ? `<div class="gate-err">${esc(err)}</div>` : ''}
@@ -2395,7 +2436,8 @@ async function sbFetchAudit(limit) {
       .order('ts', { ascending: false })
       .limit(limit || 50);
     if (error) throw error;
-    state.auditFeed = data || [];
+    state.auditFeed = (data || []).filter(a => !(a.entity_type === 'milestone' && wsOtherIds.has(a.entity_id))
+      && !(a.entity_type === 'growth_settings' && !settingsIdHere(String(a.entity_id || ''))));
     return state.auditFeed;
   } catch (e) { console.warn('Team activity (audit) fetch failed - using local log:', e.message || e); return null; }
 }
@@ -3456,6 +3498,8 @@ function openDeepLink() {
       try { const u = new URL(location.href); u.searchParams.delete('m'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } catch (e) {}
       return openModal(id);
     }
+    const ows = wsOtherIds.get(id);   // the link points at another workstream's board
+    if (ows && WS_PAGE[ows]) return location.replace(WS_PAGE[ows] + location.search);
     if (++tries < 30) setTimeout(go, 500); else toast("That milestone wasn't found. It may have been deleted", 'warn');
   };
   setTimeout(go, 300);
