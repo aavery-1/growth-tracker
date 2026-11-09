@@ -141,7 +141,7 @@ const LEGACY_STATUS = { not_started: '#C7CCD6', on_track: '#43B0E6', at_risk: '#
 const SM = k => { const m = state.data.meta.statusMeta[k] || { label: k, color: '#ccc', text: '#000' }; const old = LEGACY_STATUS[k];
   return old && [].concat(old).includes(String(m.color).toUpperCase()) ? Object.assign({}, m, { color: ADS_STATUS[k] }) : m; };
 // Atlassian lozenge for the standard statuses; custom statuses keep their own color with readable text.
-function statusPill(k) { const m = SM(k); return ADS_STATUS[k] ? `<span class="stpill st-${k}"><i style="background:${m.color}"></i>${esc(m.label)}</span>` : `<span class="stpill" style="background:${m.color}22;color:var(--ds-text)"><i style="background:${m.color}"></i>${esc(m.label)}</span>`; }
+function statusLozenge(k) { const m = SM(k); return ADS_STATUS[k] ? `<span class="stpill st-${k}"><i style="background:${m.color}"></i>${esc(m.label)}</span>` : `<span class="stpill" style="background:${m.color}22;color:var(--ds-text)"><i style="background:${m.color}"></i>${esc(m.label)}</span>`; }
 function statusDot(k) { return `<i class="stdot" style="background:${SM(k).color}"></i>`; }
 
 /* ---------- timing (live, date-driven urgency) ---------- */
@@ -464,12 +464,13 @@ function otCard(s) {
   return `<article class="ot-card" data-drillschool="${esc(s.id)}" style="--mk:${mk}">
       <div class="ot-card-top">
         <span class="ot-mkt"><i style="background:${mk}"></i>${esc(s.market)}</span>
+        ${n ? statusLozenge(rollupStatus(sm)) : `<span class="stpill st-not_started"><i style="background:${ADS_STATUS.not_started}"></i>Not yet scoped</span>`}
       </div>
       <h4 class="ot-title">${esc(s.display_label)}</h4>
       ${when ? `<p class="ot-when">${esc(when)}</p>` : ''}
       ${n ? `<div class="ot-prog">
         <div class="ot-prog-bar"><span style="width:${pct}%;background:${r.color}"></span></div>
-        <div class="ot-prog-lbl"><b>${done}/${n}</b> milestones done<span class="muted"> · ${pct}% progress</span></div>
+        <div class="ot-prog-lbl"><b>${done}/${n}</b> milestones clear<span class="muted"> · ${pct}% progress</span></div>
       </div>` : `<div class="ot-prog"><div class="ot-prog-empty">No milestones yet</div></div>`}
     </article>`;
 }
@@ -491,8 +492,7 @@ function ganttBodyHtml() {
       </div>
     </section>`;
   }).join('');
-  return `<div class="ot">${body}</div>
-    <div class="ot-legend"><span><i class="rag" style="background:${RAG.none}"></i>Not started</span><span><i class="rag" style="background:${RAG.blue}"></i>In progress</span><span><i class="rag" style="background:${RAG.yellow}"></i>At risk</span><span><i class="rag" style="background:${RAG.red}"></i>Behind</span><span><i class="rag" style="background:${RAG.green}"></i>Cleared</span></div>`;
+  return `<div class="ot">${body}</div>`;
 }
 function renderTimeline() {
   // No H2 - sidebar already indicates active page. Action button floats right.
@@ -696,9 +696,9 @@ function ragReady(list) {
   if (!list.length) return { key: 'none', color: RAG.none, label: 'Not started' };
   const eff = list.map(effectiveStatus), done = eff.filter(s => s === 'complete').length, pctc = Math.round(100 * done / list.length);
   if (done === list.length) return { key: 'green', color: RAG.green, label: 'Complete' };
-  if (eff.some(s => s === 'behind' || s === 'blocked')) return { key: 'red', color: RAG.red, label: 'Behind · ' + pctc + '% done' };
-  if (eff.some(s => s === 'at_risk')) return { key: 'yellow', color: RAG.yellow, label: 'At risk · ' + pctc + '% done' };
-  if (eff.some(s => s === 'on_track' || s === 'complete')) return { key: 'blue', color: RAG.blue, label: 'On track · ' + pctc + '% done' };
+  if (eff.some(s => s === 'behind' || s === 'blocked')) return { key: 'red', color: RAG.red, label: 'Behind · ' + pctc + '% clear' };
+  if (eff.some(s => s === 'at_risk')) return { key: 'yellow', color: RAG.yellow, label: 'At risk · ' + pctc + '% clear' };
+  if (eff.some(s => s === 'on_track' || s === 'complete')) return { key: 'blue', color: RAG.blue, label: 'On track · ' + pctc + '% clear' };
   return { key: 'none', color: RAG.none, label: 'Not started' };
 }
 // monthly trend snapshots (localStorage) → powers the KPI "vs last month" deltas
@@ -2070,7 +2070,7 @@ function showAuthScreen(err, mode, info) {
   let g = $('#gateScreen');
   if (!g) { g = document.createElement('div'); g.id = 'gateScreen'; g.className = 'gate-screen'; document.body.appendChild(g); }
   const logoSrc = (document.querySelector('.brand-logo') || {}).src || '';
-  const intro = { signin: 'Sign in with your KIPP work email.', forgot: "Enter your work email. We'll send a link to reset your password.", setpw: 'Choose a password for your account.' }[mode];
+  const intro = { signin: '', forgot: "We'll email you a reset link.", setpw: 'Choose a password.' }[mode];
   const fields = mode === 'signin' ? `
         <input id="authEmail" type="email" placeholder="Work email" autocomplete="username" required>
         <input id="authPw" type="password" placeholder="Password" autocomplete="current-password" required>
@@ -2083,13 +2083,13 @@ function showAuthScreen(err, mode, info) {
         <input id="authPw" type="password" placeholder="New password (12+ characters)" autocomplete="new-password" required minlength="12">
         <input id="authPw2" type="password" placeholder="Confirm new password" autocomplete="new-password" required minlength="12">
         <button type="submit" class="btn btn-filled" id="authSubmit">Save password</button>`;
-  const foot = mode === 'signin' ? '<button type="button" class="auth-link" data-authmode="forgot">Forgot password?</button><div>Accounts are by invitation. Ask the Growth Hub admin for an invite.</div>'
+  const foot = mode === 'signin' ? '<button type="button" class="auth-link" data-authmode="forgot">Forgot password?</button><div>No account? Ask your admin.</div>'
     : mode === 'forgot' ? '<button type="button" class="auth-link" data-authmode="signin">Back to sign in</button>'
-    : '<div>Use 12 or more characters with an uppercase letter, a lowercase letter, a number, and a symbol</div>';
+    : '<div>12+ characters with upper and lowercase, a number and a symbol</div>';
   g.innerHTML = `<div class="gate-card auth-card">
       <img class="gate-logo" src="${logoSrc}" alt="KIPP">
       <h1>Network Growth Hub</h1>
-      <p>${intro}</p>
+      ${intro ? `<p>${intro}</p>` : ''}
       <form id="authForm" autocomplete="on">${fields}</form>
       ${err ? `<div class="gate-err">${esc(err)}</div>` : ''}
       ${info ? `<div class="gate-info">${esc(info)}</div>` : ''}
@@ -2453,7 +2453,7 @@ function updateActivityDot() {
 
 /* ---------- Floating filter bubble: opens the real filter bar as a panel ---------- */
 function updateFilterBubble() {
-  renderCtxBar(); renderMasthead();
+  renderCtxBar(); renderMasthead(); renderNavCounts();
   const btn = $('#cbPillFilter'); if (!btn) return;
   const n = activeCount();
   const badge = $('#cbPillFilterCount');
@@ -3132,6 +3132,16 @@ document.addEventListener('click', e => {
   else if (k === 'meeting') go('#view-progress .cm-card');
   else if (k === 'setmeeting') { const s = document.querySelector('[data-open-settings]'); if (s) s.click(); else go('#view-progress .cm-card'); }
 });
+/* Sidebar counts: only what needs action. Openings off track or at risk; milestones needing attention. */
+function renderNavCounts() {
+  const set = (id, n, tone, tip) => { const b = $(id); if (!b) return; b.hidden = !n; b.textContent = n || ''; b.className = 'nav-badge nb-' + tone; b.title = n ? tip : ''; };
+  try {
+    const off = state.data.schools.filter(s => s.openingFY && ['red', 'yellow'].includes(ragReady(schoolMs(s)).key)).length;
+    set('#navBadgeOpen', off, 'danger', off + ' opening' + (off === 1 ? '' : 's') + ' at risk or behind');
+    const att = attentionItems(M()).length;
+    set('#navBadgePlan', att, 'warn', att + ' milestone' + (att === 1 ? '' : 's') + ' need attention');
+  } catch (e) {}
+}
 /* Context bar text: page name, then the active filters and how many results they leave */
 function ctxScopeParts() {
   const f = state.filters, p = [];
