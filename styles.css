@@ -3368,3 +3368,15 @@ body[data-view="progress"] .mast-status::after { display: none }
   body.nav-collapsed .app-header .header-actions #settingsBtn { width: 40px !important; padding: 0 !important; justify-content: center !important }
   body.nav-collapsed .app-header .header-actions #settingsBtn .nav-util-lbl { display: none !important }
  }
+
+/* ===== Workstreams: way back to the home page (Nov 9 2026) ===== */
+a.brand-lockup { text-decoration: none !important; }
+.app-header .brand-sub b { display: block; }
+.app-header .ws-home { display: flex !important; align-items: center; gap: 12px; height: 40px; margin: 16px 12px 0; padding: 0 8px; border-radius: 6px;
+  background: var(--ds-background-brand-bold, #16357F) !important; color: #FFFFFF !important;
+  font: 600 14px/20px var(--ds-font-family-body) !important; text-decoration: none !important; white-space: nowrap; flex: none; }
+.app-header .ws-home:hover { background: var(--ds-background-brand-bold-hovered, #0F2A6B) !important; color: #FFFFFF !important; }
+.app-header .ws-home:focus-visible { outline: 2px solid var(--ds-border-focused, #4688EC) !important; outline-offset: 2px; }
+.app-header .ws-home svg { flex: none; }
+body.nav-collapsed .app-header .ws-home { justify-content: center; width: 40px !important; min-width: 40px; margin: 16px auto 0 !important; padding: 0 !important; align-self: center; }
+body.nav-collapsed .app-header .ws-home-lbl { display: none !important; }
