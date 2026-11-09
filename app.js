@@ -88,16 +88,18 @@ function daysUntil(s) { const d = parseDate(s); if (!d) return null; return days
 function fmtDate(s) { const d = parseDate(s); return d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'; }
 /* ---------- threaded notes (attach to a task or school; surface wherever it's opened) ---------- */
 function fmtWhen(t) { try { return new Date(t).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } }
-function noteItemHtml(nt) { return `<div class="note-item"><div class="note-meta"><b>${nt.by ? esc(nt.by) : 'Someone'}</b> · ${esc(fmtWhen(nt.t))}</div><div class="note-text">${esc(nt.text)}</div></div>`; }
+function noteItemHtml(nt) { return `<div class="note-item"><div class="note-meta"><b>${nt.by ? esc(nt.by) : 'Someone'}</b> · ${esc(fmtWhen(nt.t))}</div><div class="note-text">${renderNoteText(nt)}</div></div>`; }
 async function postNote(wrap) {
-  if (!wrap || !guardEdit()) return;
+  if (!wrap || !canComment()) return;
   const kind = wrap.dataset.notekind, id = wrap.dataset.noteid;
   const inp = wrap.querySelector('#noteInput'), au = wrap.querySelector('#noteAuthor'), btn = wrap.querySelector('#noteAdd');
   const text = (inp.value || '').trim(); if (!text) { inp.focus(); return; }
   const by = ((au && au.value) || currentDisplayName() || '').trim();
   const ent = kind === 'school' ? (state.data.schools || []).find(x => x.id === id) : findM(id);
   if (!ent) return;
-  const nt = { t: Date.now(), by, text };
+  const nt = { t: Date.now(), by, text }, ments = mentionsIn(text);
+  if (ments.length) nt.mentions = ments;
+  closeMentionMenu();
   const live = state.sb && state.sb.connected && sbLoaded && state.auth.user;
   if (live) {
     // Notes are added on the server in one step, so two people posting at once both keep their note.
@@ -125,10 +127,10 @@ async function postNote(wrap) {
   thread.scrollTop = thread.scrollHeight;
 }
 function notesSection(kind, id, log) {
-  const items = (log || []).slice().sort((a, b) => a.t - b.t).map(noteItemHtml).join('') || '<div class="note-empty muted">No notes yet</div>';
-  return `<div class="notes-field" data-notekind="${kind}" data-noteid="${esc(id)}"><label class="notes-label">Notes and updates</label>
+  const items = (log || []).slice().sort((a, b) => a.t - b.t).map(noteItemHtml).join('') || '<div class="note-empty muted">No comments yet</div>';
+  return `<div class="notes-field" data-notekind="${kind}" data-noteid="${esc(id)}"><label class="notes-label">Comments</label>
     <div class="note-thread">${items}</div>
-    <div class="note-add"><input id="noteAuthor" type="hidden" value="${esc(currentDisplayName())}"><input id="noteInput" class="note-input" placeholder="Add a note or update"><button class="btn btn-filled btn-sm" id="noteAdd">Post</button></div></div>`;
+    <div class="note-add"><input id="noteAuthor" type="hidden" value="${esc(currentDisplayName())}"><input id="noteInput" class="note-input" placeholder="Add a comment. Type @ to mention someone" autocomplete="off" aria-label="Add a comment"><button class="btn btn-filled btn-sm" id="noteAdd">Post</button></div></div>`;
 }
 
 /* ---------- status meta ---------- */
@@ -576,7 +578,7 @@ function planCard(m, opts = {}) {
   const dueEl = m.due_date ? `<span class="kc-due"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>${esc(fmtDate(m.due_date))}</span>` : '';
   const pct = Math.max(0, Math.min(100, m.progress_percent || 0));
   const prog = pct === 0 ? '' : `<div class="kc-prog"><div class="kc-prog-top"><span>Progress</span><b>${pct}%</b></div><div class="kc-prog-bar"><span style="width:${pct}%;background:${scol}"></span></div></div>`;
-  const notes = nc ? `<span class="kc-notes" title="${nc} note${nc === 1 ? '' : 's'}"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${nc}</span>` : '';
+  const notes = nc ? `<span class="kc-notes" title="${nc} comment${nc === 1 ? '' : 's'}"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${nc}</span>` : '';
   // Material card anatomy: headline · subhead · supporting line · action row (inset divider above actions)
   const sub = [place, showTeam ? m.functional_area : ''].filter(Boolean).join(' · ');
   const p = curProgress(m), reasons = watermelonReasons(m), stale = needsCheckin(m), hist = m.dateHistory || [];
@@ -592,7 +594,7 @@ function planCard(m, opts = {}) {
     <div class="kc-title" title="${esc(m.activity)}">${esc(m.activity)}</div>
     ${sub ? `<div class="kc-sub">${m.market ? `<span class="kc-mkdot" style="background:${mk}"></span>` : ''}<span>${esc(sub)}</span>${flag}</div>` : ''}
     <div class="kc-meta">${due}${pctEl}</div>
-    <div class="kc-actions">${stBtn}${marker}<span class="kc-actions-r">${notes}<span class="kc-owners">${ownersOf(m).length ? ownersOf(m).map(o => personChip(o)).join('') : personChip('')}</span></span></div>
+    <div class="kc-actions">${stBtn}${marker}<span class="kc-actions-r">${linksBadge(m)}${notes}<span class="kc-owners">${ownersOf(m).length ? ownersOf(m).map(o => personChip(o)).join('') : personChip('')}</span></span></div>
   </div>`;
 }
 function planFocusHtml() {
@@ -825,6 +827,7 @@ function dashboardHtml(list) {
     ${rptHead}
     ${isAdmin() ? committeeCard() : ''}
     ${greetBanner(list)}
+    ${mentionsCard()}
     ${openingsTable(schools, sMs)}
     <div class="dash-pair">${attentionCard(list)}${comingUpCard(list)}</div>
     <div class="dash-pair dash-pair-wide">${teamsCard(list)}${capitalPriorityStrip()}</div>
@@ -968,7 +971,8 @@ function keepTeammateEdits(obj, opened, current) {
 // View-only accounts see the same modal with every field locked.
 function lockModalIfReadOnly() {
   if (canEdit()) return;
-  $$('#modalBody input, #modalBody select, #modalBody textarea, #modalBody #mBlockBtn').forEach(el => { el.disabled = true; });
+  $$('#modalBody input, #modalBody select, #modalBody textarea, #modalBody #mBlockBtn, #modalBody .dep-x, #modalBody .lk-x, #modalBody #lkAdd').forEach(el => { el.disabled = true; });
+  if (commentLive()) { const nf = $('#modalBody .notes-field'), ni = $('#noteInput'); if (nf) nf.classList.add('can-comment'); if (ni) ni.disabled = false; }
   $('#modalTitle').textContent += ' (view only)';
 }
 function openModal(id) {
@@ -999,10 +1003,11 @@ function openModal(id) {
       <div class="field block-reason"><label for="mBlockWhy">What's blocking it?</label><input id="mBlockWhy" value="${esc(m.dependency)}" ></div>
     </div>
     <div class="m-sec-h">Owner and timing</div>
-    <div class="field-row"><div class="field"><label>Owner</label><select id="mOwner">${ownerOptions(m.owner)}</select></div><div class="field"><label>Due date</label><input id="mDue" type="date" value="${esc(m.due_date || '')}"></div></div>
+    <div class="field-row"><div class="field"><label>Owner</label><select id="mOwner">${ownerOptions(m.owner)}</select>${m._draft ? '' : emailOwnersLink(m)}</div><div class="field"><label>Due date</label><input id="mDue" type="date" value="${esc(m.due_date || '')}"></div></div>
     <div class="field"><label>Co-owners</label>${coOwnerPicker(m)}${isAdmin() ? '<div class="help-text">Missing someone? Add them in Settings</div>' : ''}</div>
     <div class="field"><label>Team</label><select id="mTeam">${opt(teams(), m.functional_area)}</select></div>
     ${checkpointsBlock(m)}
+    ${linksDepsBlock(m)}
     ${m._draft ? '' : soSec}
     <div class="m-sec-h">Notes</div>
     <div class="field"><label>Notes and next steps</label><textarea id="mNotes">${esc(m.notes)}</textarea></div>
@@ -1073,6 +1078,7 @@ function saveModal() {
   syncFiscal(m);
   m.notes = $('#mNotes').value.trim(); m.keyMilestone = $('#mKey').checked; m.transition = $('#mTrans').checked;
   const os = m.schoolIds.length ? schoolById(m.schoolIds[0]) : null; if (os) m.openingFY = os.openingFY;
+  readLinksDeps(m);
   if (!wasDraft) keepTeammateEdits(m, modalOpenDoc, current);
   delete m._draft; touch(m);
   logActivity(wasDraft ? 'create' : 'edit', (wasDraft ? 'Created: ' : 'Updated: ') + m.activity, { itemId: m.id });
@@ -1632,6 +1638,7 @@ function renderDrawer() {
     </section>
 
     ${admin ? meetingSettingsHtml() : ''}
+    ${admin ? integrationsSettingsHtml() : ''}
     ${admin ? `<details class="dw-sec dw-fold"><summary>${num()}Customize markets, teams, and owners</summary>
       <p class="dw-help">Shared with everyone. Items in use can't be removed.</p>
       ${sbSettingsReady ? '' : '<div class="status-note warn">Shared settings are not set up yet. Run supabase-team-sync.sql in Supabase, then reload. Until then, changes here stay on this device.</div>'}
@@ -1714,8 +1721,8 @@ function czSection(label, type, rows) {
     </div>${list}</div>`;
 }
 function czOwners() {
-  const rows = (meta().owners || []).map(o => `<div class="cz-row"><input class="cz-name" data-cztype="owner" data-czold="${esc(o.name)}" value="${esc(o.name)}"><input class="cz-role" data-czowner="${esc(o.name)}" value="${esc(o.role || '')}" placeholder="role"><button class="cz-del" data-cztype="owner" data-czval="${esc(o.name)}" title="Remove">✕</button></div>`).join('');
-  return `<div class="cz-block"><h4 style="margin-top:14px">Owners</h4><div class="cz-add"><input class="cz-new" id="czNew-owner" placeholder="Add a person"><input class="cz-new" id="czNewRole" placeholder="role (optional)"><button class="btn btn-tonal btn-sm" data-czadd="owner">Add</button></div>${rows}</div>`;
+  const rows = (meta().owners || []).map(o => `<div class="cz-row"><input class="cz-name" data-cztype="owner" data-czold="${esc(o.name)}" value="${esc(o.name)}"><input class="cz-role" data-czowner="${esc(o.name)}" value="${esc(o.role || '')}" placeholder="role"><input class="cz-email" type="email" data-czowner="${esc(o.name)}" value="${esc(o.email || '')}" placeholder="email" aria-label="Email for ${esc(o.name)}"><button class="cz-del" data-cztype="owner" data-czval="${esc(o.name)}" title="Remove">✕</button></div>`).join('');
+  return `<div class="cz-block"><h4 style="margin-top:14px">Owners</h4><div class="cz-add"><input class="cz-new" id="czNew-owner" placeholder="Add a person"><input class="cz-new" id="czNewRole" placeholder="role (optional)"><input class="cz-new" id="czNewEmail" type="email" placeholder="email (optional)"><button class="btn btn-tonal btn-sm" data-czadd="owner">Add</button></div>${rows}</div>`;
 }
 function czInUse(type, val) { if (type === 'owner') return M().filter(m => ownersOf(m).includes(val)).length; return type === 'markets' ? M().filter(m => m.market === val).length + state.data.schools.filter(s => s.market === val).length : M().filter(m => m.functional_area === val).length; }
 function czRename(type, oldV, newV) {
@@ -1756,7 +1763,7 @@ function czAdd(type) {
   if (!v) return;
   if (type === 'markets') { if (markets().includes(v)) return toast('Already on the list', 'err'); const st = $('#czNewState').value; markets().push(v); const s = statesMeta().find(x => x.code === st); if (s) s.markets.push(v); }
   else if (type === 'teams') { if (teams().includes(v)) return toast('Already on the list', 'err'); teams().push(v); meta().functionalAreas = teams(); }
-  else if (type === 'owner') { (meta().owners = meta().owners || []).push({ name: v, role: ($('#czNewRole') || {}).value || '' }); }
+  else if (type === 'owner') { (meta().owners = meta().owners || []).push({ name: v, role: ($('#czNewRole') || {}).value || '', email: (($('#czNewEmail') || {}).value || '').trim() }); }
   autosave(); rerender(); renderDrawer();
 }
 function exportJson() { const b = new Blob([JSON.stringify(state.data, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `growth-hub-backup-${todayISO()}.json`; a.click(); URL.revokeObjectURL(a.href); toast('Backup downloaded', 'ok'); }
@@ -1880,7 +1887,7 @@ function wireEvents() {
     const os = e.target.closest('[data-openschool]'); if (os) { closeModal(); return openSchoolModal(os.dataset.openschool); }
     const ex = e.target.closest('[data-expand]'); if (ex && !e.target.closest('button:not([data-expand]), a, input, select, textarea, label')) { if (modalMode === 'school') taskReturnSchool = schoolId; return openModal(ex.dataset.expand); }
   });
-  $('#modalBody').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'noteInput') { e.preventDefault(); postNote(e.target.closest('.notes-field')); } });
+  $('#modalBody').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'noteInput' && !mentionMenuOpen()) { e.preventDefault(); postNote(e.target.closest('.notes-field')); } });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeCmdk(); if ($('#modalBackdrop').classList.contains('open')) attemptCloseModal(); closeDrawer(); closePopover(); closeConfirm(); } });
 
   // keep timing colors live vs. the real date (on return-to-tab and within a minute of midnight)
@@ -1915,6 +1922,7 @@ function wireEvents() {
     if (e.target.closest('[data-mtg-held]')) return markMeetingHeld();
     if (e.target.closest('[data-open-settings]')) { renderDrawer(); $('#drawer').classList.add('open'); $('#drawerBackdrop').classList.add('open'); return; }
     if (e.target.closest('[data-copy-all]')) return copyText(reminderText(M().filter(needsCheckin)));
+    const etm = e.target.closest('[data-email-team]'); if (etm) return emailTeam(etm.dataset.emailTeam);
     const ctm = e.target.closest('[data-copy-team]'); if (ctm) { const txt = teamNote(ctm.dataset.copyTeam); return txt ? copyText(txt) : null; }
     const qs = e.target.closest('[data-qstatus]'); if (qs) { e.stopPropagation(); return openStatusMenu(qs); }
     const dr = e.target.closest('[data-drilldim]'); if (dr) return applyDrill(dr.dataset.drilldim, dr.dataset.drillval);
@@ -1971,6 +1979,7 @@ function wireEvents() {
     if (e.target.closest('.cz-row, .cz-add') && !guardAdmin()) return renderDrawer();
     if (e.target.classList.contains('cz-name')) return czRename(e.target.dataset.cztype, e.target.dataset.czold, e.target.value);
     if (e.target.classList.contains('cz-state')) { const mk = e.target.dataset.czmarket, to = e.target.value; statesMeta().forEach(s => s.markets = s.markets.filter(x => x !== mk)); const s = statesMeta().find(x => x.code === to); if (s && !s.markets.includes(mk)) s.markets.push(mk); M().forEach(m => { if (m.market === mk) m.state = to; }); state.data.schools.forEach(x => { if (x.market === mk) x.state = to; }); autosave(); rerender(); renderDrawer(); return; }
+    if (e.target.classList.contains('cz-email')) { const o = (meta().owners || []).find(x => x.name === e.target.dataset.czowner), v = e.target.value.trim(); if (o) { if (v && !validEmail(v)) return toast('Check the email address', 'err'); o.email = v; autosave(); } return; }
     if (e.target.classList.contains('cz-role')) { const o = (meta().owners || []).find(x => x.name === e.target.dataset.czowner); if (o) { o.role = e.target.value; autosave(); } return; }
   });
 }
@@ -2232,6 +2241,7 @@ function openUserMenu(anchor) {
       <div class="um-head"><div class="um-name">${esc(p.full_name || p.email)}</div><div class="um-email">${esc(p.email || '')}</div><div class="um-role">Role: <b>${esc(p.role || 'viewer')}</b></div>
         ${myOwner() ? `<div class="um-role">Owner: <b>${esc(myOwner().name)}</b>${myOwner().role ? ` · ${esc(myOwner().role)}` : ''}</div>` : `<div class="um-unlinked">Not linked to an owner yet. Ask an admin to set your display name to match the owner list.</div>`}</div>
       <div class="um-actions">
+        <button class="um-item" id="umCalendar">Add deadlines to Outlook</button>
         <button class="um-item" id="umPassword">Change password</button>
         <button class="um-item" id="umSignOut">Sign out</button>
       </div>
@@ -2239,6 +2249,7 @@ function openUserMenu(anchor) {
   const pop = openPopover(anchor, html);
   pop.querySelector('#umSignOut').addEventListener('click', () => { closePopover(); signOutUser(); });
   pop.querySelector('#umPassword').addEventListener('click', () => { closePopover(); openPasswordDialog(); });
+  pop.querySelector('#umCalendar').addEventListener('click', () => { closePopover(); openCalendarSheet(); });
 }
 
 /* ---------- change password (Supabase Auth) ----------
@@ -2528,7 +2539,8 @@ function buildCmdkItems(q) {
   items.push({ icon: ic('<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-4"/>'), name: 'Undo last change', hint: undoStack.length ? undoStack[undoStack.length - 1].label : 'nothing to undo', kbd: '⌘Z', action: () => undo() });
   items.push({ icon: ic('<path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/>'), name: 'Print report', hint: 'Dashboard', kbd: '', action: () => { setView('progress'); setTimeout(() => window.print(), 400); } });
   items.push({ icon: ic('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'), name: 'Check in on my milestones', hint: 'Forecast', kbd: '', action: () => openCheckins() });
-  items.push({ icon: ic('<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>'), name: 'Meeting agenda', hint: 'Off track, at risk, missing updates', kbd: '', action: () => openAgenda() });
+  items.push({ icon: ic('<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>'), name: 'Meeting agenda', hint: 'What changed, off track, missing updates', kbd: '', action: () => openAgenda() });
+  items.push({ icon: ic('<rect x="3" y="4.5" width="18" height="17" rx="2"/><path d="M8 2.5v4M16 2.5v4M3 10h18M12 14v4M10 16h4"/>'), name: 'Add deadlines to Outlook', hint: 'Calendar', kbd: '', action: () => openCalendarSheet() });
   items.push({ icon: ic('<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>'), name: 'Export milestones (CSV)', hint: 'Current filters', kbd: '', action: () => exportCsv() });
   items.push({ icon: ic('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'), name: 'Open settings', hint: '', kbd: '', action: () => { const s = $('#settingsBtn'); if (s) s.click(); } });
   items.push({ icon: ic('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>'), name: 'Activity log', hint: '', kbd: '⌃⇧A', action: () => toggleActivity() });
@@ -2672,6 +2684,7 @@ function bootApp() {
   wireEvents();
   wireCmdk();
   wireKeyboard();
+  wireCollab();
   initContentBar();
   const ab = $('#activityBtn'); if (ab) ab.addEventListener('click', toggleActivity);
   const cbAb = $('#cbActivityBtn'); if (cbAb) cbAb.addEventListener('click', toggleActivity);
@@ -2690,6 +2703,7 @@ function bootApp() {
   const sc = sbCfg();
   // In auth mode, gateStart already connected via sbConnect. Avoid a second connect that would recreate the client.
   if (sc && sc.url && sc.key && !state.sb.connected) sbConnect(sc.url, sc.key, true);
+  openDeepLink();
 }
 document.addEventListener('DOMContentLoaded', init);
 
@@ -2735,6 +2749,7 @@ function watermelonReasons(m) {
   if (lc && d != null && d <= 90) { const ds = daysSince(lc.t); if (ds >= cadenceDays() + 7) r.push(`No check-in in ${ds} days`); }
   const moves = (m.dateHistory || []).length; if (moves >= 2) r.push(`Deadline moved ${moves === 2 ? 'twice' : moves + ' times'}`);
   if (d != null && d >= 0 && d <= 30 && p < 50) r.push(`Due in ${d} day${d === 1 ? '' : 's'} at ${p}% done`);
+  r.push(...waitingReasons(m));
   return r;
 }
 function flagPass(m, f) {
@@ -2919,8 +2934,8 @@ function reminderText(stale) {
   const by = {}; stale.forEach(m => (ownersOf(m).length ? ownersOf(m) : ['Unassigned']).forEach(o => (by[o] = by[o] || []).push(m)));
   return Object.entries(by).map(([o, ms]) => `${o}: please check in on ${ms.length} milestone${ms.length === 1 ? '' : 's'} in Growth Hub before our next meeting:\n` + ms.map(m => `  - ${m.activity} (due ${fmtDate(m.due_date)})`).join('\n')).join('\n\n');
 }
-function copyText(txt) {
-  const done = () => toast('Copied. Paste it into Slack or email.', 'ok');
+function copyText(txt, msg) {
+  const done = () => toast(msg || 'Copied. Paste it into Slack or email.', 'ok');
   if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(txt).then(done, () => fallback());
   fallback();
   function fallback() { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) { toast("Couldn't copy. Select the text and copy it by hand.", 'err'); } ta.remove(); }
@@ -2935,6 +2950,7 @@ function openAgenda() {
   const sec = (title, items, fn) => items.length ? `<section class="ag-sec"><h4>${title} <span class="muted">(${items.length})</span></h4><ul>${items.map(fn).join('')}</ul></section>` : '';
   const byOwner = {}; stale.forEach(m => (ownersOf(m).length ? ownersOf(m) : ['Unassigned']).forEach(o => (byOwner[o] = byOwner[o] || 0, byOwner[o]++)));
   const body = `<p class="modal-lede">${esc(new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }))} · current filters</p>`
+    + `<div id="agSince"><p class="muted">Loading what changed since the last meeting</p></div><h3 class="ag-h">Open issues</h3>`
     + sec('Off track', off, m => li(m, ciX(m)))
     + sec('Blocked', blocked, m => li(m, m.dependency ? 'Blocked by: ' + esc(m.dependency) : ''))
     + sec('At risk', risk, m => li(m, ciX(m)))
@@ -2942,9 +2958,11 @@ function openAgenda() {
     + sec('Deadlines moved in the last 2 weeks', moved, m => { const h = (m.dateHistory || []).slice(-1)[0]; return li(m, `${esc(fmtDate(h.from))} → ${esc(fmtDate(h.to))}${h.reason ? ': ' + esc(h.reason) : ''}`); })
     + (stale.length ? `<section class="ag-sec"><h4>Update missing <span class="muted">(${stale.length})</span></h4><ul>${Object.entries(byOwner).sort((a, b) => b[1] - a[1]).map(([o, n]) => `<li><b>${esc(o)}</b> <span class="muted">${n} milestone${n === 1 ? '' : 's'}</span></li>`).join('')}</ul></section>` : '')
     + ((off.length + blocked.length + risk.length + wm.length + moved.length + stale.length) ? '' : '<p class="muted">Nothing to raise</p>');
-  const w = openSheet('Meeting agenda', body, `${stale.length ? '<button class="btn btn-ghost" id="agCopy">Copy reminder text</button>' : ''}<button class="btn btn-filled" id="agPrint">Print agenda</button>`);
+  const w = openSheet('Meeting agenda', body, `${stale.length ? '<button class="btn btn-ghost" id="agEmail">Email reminders</button><button class="btn btn-ghost" id="agCopy">Copy reminder text</button>' : ''}<button class="btn btn-filled" id="agPrint">Print agenda</button>`);
   $('#agPrint').addEventListener('click', () => { document.body.classList.add('print-agenda'); window.addEventListener('afterprint', () => document.body.classList.remove('print-agenda'), { once: true }); window.print(); });
   const cp = $('#agCopy'); if (cp) cp.addEventListener('click', () => copyText(reminderText(stale)));
+  const em = $('#agEmail'); if (em) em.addEventListener('click', () => openMail([...new Set(stale.flatMap(ownersOf))].map(ownerEmail).filter(Boolean), 'Growth Hub check-ins before our next meeting', reminderText(stale)));
+  fillSinceLastMeeting(list);
 }
 document.addEventListener('scroll', e => { const t = e.target; if (t && t.classList && t.classList.contains('modal-body')) t.classList.toggle('is-scrolled', t.scrollTop > 0); }, true);
 
@@ -2998,7 +3016,7 @@ function committeeCard() {
   const s = committeeSignals(), mt = mtg();
   const when = s.next ? `Next meeting ${esc(fmtDate(s.next))} · ${s.daysToNext === 0 ? 'today' : s.daysToNext < 0 ? `${Math.abs(s.daysToNext)} days ago` : `in ${s.daysToNext} day${s.daysToNext === 1 ? '' : 's'}`}` : '<button class="btn btn-text btn-sm" data-open-settings>Set the next meeting date</button>';
   const head = { start: 'No team updates yet', ok: 'On track for the next meeting', touch: `Touch base with ${s.teams.length} team${s.teams.length === 1 ? '' : 's'}`, early: 'Consider an early meeting' }[s.level];
-  const rows = s.teams.map(t => `<div class="cm-row"><div class="cm-main"><div class="cm-team">${esc(t.team)}</div><div class="cm-why">${esc(t.reasons.join(' · '))}${t.people.length ? ' · ' + esc(t.people.join(', ')) : ''}</div></div><button class="btn btn-ghost btn-sm" data-copy-team="${esc(t.team)}">Copy note</button></div>`).join('');
+  const rows = s.teams.map(t => `<div class="cm-row"><div class="cm-main"><div class="cm-team">${esc(t.team)}</div><div class="cm-why">${esc(t.reasons.join(' · '))}${t.people.length ? ' · ' + esc(t.people.join(', ')) : ''}</div></div><span class="cm-row-acts"><button class="btn btn-ghost btn-sm" data-email-team="${esc(t.team)}">Email</button><button class="btn btn-ghost btn-sm" data-copy-team="${esc(t.team)}">Copy note</button></span></div>`).join('');
   return `<section class="ex-card cm-card cm-${s.level}">
     <div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('people')}<h3>Between meetings</h3></div><div class="cm-when">${when}</div></div>
     <div class="cm-status"><span class="cm-dot"></span><b>${head}</b></div>
@@ -3047,3 +3065,335 @@ function updateSticky() {
 let stickyRaf = 0;
 window.addEventListener('scroll', () => { if (!stickyRaf) stickyRaf = requestAnimationFrame(() => { stickyRaf = 0; updateSticky(); }); }, { passive: true });
 window.addEventListener('resize', updateSticky);
+
+/* ============================================================
+   COLLABORATION (Nov 2026): comments with @mentions (viewers too),
+   documents and "waiting on" links on milestones, email buttons,
+   Slack settings, Outlook calendar, "since the last meeting" and
+   ?m=<id> links that open a milestone. Database side:
+   supabase-collab-integrations.sql. Setup: INTEGRATIONS-SETUP.md.
+   ============================================================ */
+const clip = (s, n) => { s = String(s || ''); return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s; };
+const validEmail = v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || '').trim());
+function commentLive() { return !!(state.sb && state.sb.connected && sbLoaded && state.auth && state.auth.user); }
+// Signed-in people can comment whatever their role; offline, only editors can add notes
+function canComment() { return commentLive() || guardEdit(); }
+function safeUrl(u) { try { const x = new URL(String(u || '').trim()); return /^https?:$/.test(x.protocol) ? x.href : ''; } catch (e) { return ''; } }
+function hostOf(u) { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return ''; } }
+function taskLink(id) { return `${location.origin}${location.pathname}?m=${encodeURIComponent(id)}`; }
+
+/* ---------- comments and @mentions ---------- */
+function mentionsIn(text) { const t = String(text || ''); return rosterNames().filter(n => t.includes('@' + n)); }
+function renderNoteText(nt) {
+  let h = esc(nt.text || '');
+  const keep = [];
+  const hold = html => { keep.push(html); return `\u0000${keep.length - 1}\u0000`; };
+  h = h.replace(/https?:\/\/[^\s<]+[^\s<.,;:!?)\]]/g, u => hold(`<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`));
+  [...new Set([...(nt.mentions || []), ...rosterNames()])].sort((a, b) => b.length - a.length).forEach(n => {
+    const en = '@' + esc(n); if (h.includes(en)) h = h.split(en).join(hold(`<span class="mention">${en}</span>`));
+  });
+  return h.replace(/\u0000(\d+)\u0000/g, (_, i) => keep[+i]);
+}
+let mentionState = null;
+function mentionMenuOpen() { return !!(mentionState && $('#mentionMenu')); }
+function closeMentionMenu() { const el = $('#mentionMenu'); if (el) el.remove(); mentionState = null; }
+function updateMentionMenu(inp) {
+  const pos = inp.selectionStart || 0, mt = /(^|\s)@([^@\n]{0,30})$/.exec(inp.value.slice(0, pos));
+  if (!mt) return closeMentionMenu();
+  const q = normName(mt[2]);
+  const names = rosterNames().filter(n => { const nn = normName(n); return !q || nn.startsWith(q) || nn.split(' ').some(w => w.startsWith(q)); }).slice(0, 6);
+  if (!names.length) return closeMentionMenu();
+  const keepIdx = mentionState && mentionState.items.join('|') === names.join('|') ? mentionState.idx : 0;
+  mentionState = { start: pos - mt[2].length - 1, end: pos, items: names, idx: keepIdx };
+  let el = $('#mentionMenu');
+  if (!el) { el = document.createElement('div'); el.id = 'mentionMenu'; el.className = 'mention-menu'; el.setAttribute('role', 'listbox'); inp.closest('.note-add').appendChild(el); }
+  el.innerHTML = names.map((n, i) => `<button type="button" role="option" class="mention-opt ${i === mentionState.idx ? 'on' : ''}" aria-selected="${i === mentionState.idx}" data-mention="${esc(n)}">${personChip(n)}<span>${esc(n)}</span></button>`).join('');
+}
+function pickMention(inp, name) {
+  if (!mentionState) return;
+  const { start, end } = mentionState, ins = '@' + name + ' ';
+  inp.value = inp.value.slice(0, start) + ins + inp.value.slice(end);
+  const c = start + ins.length; inp.setSelectionRange(c, c); inp.focus();
+  closeMentionMenu();
+}
+function myMentions(days) {
+  const p = currentProfile(), names = [...new Set([myOwnerName(), p && p.full_name].filter(Boolean))];
+  if (!names.length) return [];
+  const cut = Date.now() - (days || 14) * 864e5, mine = currentDisplayName(), out = [];
+  M().forEach(m => (m.noteLog || []).forEach(nt => {
+    if (+nt.t < cut || (mine && nt.by === mine)) return;
+    if (names.some(n => (nt.mentions || []).includes(n) || String(nt.text || '').includes('@' + n))) out.push({ m, nt });
+  }));
+  return out.sort((a, b) => b.nt.t - a.nt.t);
+}
+function mentionsCard() {
+  const items = myMentions(14); if (!items.length) return '';
+  return `<section class="ex-card mn-card"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('people')}<h3>Mentions for you</h3></div><span class="dt-sum">${items.length}</span></div>
+    <div class="al-list">${items.slice(0, 4).map(({ m, nt }) => `<div class="al-row" data-expand="${esc(m.id)}"><div class="al-main"><div class="al-t">${esc(m.activity)}</div><div class="al-m"><b>${esc(nt.by || 'Someone')}</b> · ${esc(fmtWhen(nt.t))} · ${esc(clip(nt.text, 140))}</div></div></div>`).join('')}</div></section>`;
+}
+
+/* ---------- documents and "waiting on" ---------- */
+const CLIP_IC = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>';
+function linksBadge(m) { const n = (m.links || []).length; return n ? `<span class="kc-notes" title="${n} document${n === 1 ? '' : 's'}">${CLIP_IC}${n}</span>` : ''; }
+function depIssue(m, d) {
+  if (!d || d.status === 'complete') return '';
+  if (d.status === 'blocked') return 'blocked';
+  if (effectiveStatus(d) === 'behind') return 'behind';
+  if (d.due_date && m.due_date && d.due_date > m.due_date) return 'due after this one';
+  return '';
+}
+function waitingReasons(m) {
+  return (m.blockedBy || []).map(findM).filter(Boolean).map(d => { const i = depIssue(m, d); return i ? `Waits on "${clip(d.activity, 48)}", which is ${i}` : ''; }).filter(Boolean);
+}
+function depRowHtml(m, d) {
+  const issue = depIssue(m, d);
+  return `<div class="dep-row" data-depid="${esc(d.id)}">${statusDot(effectiveStatus(d))}<button type="button" class="dep-name" data-expand="${esc(d.id)}" title="Open">${esc(d.activity)}</button>
+    <span class="dep-info"><span class="dep-meta">${d.status === 'complete' ? 'Done' : d.due_date ? 'Due ' + esc(fmtDate(d.due_date)) : 'No due date'}</span>${issue ? `<span class="dep-warn">${esc(issue.charAt(0).toUpperCase() + issue.slice(1))}</span>` : ''}</span>
+    <button type="button" class="dep-x" data-dep-x aria-label="Stop waiting on ${esc(d.activity)}">✕</button></div>`;
+}
+function depOptions(m, taken) {
+  const pool = M().filter(x => x.id !== m.id && !x._draft && x.status !== 'complete' && !taken.includes(x.id));
+  const byTeam = {}; pool.forEach(x => (byTeam[x.functional_area || 'Other'] = byTeam[x.functional_area || 'Other'] || []).push(x));
+  return Object.keys(byTeam).sort().map(t => `<optgroup label="${esc(t)}">${byTeam[t].sort((a, b) => (a.due_date || '9999') < (b.due_date || '9999') ? -1 : 1).map(x => `<option value="${esc(x.id)}">${esc(clip(x.activity, 70))}${x.market ? ' · ' + esc(x.market) : ''}</option>`).join('')}</optgroup>`).join('');
+}
+function linkRowHtml(l) {
+  const url = safeUrl(l.url); if (!url) return '';
+  return `<div class="lk-row" data-url="${esc(url)}" data-label="${esc(l.label || '')}">${CLIP_IC}<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(l.label || hostOf(url) || url)}</a><span class="lk-host">${esc(hostOf(url))}</span><button type="button" class="lk-x" aria-label="Remove link">✕</button></div>`;
+}
+function linksDepsBlock(m) {
+  const deps = (m.blockedBy || []).map(findM).filter(Boolean), needed = M().filter(x => (x.blockedBy || []).includes(m.id));
+  return `<div class="m-sec-h">Waiting on</div>
+    <div class="field"><div id="depList">${deps.map(d => depRowHtml(m, d)).join('')}</div>
+      <select id="depAdd" aria-label="Add a milestone this waits on"><option value="">Add a milestone this waits on</option>${depOptions(m, deps.map(d => d.id))}</select>
+      <div class="help-text">Flags this one if a milestone it waits on falls behind or is due later</div></div>
+    ${needed.length ? `<div class="field"><label>Needed by</label><div class="dep-needed">${needed.map(n => `<div class="dep-row">${statusDot(effectiveStatus(n))}<button type="button" class="dep-name" data-expand="${esc(n.id)}">${esc(n.activity)}</button><span class="dep-meta">${n.due_date ? 'Due ' + esc(fmtDate(n.due_date)) : ''}</span></div>`).join('')}</div></div>` : ''}
+    <div class="m-sec-h">Documents</div>
+    <div class="field"><div id="lkList">${(m.links || []).map(linkRowHtml).join('')}</div>
+      <div class="lk-add"><input id="lkUrl" type="url" placeholder="Paste a link to a document or folder" aria-label="Document link"><input id="lkLabel" placeholder="Name" aria-label="Document name"><button type="button" class="btn btn-sm" id="lkAdd">Add</button></div></div>`;
+}
+function addLinkFromInputs() {
+  const u = $('#lkUrl'), l = $('#lkLabel'); if (!u || !u.value.trim()) return true;
+  const url = safeUrl(u.value.trim().match(/^https?:\/\//i) ? u.value.trim() : 'https://' + u.value.trim());
+  if (!url) { toast('Paste a full link that starts with https://', 'err'); u.focus(); return false; }
+  $('#lkList').insertAdjacentHTML('beforeend', linkRowHtml({ url, label: l.value.trim() }));
+  u.value = ''; l.value = ''; modalDirty = true; return true;
+}
+function readLinksDeps(m) {
+  if (!$('#depList')) return;
+  addLinkFromInputs();
+  const deps = $$('#depList .dep-row').map(r => r.dataset.depid).filter(Boolean);
+  const links = $$('#lkList .lk-row').map(r => ({ url: r.dataset.url, label: r.dataset.label || '' }));
+  if (deps.length || m.blockedBy) m.blockedBy = deps;
+  if (links.length || m.links) m.links = links;
+}
+
+/* ---------- email (opens Outlook or the default mail app) ---------- */
+function ownerEmail(name) {
+  const o = (meta().owners || []).find(x => x.name === name); if (o && validEmail(o.email)) return o.email.trim();
+  const p = currentProfile(); return p && p.full_name === name && validEmail(p.email) ? p.email : '';
+}
+function openMail(to, subject, body) {
+  const href = `mailto:${to.join(',')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(String(body || '').slice(0, 1800))}`;
+  if (!to.length && isAdmin()) toast('Add owner emails in Settings to fill in the To line', 'warn');
+  location.href = href;
+}
+function emailOwnersLink(m) {
+  const owners = ownersOf(m); if (!owners.length) return '';
+  return `<button type="button" class="m-mail" data-mail-owners="${esc(m.id)}">Email ${owners.length > 1 ? 'owners' : esc(owners[0].split(' ')[0])}</button>`;
+}
+function emailOwners(id) {
+  const m = findM(id); if (!m) return;
+  const owners = ownersOf(m), first = owners.map(o => o.split(' ')[0]).join(' and ');
+  openMail(owners.map(ownerEmail).filter(Boolean), 'Growth Hub: ' + clip(m.activity, 90),
+    `Hi ${first},\n\nChecking in on "${m.activity}"${m.due_date ? `, due ${fmtDate(m.due_date)}` : ''}. Growth Hub shows it as ${SM(effectiveStatus(m)).label.toLowerCase()}.\n\n${taskLink(m.id)}`);
+}
+function emailTeam(team) {
+  const t = committeeSignals().teams.find(x => x.team === team); if (!t) return;
+  openMail(t.people.map(ownerEmail).filter(Boolean), `Growth Hub: ${team} update`, teamNote(team));
+}
+
+/* ---------- since the last meeting (agenda) ---------- */
+async function fillSinceLastMeeting(list) {
+  const box = $('#agSince'); if (!box) return;
+  const lm = lastMeetingISO(), since = new Date(lm + 'T23:59:59').getTime();
+  const head = mtg().last ? `Since the last meeting, ${fmtDate(lm)}` : 'In the last month';
+  let was = null;
+  if (commentLive()) {
+    try { const r = await state.sb.client.rpc('growth_changes_since', { p_since: new Date(since).toISOString() }); if (!r.error) was = new Map((r.data || []).map(x => [x.id, x])); } catch (e) {}
+  }
+  if (!$('#agSince')) return;
+  const BAD = ['at_risk', 'behind', 'blocked'], prev = m => was && was.get(m.id) && was.get(m.id).was;
+  const done = list.filter(m => m.status === 'complete' && m.completedAt && new Date(m.completedAt).getTime() > since);
+  const added = list.filter(m => was ? !!(was.get(m.id) || {}).is_new : (m.createdAt && new Date(m.createdAt).getTime() > since));
+  const worse = list.filter(m => {
+    if (m.status === 'complete') return false;
+    const w = prev(m);
+    if (w && w.status && w.status !== m.status && w.status !== 'complete' && BAD.includes(m.status) && (SEV[m.status] || 0) > (SEV[w.status] || 0)) return true;
+    return newlyOffTrack(m);
+  });
+  const better = was ? list.filter(m => { const w = prev(m); return w && BAD.includes(w.status) && ['on_track', 'not_started'].includes(m.status) && effectiveStatus(m) !== 'behind'; }) : [];
+  const moved = list.filter(m => (m.dateHistory || []).some(h => new Date(h.t).getTime() > since));
+  const talk = list.filter(m => (m.noteLog || []).some(n => +n.t > since));
+  const meta1 = m => esc([m.market, ownersOf(m).join(' / ') || 'Unassigned'].filter(Boolean).join(' · '));
+  const li = (m, extra) => `<li><button type="button" class="ag-link" data-expand="${esc(m.id)}">${esc(m.activity)}</button> <span class="muted">${meta1(m)}</span>${extra ? `<div class="ag-x">${extra}</div>` : ''}</li>`;
+  const sec = (title, items, fn) => items.length ? `<section class="ag-sec"><h4>${title} <span class="muted">(${items.length})</span></h4><ul>${items.slice(0, 12).map(fn).join('')}</ul>${items.length > 12 ? `<p class="muted">and ${items.length - 12} more</p>` : ''}</section>` : '';
+  const html = sec('Newly off track or at risk', worse, m => { const w = prev(m); return li(m, w && w.status !== m.status ? `${esc(SM(w.status).label)} → ${esc(SM(m.status).label)}` : 'Now overdue'); })
+    + sec('Completed', done, m => li(m, ''))
+    + sec('Back on track', better, m => li(m, `${esc(SM(prev(m).status).label)} → ${esc(SM(m.status).label)}`))
+    + sec('Deadlines moved', moved, m => { const h = (m.dateHistory || []).filter(x => new Date(x.t).getTime() > since); return li(m, `${esc(fmtDate(h[0].from))} → ${esc(fmtDate(m.due_date))}${h[h.length - 1].reason ? ': ' + esc(h[h.length - 1].reason) : ''}`); })
+    + sec('New milestones', added, m => li(m, m.due_date ? 'Due ' + esc(fmtDate(m.due_date)) : ''))
+    + sec('New comments', talk, m => { const n = (m.noteLog || []).filter(x => +x.t > since).length; return li(m, `${n} new comment${n === 1 ? '' : 's'}`); });
+  const out = $('#agSince');
+  out.innerHTML = `<h3 class="ag-h">${esc(head)}</h3>${html || '<p class="muted">No changes</p>'}`;
+  out.onclick = e => { const x = e.target.closest('[data-expand]'); if (x) { e.stopPropagation(); closeSheet(); openModal(x.dataset.expand); } };
+}
+
+/* ---------- Outlook calendar ---------- */
+function icsEsc(s) { return String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n'); }
+function icsFold(line) {
+  const enc = new TextEncoder(); if (enc.encode(line).length <= 75) return line;
+  const out = []; let cur = '', bytes = 0;
+  for (const ch of line) { const b = enc.encode(ch).length; if (bytes + b > (out.length ? 74 : 75)) { out.push(cur); cur = ''; bytes = 0; } cur += ch; bytes += b; }
+  out.push(cur); return out.join('\r\n ');
+}
+function buildIcs(name, items, schools) {
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z'), d8 = s => s.slice(0, 10).replace(/-/g, '');
+  const next = s => { const d = new Date(s.slice(0, 10) + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10).replace(/-/g, ''); };
+  const ev = (uid, date, summary, desc, url) => ['BEGIN:VEVENT', `UID:${uid}`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${d8(date)}`, `DTEND;VALUE=DATE:${next(date)}`, `SUMMARY:${icsEsc(summary)}`, `DESCRIPTION:${icsEsc(desc)}`, `URL:${url}`, 'TRANSP:TRANSPARENT', 'END:VEVENT'];
+  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//KIPP NGC//Growth Hub//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', `X-WR-CALNAME:${icsEsc(name)}`];
+  items.filter(m => m.due_date && !m._draft).forEach(m => L.push(...ev(`m-${m.id}@growth-hub`, m.due_date, `${m.status === 'complete' ? 'Done' : 'Due'}: ${m.activity}`,
+    [`Status: ${SM(effectiveStatus(m)).label}`, `Owner: ${ownersOf(m).join(', ') || 'Unassigned'}`, m.market ? `Market: ${m.market}` : '', m.functional_area ? `Team: ${m.functional_area}` : '', '', `Open in Growth Hub: ${taskLink(m.id)}`].filter((x, i) => x || i === 4).join('\n'), taskLink(m.id))));
+  schools.filter(s => s.opening_date).forEach(s => L.push(...ev(`s-${s.id}@growth-hub`, s.opening_date, `Opens: ${[s.market, s.display_label].filter(Boolean).join(' ')}`, 'School opening', location.origin + location.pathname)));
+  L.push('END:VCALENDAR');
+  return L.map(icsFold).join('\r\n') + '\r\n';
+}
+function downloadIcs(scope) {
+  const me = myOwnerName(), items = scope === 'mine' ? M().filter(m => ownsM(m, me)) : filtered();
+  const txt = buildIcs(scope === 'mine' ? 'Growth Hub: my milestones' : 'Growth Hub milestones', items, state.data.schools || []);
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'text/calendar' }));
+  a.download = scope === 'mine' ? 'growth-hub-my-milestones.ics' : 'growth-hub-milestones.ics';
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  toast(`Downloaded ${items.filter(m => m.due_date).length} due dates. Open the file to add them to Outlook`, 'ok');
+}
+function calFeedBase() { const c = sbCfg(); return c && c.url ? c.url.replace(/\/$/, '') + '/functions/v1/growth-calendar' : ''; }
+async function fillCalSub(reset) {
+  const box = $('#calSub'); if (!box) return;
+  const notReady = isAdmin() ? 'Calendar links need a one-time setup. See INTEGRATIONS-SETUP.md, part 3' : 'Calendar links are not turned on yet. Ask an admin, or download a file below';
+  if (!commentLive()) { box.innerHTML = '<p class="muted">Sign in to get a link that keeps your calendar up to date</p>'; return; }
+  let tk = null, up = false;
+  try { const r = await state.sb.client.rpc('growth_calendar_token', { p_owner: myOwnerName() || null, p_reset: !!reset }); if (r.error) throw r.error; tk = r.data; } catch (e) { box.innerHTML = `<p class="muted">${esc(notReady)}</p>`; return; }
+  try { const pr = await fetch(calFeedBase() + '?ping=1'); up = pr.ok && (await pr.text()).trim() === 'ok'; } catch (e) {}
+  if (!$('#calSub')) return;
+  if (!up) { box.innerHTML = `<p class="muted">${esc(notReady)}</p>`; return; }
+  const me = myOwnerName(), link = sc => `${calFeedBase()}?t=${tk}&scope=${sc}`;
+  const row = (sc, label) => `<div class="cal-row"><div class="cal-l">${label}</div><div class="cal-ctl"><input readonly class="cal-url" value="${esc(link(sc))}" aria-label="${label} calendar link"><button type="button" class="btn btn-sm" data-calcopy="${esc(link(sc))}">Copy</button></div></div>`;
+  box.innerHTML = `${me ? row('mine', 'My milestones') : ''}${row('all', 'All milestones')}
+    <ol class="cal-steps"><li>In Outlook, go to Calendar</li><li>Choose Add calendar, then Subscribe from web</li><li>Paste the link, name it, and choose Import</li></ol>
+    <p class="muted cal-note">Outlook checks for changes every few hours. Keep the link private: anyone who has it can see milestone names and dates.</p>
+    <button type="button" class="btn btn-text btn-sm" data-calreset>Get a new link</button>`;
+}
+function openCalendarSheet() {
+  const me = myOwnerName();
+  const body = `<p class="modal-lede">See due dates and school openings in your calendar</p>
+    <section class="ag-sec"><h4>Subscribe in Outlook</h4><div id="calSub"><p class="muted">Getting your link</p></div></section>
+    <section class="ag-sec"><h4>Or download a file</h4><p class="muted cal-note">A one-time copy. Download again to pick up changes.</p>
+      <div class="dw-btns">${me ? '<button type="button" class="btn" data-calfile="mine">My milestones</button>' : ''}<button type="button" class="btn" data-calfile="view">Milestones in the current view</button></div></section>`;
+  const w = openSheet('Add deadlines to Outlook', body, '<button class="btn btn-filled" data-sheet-close>Done</button>');
+  w.addEventListener('click', e => {
+    const f = e.target.closest('[data-calfile]'); if (f) return downloadIcs(f.dataset.calfile);
+    const c = e.target.closest('[data-calcopy]'); if (c) return copyText(c.dataset.calcopy, 'Link copied. Paste it in Outlook under Subscribe from web');
+    if (e.target.closest('[data-calreset]')) confirmDialog({ title: 'Get a new calendar link?', message: 'Your current link stops working. Calendars that use it stop updating until you subscribe with the new one.', confirmLabel: 'Get a new link', onConfirm: () => { $('#calSub').innerHTML = '<p class="muted">Getting your link</p>'; fillCalSub(true); } });
+  });
+  fillCalSub(false);
+}
+
+/* ---------- Slack settings (admins) ---------- */
+function integrationsSettingsHtml() {
+  setTimeout(loadIntegrations, 0);
+  return `<details class="dw-sec dw-fold" id="intSec"><summary>Slack alerts and digest</summary><div id="intBody"><p class="dw-help">Loading</p></div></details>`;
+}
+async function loadIntegrations(info) {
+  const box = $('#intBody'); if (!box) return;
+  if (!commentLive()) { box.innerHTML = '<p class="dw-help">Connect to the shared project to set up Slack</p>'; return; }
+  let st = info;
+  if (!st) {
+    try { const r = await state.sb.client.rpc('growth_integrations_get'); if (r.error) throw r.error; st = r.data; }
+    catch (e) { box.innerHTML = '<div class="status-note warn">Slack is not set up yet. Run supabase-collab-integrations.sql in Supabase, then reload.</div>'; return; }
+  }
+  if (!$('#intBody')) return;
+  box.innerHTML = st.slack ? `<div class="status-note ok">Posting to Slack · link ends in ${esc(st.slack_hint || '')}</div>
+      <label class="field-check"><input type="checkbox" id="intAlerts" ${st.alerts ? 'checked' : ''}> Instant alerts</label>
+      <div class="help-text">When a milestone turns at risk, behind, or blocked, a key milestone is done, someone is @mentioned, or an opening date moves</div>
+      <label class="field-check"><input type="checkbox" id="intDigest" ${st.digest ? 'checked' : ''}> Monday digest at 8am</label>
+      <div class="help-text">Overdue, due this week, blocked, and check-ins needed</div>
+      <div class="dw-btns"><button class="btn" id="intTest">Send a test message</button><button class="btn" id="intDigestNow">Send the digest now</button><button class="btn btn-text" id="intClear">Disconnect</button></div>`
+    : `<p class="dw-help">Paste a Slack webhook link for your committee channel. INTEGRATIONS-SETUP.md shows how to get one.</p>
+      <div class="field"><label for="intUrl">Slack webhook link</label><input id="intUrl" type="url" placeholder="https://hooks.slack.com/services/…" autocomplete="off"></div>
+      <div class="dw-btns"><button class="btn btn-filled" id="intSave">Connect Slack</button></div>`;
+}
+async function intCall(fn, args, okMsg) {
+  if (!guardAdmin()) return null;
+  try { const r = await state.sb.client.rpc(fn, args || {}); if (r.error) throw r.error; if (okMsg) toast(okMsg, 'ok'); return r.data; }
+  catch (e) { toast(String((e && e.message) || e), 'err'); return null; }
+}
+
+/* ---------- ?m=<id> opens a milestone (links in Slack, email and calendars) ---------- */
+function openDeepLink() {
+  let id = null; try { id = new URLSearchParams(location.search).get('m'); } catch (e) {}
+  if (!id) return;
+  let tries = 0;
+  const go = () => {
+    if (findM(id)) {
+      try { const u = new URL(location.href); u.searchParams.delete('m'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } catch (e) {}
+      return openModal(id);
+    }
+    if (++tries < 30) setTimeout(go, 500); else toast("That milestone wasn't found. It may have been deleted", 'warn');
+  };
+  setTimeout(go, 300);
+}
+
+function wireCollab() {
+  const mb = $('#modalBody');
+  // Don't jump to another milestone with unsaved edits
+  mb.addEventListener('click', e => { if (e.target.closest('.dep-name, .ag-link') && modalDirty) { e.stopPropagation(); e.preventDefault(); toast('Save or cancel your changes first', 'warn'); } }, true);
+  mb.addEventListener('click', e => {
+    const mo = e.target.closest('[data-mail-owners]'); if (mo) return emailOwners(mo.dataset.mailOwners);
+    if (e.target.closest('.dep-x')) { e.target.closest('.dep-row').remove(); modalDirty = true; return; }
+    if (e.target.closest('.lk-x')) { e.target.closest('.lk-row').remove(); modalDirty = true; return; }
+    if (e.target.closest('#lkAdd')) return addLinkFromInputs();
+  });
+  mb.addEventListener('change', e => {
+    if (e.target.id !== 'depAdd' || !e.target.value) return;
+    const m = findM(modalId), d = findM(e.target.value); if (!m || !d) return;
+    $('#depList').insertAdjacentHTML('beforeend', depRowHtml(m, d));
+    const opt = e.target.querySelector(`option[value="${CSS.escape(d.id)}"]`); if (opt) opt.remove();
+    e.target.value = ''; modalDirty = true;
+  });
+  mb.addEventListener('input', e => { if (e.target.id === 'noteInput') updateMentionMenu(e.target); });
+  mb.addEventListener('keydown', e => {
+    if ((e.target.id === 'lkUrl' || e.target.id === 'lkLabel') && e.key === 'Enter') { e.preventDefault(); return addLinkFromInputs(); }
+    if (e.target.id !== 'noteInput' || !mentionMenuOpen()) return;
+    const n = mentionState.items.length;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); mentionState.idx = (mentionState.idx + (e.key === 'ArrowDown' ? 1 : n - 1)) % n; updateMentionMenu(e.target); }
+    else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); pickMention(e.target, mentionState.items[mentionState.idx]); }
+    else if (e.key === 'Escape') { e.stopPropagation(); closeMentionMenu(); }
+  });
+  mb.addEventListener('mousedown', e => { const o = e.target.closest('[data-mention]'); if (o) { e.preventDefault(); pickMention($('#noteInput'), o.dataset.mention); } });
+  mb.addEventListener('focusout', e => { if (e.target.id === 'noteInput') setTimeout(() => { if (document.activeElement !== e.target) closeMentionMenu(); }, 150); });
+  // Slack settings in the drawer
+  const db = $('#drawerBody');
+  db.addEventListener('click', async e => {
+    const id = e.target.id;
+    if (id === 'intSave') {
+      const v = ($('#intUrl').value || '').trim(); if (!v) return $('#intUrl').focus();
+      const st = await intCall('growth_integrations_set', { p_slack_webhook: v }, 'Slack connected. Send a test message to check it'); if (st) loadIntegrations(st);
+    } else if (id === 'intTest') intCall('growth_slack_test', {}, 'Test message sent. Check your Slack channel');
+    else if (id === 'intDigestNow') intCall('growth_slack_digest_now', {}, 'Digest sent to Slack');
+    else if (id === 'intClear') confirmDialog({ title: 'Disconnect Slack?', message: 'Alerts and the Monday digest stop. To turn them back on, paste the webhook link again.', confirmLabel: 'Disconnect', onConfirm: async () => { const st = await intCall('growth_integrations_set', { p_clear_slack: true }, 'Slack disconnected'); if (st) loadIntegrations(st); } });
+  });
+  db.addEventListener('change', async e => {
+    if (e.target.id !== 'intAlerts' && e.target.id !== 'intDigest') return;
+    const st = await intCall('growth_integrations_set', e.target.id === 'intAlerts' ? { p_alerts: e.target.checked } : { p_digest: e.target.checked }, 'Saved');
+    if (st) loadIntegrations(st); else loadIntegrations();
+  });
+}
