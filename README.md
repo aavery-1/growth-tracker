@@ -8,7 +8,7 @@ KIPP Team & Family's workspace for growth planning. Static pages backed by Supab
 | `readiness.html` | Growth Readiness: Dashboard, Openings, Milestones |
 | `enabling.html` | Enabling Work: Dashboard, Milestones |
 
-`app.js` and `styles.css` serve both boards. `data.json` and `enabling-seed.json` hold starting data.
+`app.js` and `styles.css` serve both boards. `version.js` holds the release number; change it with every publish. `data.json` and `enabling-seed.json` hold starting data.
 
 Run locally:
 

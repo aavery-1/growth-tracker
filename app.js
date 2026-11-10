@@ -12,7 +12,7 @@
    teams, starter templates and capital campaigns are kept per board. */
 const WS = window.NGC_WS || 'readiness';
 const WS_PAGE = { readiness: 'readiness.html', enabling: 'enabling.html' };
-const WS_OWN_SETTINGS = ['teams', 'templates', 'campaigns', 'seeded'];
+const WS_OWN_SETTINGS = ['teams', 'templates', 'campaigns', 'seeded', 'meetbook'];
 const WS_SEED = {
   // url: starting tasks, teams and owners (built from the Enabling Work sheet of the
   // "KTAF - New School Openings - Workspace" workbook). Loaded into the shared board once.
@@ -151,7 +151,7 @@ async function postNote(wrap) {
 }
 function notesSection(kind, id, log) {
   const items = (log || []).slice().sort((a, b) => a.t - b.t).map(noteItemHtml).join('') || '<div class="note-empty muted">No comments yet</div>';
-  return `<div class="notes-field" data-notekind="${kind}" data-noteid="${esc(id)}"><label class="notes-label">Comments</label>
+  return `<div class="notes-field" data-notekind="${kind}" data-noteid="${esc(id)}"><label class="notes-label" for="noteInput">Comments${(log || []).length ? ` (${(log || []).length})` : ''}</label>
     <div class="note-thread">${items}</div>
     <div class="note-add"><input id="noteAuthor" type="hidden" value="${esc(currentDisplayName())}"><input id="noteInput" maxlength="4000" class="note-input" placeholder="Add a comment. Type @ to mention someone" autocomplete="off" aria-label="Add a comment"><button class="btn btn-filled btn-sm" id="noteAdd">Post</button></div></div>`;
 }
@@ -166,7 +166,7 @@ const SM = k => { const m = state.data.meta.statusMeta[k] || { label: k, color: 
 // Carbon status indicator (shape plus label) for the standard statuses; custom statuses keep their own color with readable text.
 /* Carbon glyphs used inside text and small controls */
 const CI = n => `<svg class="ci" viewBox="0 0 32 32" width="16" height="16" fill="currentColor" aria-hidden="true">${CI_PATHS[n]}</svg>`;
-const CI_PATHS = { close: '<path d="M17.4141 16L24 9.4141 22.5859 8 16 14.5859 9.4143 8 8 9.4141 14.5859 16 8 22.5859 9.4143 24 16 17.4141 22.5859 24 24 22.5859 17.4141 16z"/>', flag: '<path d="M6,30H4V2H28l-5.8,9L28,20H6ZM6,18H24.33L19.8,11l4.53-7H6Z"/>', arrow: '<path d="M18 6L16.57 7.393 24.15 15 4 15 4 17 24.15 17 16.57 24.573 18 26 28 16 18 6z"/>', check: '<path d="M13 24L4 15 5.414 13.586 13 21.171 26.586 7.586 28 9 13 24z"/>' };
+const CI_PATHS = { edit: '<path d="M2 26H30V28H2zM25.4 9c.8-.8.8-2 0-2.8 0 0 0 0 0 0l-3.6-3.6c-.8-.8-2-.8-2.8 0 0 0 0 0 0 0l-15 15V24h6.4L25.4 9zM20.4 4L24 7.6l-3 3L17.4 7 20.4 4zM6 22v-3.6l10-10 3.6 3.6-10 10H6z"/>', 'arrow-up': '<path d="M16 4L6 14 7.41 15.41 15 7.83 15 28 17 28 17 7.83 24.59 15.41 26 14 16 4z"/>', 'arrow-down': '<path d="M24.59 16.59L17 24.17 17 4 15 4 15 24.17 7.41 16.59 6 18 16 28 26 18 24.59 16.59z"/>', close: '<path d="M17.4141 16L24 9.4141 22.5859 8 16 14.5859 9.4143 8 8 9.4141 14.5859 16 8 22.5859 9.4143 24 16 17.4141 22.5859 24 24 22.5859 17.4141 16z"/>', flag: '<path d="M6,30H4V2H28l-5.8,9L28,20H6ZM6,18H24.33L19.8,11l4.53-7H6Z"/>', arrow: '<path d="M18 6L16.57 7.393 24.15 15 4 15 4 17 24.15 17 16.57 24.573 18 26 28 16 18 6z"/>', check: '<path d="M13 24L4 15 5.414 13.586 13 21.171 26.586 7.586 28 9 13 24z"/>' };
 function statusLozenge(k) { const m = SM(k); return ADS_STATUS[k] ? `<span class="stpill st-${k}"><i></i>${esc(m.label)}</span>` : `<span class="stpill" style="background:${m.color}22;color:var(--cds-text-primary)"><i style="background:${m.color}"></i>${esc(m.label)}</span>`; }
 function statusDot(k) { return ADS_STATUS[k] ? `<i class="stdot st-${k}"></i>` : `<i class="stdot" style="background:${SM(k).color}"></i>`; }
 
@@ -306,11 +306,12 @@ async function loadData() {
 }
 let saveTimer = null;
 function autosaveWriteLocal() { stampWs(); try { const c = JSON.parse(JSON.stringify(state.data)); c.milestones = (c.milestones || []).filter(m => !m._draft); c.__baseVersion = state.data.meta && state.data.meta.version; lsSet(LS.data, JSON.stringify(c)); return true; } catch (e) { return false; } }
+let saveWarned = false;
 function autosave() {
   const b = $('#saveState'), live = state.sb && state.sb.connected;
   if (b) { b.textContent = live ? 'Syncing…' : 'Saving…'; b.className = 'save-state saving'; }
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => { const ok = autosaveWriteLocal(); if (live) sbPushDebounced(); if (b) { b.textContent = ok ? (live ? 'Synced • live' : 'All changes saved') : 'Save failed'; b.className = 'save-state ' + (ok ? 'saved' : 'err'); } }, 250);
+  saveTimer = setTimeout(() => { const ok = autosaveWriteLocal(); if (!ok && !saveWarned) { saveWarned = true; toast(live ? "This browser's storage is full. Changes still save for everyone" : "This browser's storage is full, so changes may not be kept. Download a backup in Settings", 'warn'); } if (live) sbPushDebounced(); if (b) { b.textContent = ok ? (live ? 'Synced • live' : 'All changes saved') : 'Save failed'; b.className = 'save-state ' + (ok ? 'saved' : 'err'); } }, 250);
 }
 
 /* ---------- selectors ---------- */
@@ -340,7 +341,7 @@ function passFilters(m) {
   if (f.flag && !flagPass(m, f.flag)) return false;
   if (f.openingFYs.size && m.openingFY && !f.openingFYs.has(m.openingFY)) return false;
   if (f.schoolId) { const sc = state.data.schools.find(x => x.id === f.schoolId); if (!sc || !taskInSchool(m, sc)) return false; }
-  if (f.search) { const q = f.search.toLowerCase(); if (!`${m.activity} ${m.workstream} ${m.functional_area} ${m.market} ${ownersOf(m).join(' ')} ${(m.tags || []).join(' ')}`.toLowerCase().includes(q)) return false; }
+  if (f.search) { const hay = `${m.activity} ${m.workstream} ${m.functional_area} ${m.market} ${ownersOf(m).join(' ')} ${(m.tags || []).join(' ')} ${m.notes || ''} ${whereLabel(m)}`.toLowerCase(); if (!f.search.toLowerCase().split(/\s+/).filter(Boolean).every(w => hay.includes(w))) return false; }   // every word must match, in any order
   return true;
 }
 function filtered() { return M().filter(m => !m._draft && passFilters(m)); }
@@ -438,7 +439,8 @@ function filterOpts(key) {
   }
   if (key === 'owners') {
     const present = new Set(); M().forEach(m => { if (facetPass(m, 'owners')) ownersOf(m).forEach(o => present.add(o)); });
-    return [['__none__', 'Unassigned'], ...[...present].sort((a, b) => a.localeCompare(b)).map(o => [o, o])];
+    const me = myOwnerName(), rest = [...present].filter(o => o !== me).sort((a, b) => a.localeCompare(b)).map(o => [o, o]);
+    return [...(me && present.has(me) ? [[me, me + ' (me)']] : []), ['__none__', 'Unassigned'], ...rest];
   }
   if (key === 'statuses') return meta().statuses.map(s => [s, SM(s).label, SM(s).color]);
   if (key === 'priorities') return ['high', 'medium', 'low'].map(p => [p, PRIORITY[p].label, PRIORITY[p].color]);
@@ -465,7 +467,10 @@ function filterBar(menus, opts = {}) {
 function openFilterMenu(anchor, key) {
   const set = state.filters[key];
   const html = `<div class="pop-title">${FILTER_LABEL[key]}</div><div class="pop-list pop-checks">${filterOpts(key).map(([v, l, color]) => { const on = set.has(key === 'fys' || key === 'openingFYs' ? Number(v) : v); return `<label class="pop-check"><input type="checkbox" data-fkey="${key}" data-fval="${esc(v)}" ${on ? 'checked' : ''}>${color ? `<i class="fdot" style="background:${color}"></i>` : ''}${esc(l)}</label>`; }).join('')}</div>`;
-  const p = openPopover(anchor, html);
+  const p = openPopover(anchor, (set.size ? `<button type="button" class="pop-clear" data-fclear="${key}">Clear ${set.size} selected</button>` : '') + (filterOpts(key).length > 10 ? html.replace('<div class="pop-list pop-checks">', `<input type="search" class="pop-find" placeholder="Find" aria-label="Find ${esc(FILTER_LABEL[key] || '')}"><div class="pop-list pop-checks">`) : html));
+  const clr = p.querySelector('[data-fclear]'); if (clr) clr.addEventListener('click', () => { state.filters[key].clear(); closePopover(); rerender(); });
+  const find = p.querySelector('.pop-find');
+  if (find) { find.addEventListener('input', () => { const q = find.value.trim().toLowerCase(); p.querySelectorAll('.pop-check').forEach(r => { r.hidden = !!q && !r.textContent.toLowerCase().includes(q); }); }); setTimeout(() => find.focus(), 0); }
   p.addEventListener('change', e => {
     const cb = e.target.closest('[data-fkey]'); if (!cb) return;
     const k = cb.dataset.fkey;
@@ -482,7 +487,7 @@ function updateMenuBadge(key) {
   if (btn) { const n = state.filters[key].size; btn.classList.toggle('on', !!n); let c = btn.querySelector('.fb-count'); if (n) { if (!c) { c = document.createElement('span'); c.className = 'fb-count'; btn.insertBefore(c, btn.querySelector('.fb-chev')); } c.textContent = n; } else if (c) c.remove(); }
   const cl = $('#clearFilters'); if (cl) cl.classList.toggle('hide', !activeCount());
 }
-function refreshBody() { const kb0 = document.querySelector('.kanban'), kbX = kb0 ? kb0.scrollLeft : 0; if (kbX) requestAnimationFrame(() => { const k = document.querySelector('.kanban'); if (k) k.scrollLeft = kbX; }); const sec = $('#view-' + state.view); const b = sec ? sec.querySelector('#viewBody') : $('#viewBody'); if (!b) return rerender(); if (state.view === 'progress') b.innerHTML = progressBodyHtml(); else if (state.view === 'timeline') b.innerHTML = ganttBodyHtml(); else b.innerHTML = planBodyHtml(); if (typeof paintAvatars === 'function') requestAnimationFrame(() => paintAvatars(b)); if (typeof updateFilterBubble === 'function') updateFilterBubble(); }
+function refreshBody() { const kb0 = document.querySelector('.kanban'), kbX = kb0 ? kb0.scrollLeft : 0; if (kbX) requestAnimationFrame(() => { const k = document.querySelector('.kanban'); if (k) k.scrollLeft = kbX; }); const sec = $('#view-' + state.view); const b = sec ? sec.querySelector('#viewBody') : $('#viewBody'); if (state.view === 'meetings') return renderMeetings(); if (!b) return rerender(); if (state.view === 'progress') b.innerHTML = progressBodyHtml(); else if (state.view === 'timeline') b.innerHTML = ganttBodyHtml(); else b.innerHTML = planBodyHtml(); if (typeof paintAvatars === 'function') requestAnimationFrame(() => paintAvatars(b)); if (typeof updateFilterBubble === 'function') updateFilterBubble(); }
 function otCard(s) {
   const sm = schoolMs(s), r = ragReady(sm), n = sm.length;
   const done = sm.filter(m => effectiveStatus(m) === 'complete').length;
@@ -493,7 +498,7 @@ function otCard(s) {
   // Group header already announces "Fall YYYY · N months out" - only surface a card-level date when unscheduled.
   const when = s.openingFY ? '' : 'Opening not scheduled';
   const openDue = sm.filter(m => m.due_date && effectiveStatus(m) !== 'complete'), late = openDue.filter(m => daysUntil(m.due_date) < 0).length;
-  const nextDue = openDue.map(m => m.due_date).sort()[0];
+  const nextM = openDue.slice().sort((a, b) => a.due_date.localeCompare(b.due_date))[0], nextDue = nextM && nextM.due_date;
   const nextLbl = nextDue ? parseDate(nextDue).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
   const statusLbl = n === 0 ? 'Not yet scoped' : r.label.split(' · ')[0];   // "On track" / "At risk" / "Behind" / "Complete" / "Not started"
   return `<article class="ot-card" data-drillschool="${esc(s.id)}" style="--mk:${mk}">
@@ -501,13 +506,13 @@ function otCard(s) {
         <span class="ot-mkt"><i style="background:${mk}"></i>${esc(s.market)}</span>
         ${n ? statusLozenge(rollupStatus(sm)) : `<span class="stpill st-not_started"><i></i>Not yet scoped</span>`}
       </div>
-      <h4 class="ot-title">${esc(s.display_label)}<small>${esc(s.market)}, ${esc(s.state)}</small></h4>
+      <h4 class="ot-title">${esc(s.display_label)}<small>${esc(s.market)}, ${esc(s.state)}${s.confirmed === false ? ' · <span class="ot-tent">Tentative</span>' : ''}</small></h4>
       ${when ? `<p class="ot-when">${esc(when)}</p>` : ''}
       ${n ? `<div class="ot-prog">
-        <div class="ot-prog-lbl"><b>${done} of ${n}</b> milestones clear<span class="ot-prog-pct">${pct}%</span></div>
+        <div class="ot-prog-lbl"><b>${done} of ${n}</b> ${n === 1 ? "milestone" : "milestones"} done<span class="ot-prog-pct" title="Average progress across this school's milestones">${pct}%</span></div>
         <div class="ot-prog-bar"><span style="width:${pct}%"></span></div>
-        ${late ? `<div class="ot-late">${late} past due</div>` : nextLbl ? `<div class="ot-next">Next due ${esc(nextLbl)}</div>` : ''}
-      </div>` : `<div class="ot-prog"><div class="ot-prog-empty">No milestones yet</div></div>`}
+        ${late ? `<div class="ot-late">${late} past due</div>` : nextLbl ? `<div class="ot-next" title="${esc(nextM ? nextM.activity : '')}">Next due ${esc(nextLbl)}</div>` : ''}
+      </div>` : `<div class="ot-prog"><div class="ot-prog-empty">No milestones yet${canEdit() ? ' · <span class="ot-cta">Add starter milestones</span>' : ''}</div></div>`}
     </article>`;
 }
 function ganttBodyHtml() {
@@ -523,7 +528,7 @@ function ganttBodyHtml() {
     return `<section class="ot-term">
       <div class="ot-rail"><span class="ot-node"></span></div>
       <div class="ot-term-body">
-        <div class="ot-term-h"><h3>Fall ${fy - 1}</h3><span class="ot-when">${when} · ${cs.length} school${cs.length === 1 ? '' : 's'}</span></div>
+        <div class="ot-term-h"><h3><button type="button" class="ot-year" data-drilldim="openingFY" data-drillval="${fy}" title="Open Fall ${fy - 1} milestones">Fall ${fy - 1}</button></h3><span class="ot-when">${when} · ${cs.length} school${cs.length === 1 ? '' : 's'}${((k) => k ? ` · <span class="ot-when-bad">${k} at risk or behind</span>` : '')(cs.filter(sc => ['red', 'yellow'].includes(ragReady(schoolMs(sc)).key)).length)}</span></div>
         <div class="ot-grid">${cs.map(otCard).join('')}</div>
       </div>
     </section>`;
@@ -556,7 +561,7 @@ function progressBodyHtml() {
   return dashboardHtml(filtered());   // Dashboard is the only status view; drill-downs jump to the Project Plan
 }
 function renderProgress() {
-  const printBtn = `<button class="btn btn-ghost btn-sm" id="dashPrint" title="Print report"><svg viewBox="0 0 32 32" fill="currentColor" width="16" height="16"><path d="M28,9H25V3H7V9H4a2,2,0,0,0-2,2V21a2,2,0,0,0,2,2H7v6H25V23h3a2,2,0,0,0,2-2V11A2,2,0,0,0,28,9ZM9,5H23V9H9ZM23,27H9V17H23Zm5-6H25V15H7v6H4V11H28Z"/></svg><span class="pr-l">Print report</span></button>`;
+  const printBtn = `<button class="btn btn-ghost btn-sm" id="planLink" title="Copy a link to this page with its filters">Copy link</button><button class="btn btn-ghost btn-sm" id="dashPrint" title="Print report"><svg viewBox="0 0 32 32" fill="currentColor" width="16" height="16"><path d="M28,9H25V3H7V9H4a2,2,0,0,0-2,2V21a2,2,0,0,0,2,2H7v6H25V23h3a2,2,0,0,0,2-2V11A2,2,0,0,0,28,9ZM9,5H23V9H9ZM23,27H9V17H23Zm5-6H25V15H7v6H4V11H28Z"/></svg><span class="pr-l">Print report</span></button>`;
   // Filter bar is always visible on the dashboard: it's a primary scoping control, not an occasional detour.
   // Menus kept to what changes the STATUS picture: State, Market, Workstream. Opening year lives on the cohort strip;
   // status/priority filters belong to the Project Plan (the dashboard IS the status/priority view).
@@ -578,7 +583,7 @@ function appliedFilterChips(opts = {}) {
   f.statuses.forEach(v => push(SM(v).label, 'statuses:' + v));
   if (f.timing) push(f.timing === 'overdue' ? 'Overdue' : f.timing === 'this_month' ? 'Due within 2 weeks' : f.timing === 'due30' ? 'Due in 30 days' : f.timing === 'dueQ' ? 'Due by end of ' + fiscalQuarter().q : 'Due soon', 'timing:');
   if (f.flag) push(FLAG_LABEL[f.flag] || f.flag, 'flag:');
-  if (f.search) push('“' + f.search.slice(0, 24) + (f.search.length > 24 ? '…' : '') + '”', 'search:');
+  if (f.search && state.view !== 'plan') push('“' + f.search.slice(0, 24) + (f.search.length > 24 ? '…' : '') + '”', 'search:');
   if (f.schoolId) { const sc = schoolById(f.schoolId); if (sc) push(sc.market + ' · ' + sc.display_label, 'schoolId:'); }
   if (!chips.length) return '';
   return `<div class="af-chips">${chips.join('')}</div>`;
@@ -624,33 +629,37 @@ function planCard(m, opts = {}) {
   const notes = nc ? `<span class="kc-notes" title="${nc} comment${nc === 1 ? '' : 's'}"><svg viewBox="0 0 32 32" fill="currentColor" width="13" height="13"><path d="M17.74,30,16,29l4-7h6a2,2,0,0,0,2-2V8a2,2,0,0,0-2-2H6A2,2,0,0,0,4,8V20a2,2,0,0,0,2,2h9v2H6a4,4,0,0,1-4-4V8A4,4,0,0,1,6,4H26a4,4,0,0,1,4,4V20a4,4,0,0,1-4,4H21.16Z"/><path d="M8 10H24V12H8zM8 16H18V18H8z"/></svg>${nc}</span>` : '';
   // Material card anatomy: headline · subhead · supporting line · action row (inset divider above actions)
   const sub = [place, showTeam ? m.functional_area : ''].filter(Boolean).join(' · ');
+  const subTip = (m.schoolIds || []).length > 2 ? (m.schoolIds || []).map(schoolById).filter(Boolean).map(x => x.market + ' ' + x.display_label).join(', ') : '';
   const p = curProgress(m), reasons = watermelonReasons(m), stale = needsCheckin(m), hist = m.dateHistory || [];
   const slipTip = hist.length ? `${slipSummary(m)}: ` + hist.map(h => `${fmtDate(h.from)} → ${fmtDate(h.to)}${h.reason ? ' (' + h.reason + ')' : ''}`).join('; ') : '';
   const lookTip = [...reasons, slipTip].filter(Boolean).join('\n');
+  const cpN = (m.checkpoints || []).length, cpD = (m.checkpoints || []).filter(c => c.done).length;
+  const cpEl = cpN && !done ? `<span class="kc-cp" title="${cpD} of ${cpN} checkpoints done">${cpD}/${cpN} steps</span>` : '';
+  const keyEl = m.keyMilestone ? '<span class="kc-key" title="Key milestone">Key</span>' : '';
   const marker = reasons.length ? `<span class="kc-look" title="${esc(lookTip)}" aria-label="Needs a look. ${esc(lookTip)}">Needs a look</span>`
     : stale ? '<span class="kc-stale" title="No check-in in the last 2 weeks">Update missing</span>' : '';
   const done = es === 'complete';
   const due = done ? `<span class="kc-due2">${m.completedAt ? 'Completed ' + esc(fmtDate(m.completedAt.slice(0, 10))) : 'Completed'}</span>` : m.due_date ? `<span class="kc-due2 ${hist.length ? 'moved' : ''}" ${slipTip ? `title="${esc(slipTip)}"` : ''}>Due ${esc(fmtDate(m.due_date))}</span>` : '<span class="kc-due2 muted">No due date</span>';
   const pctEl = !done && p > 0 ? `<span class="kc-pct" title="${p}% progress"><span class="kc-bar"><span style="width:${p}%;background:${scol}"></span></span>${p}%</span>` : '';
   const stBtn = `<button class="kc-status" data-qstatus="${m.id}" title="Change status" style="--sc:${scol}"><i class="${ADS_STATUS[es] ? 'st-' + es : ''}"></i>${esc(SM(es).label)}<svg viewBox="0 0 32 32" fill="currentColor" width="12" height="12"><path d="M16 22L6 12 7.4 10.6 16 19.2 24.6 10.6 26 12z"/></svg></button>`;
-  return `<div class="kcard kcard-v2 kcard-m3 ${urgent ? 'urgent' : ''} ${done ? 'is-done' : ''}" draggable="true" data-id="${m.id}" data-expand="${m.id}">
+  return `<div class="kcard kcard-v2 kcard-m3 ${urgent ? 'urgent' : ''} ${done ? 'is-done' : ''} ${state.sel && state.sel.has(m.id) ? 'is-sel' : ''}" draggable="true" data-id="${m.id}" data-expand="${m.id}">
     <div class="kc-title" title="${esc(m.activity)}">${esc(m.activity)}</div>
-    ${sub ? `<div class="kc-sub">${m.market ? `<span class="kc-mkdot" style="background:${mk}"></span>` : ''}<span>${esc(sub)}</span>${flag}</div>` : ''}
-    <div class="kc-meta">${due}${pctEl}</div>
-    <div class="kc-actions">${stBtn}${marker}<span class="kc-actions-r">${linksBadge(m)}${notes}<span class="kc-owners">${ownersOf(m).length ? ownersOf(m).slice(0, 4).map(o => personChip(o)).join('') + (ownersOf(m).length > 4 ? `<span class="kc-more" title="${esc(ownersOf(m).slice(4).join(', '))}">+${ownersOf(m).length - 4}</span>` : '') : personChip('')}</span></span></div>
+    ${sub ? `<div class="kc-sub">${m.market ? `<span class="kc-mkdot" style="background:${mk}"></span>` : ''}<span ${subTip ? `title="${esc(subTip)}"` : ''}>${esc(sub)}</span>${flag}</div>` : ''}
+    <div class="kc-meta">${due}${pctEl}${cpEl}${keyEl}</div>
+    <div class="kc-actions">${stBtn}${marker}${state.planGroup === 'stage' && !state.planFocus ? `<button type="button" class="kc-move" data-kmove="${m.id}" aria-haspopup="true" aria-expanded="false" title="Move to another column">Move</button>` : ''}<span class="kc-actions-r">${linksBadge(m)}${notes}<span class="kc-owners">${ownersOf(m).length ? ownersOf(m).slice(0, 4).map(o => personChip(o)).join('') + (ownersOf(m).length > 4 ? `<span class="kc-more" title="${esc(ownersOf(m).slice(4).join(', '))}">+${ownersOf(m).length - 4}</span>` : '') : personChip('')}</span></span></div>
   </div>`;
 }
 function planFocusHtml() {
-  const list = filtered().filter(m => ['overdue', 'this_month'].includes(timingLevel(m)) || ['behind', 'at_risk'].includes(effectiveStatus(m)));
+  const list = attentionItems(filtered());   // already most urgent first
   if (!list.length) return '<div class="empty-state">Nothing needs attention in this view</div>';
-  const rank = m => timingLevel(m) === 'overdue' ? 0 : effectiveStatus(m) === 'behind' ? 1 : timingLevel(m) === 'this_month' ? 2 : 3;
-  list.sort((a, b) => rank(a) - rank(b) || (parseDate(a.due_date) || 9e15) - (parseDate(b.due_date) || 9e15));
   return `<div class="plan-focus-note">${list.length} need${list.length === 1 ? 's' : ''} attention, most urgent first</div><div class="plan-cards">${list.map(planCard).join('')}</div>`;
 }
 function planKanbanHtml() {
   const list = filtered();
-  return '<div class="kanban">' + meta().stages.map(([sk, label]) => {
-    const cards = list.filter(m => (m.stage || 'to_do') === sk);
+  const none = !list.length && M().length ? '<div class="empty-state">No milestones match these filters<button class="btn btn-tonal btn-sm" data-clearfilters>Clear filters</button></div>' : '';
+  const tabs = `<div class="kb-tabs" role="tablist" aria-label="Board columns">${meta().stages.map(([sk, label], i) => `<button type="button" role="tab" class="kb-tab ${i === (state.kbCol || 0) ? 'on' : ''}" aria-selected="${i === (state.kbCol || 0)}" data-kbjump="${i}">${esc(label)} <span class="kb-n">${list.filter(m => (m.stage || 'to_do') === sk).length}</span></button>`).join('')}</div>`;
+  return none + tabs + '<div class="kanban">' + meta().stages.map(([sk, label]) => {
+    const cards = list.filter(m => (m.stage || 'to_do') === sk).sort(sk === 'complete' ? (a, b) => (b.completedAt || '').localeCompare(a.completedAt || '') : (a, b) => (a.due_date || '9999').localeCompare(b.due_date || '9999'));   // soonest due first; latest finished first
     const ck = 'kc:' + sk, open = !state.expanded[ck];
     return `<div class="kcol ${open ? '' : 'collapsed'}"><div class="kcol-head stage-${sk}" data-toggle="${esc(ck)}" title="${open ? 'Collapse' : 'Expand'} column"><span class="kcol-name">${esc(label)}</span><span class="kcol-head-r"><span class="kcount">${cards.length}</span><button class="kcol-add" data-addstage="${esc(sk)}" title="Add milestone to ${esc(label)}" aria-label="Add milestone to ${esc(label)}">+</button></span></div>
       <div class="kcol-body" data-kstage="${sk}">${cards.map(planCard).join('')}<div class="kcol-drop">Drop here</div></div></div>`;
@@ -667,19 +676,21 @@ function planListHtml() {
     if (gb === 'school') { const s = state.data.schools.find(x => taskInSchool(m, x)); return s ? s.market + ' · ' + s.display_label : 'Not tied to a school'; }
     return m.functional_area;
   };
-  list.forEach(m => { const k = keyOf(m) || '-'; (g[k] = g[k] || []).push(m); });
+  (state.hideDone ? list.filter(m => m.status !== 'complete') : list).forEach(m => { const k = keyOf(m) || '-'; (g[k] = g[k] || []).push(m); });
   const byDue = (a, b) => (effectiveStatus(a) === 'complete') - (effectiveStatus(b) === 'complete') || (a.due_date || '9999').localeCompare(b.due_date || '9999');
   Object.values(g).forEach(a => a.sort(byDue));
   const keys = Object.keys(g).sort((a, b) => gb === 'year' ? (order[a] || 9999) - (order[b] || 9999) : gb === 'state' ? (order[a] ?? 9) - (order[b] ?? 9) : a.localeCompare(b));
+  const fs = state.filters.schoolId && schoolById(state.filters.schoolId);
+  if (!keys.length && fs && !schoolMs(fs).length) return `<div class="empty-state">No milestones for ${esc(fs.market)} ${esc(fs.display_label)} yet<button class="btn btn-tonal btn-sm" data-drillschool="${esc(fs.id)}">Add milestones</button></div>`;
   if (!keys.length) return (M().length ? '<div class="empty-state">No milestones match these filters<button class="btn btn-tonal btn-sm" data-clearfilters>Clear filters</button></div>' : '<div class="empty-state">No milestones yet</div>');
   state._planKeys = keys.map(k => 'pg:' + k);
   if (state._expandAllOnce) { state._planKeys.forEach(k => state.expanded[k] = true); state._expandAllOnce = false; }
   // groups default COLLAPSED so the page opens as a scannable outline, not 132 cards
   return keys.map(k => {
-    const ck = 'pg:' + k, open = !!state.expanded[ck];
-    const risk = g[k].filter(m => ['overdue', 'this_month'].includes(timingLevel(m)) || ['behind', 'at_risk'].includes(effectiveStatus(m))).length;
-    const flag = risk ? `<span class="pm-gflag">${risk} need${risk === 1 ? 's' : ''} attention</span>` : '';
-    return `<div class="plan-group ${open ? '' : 'is-collapsed'}"><div class="plan-group-head" data-toggle="${esc(ck)}">${chev(open)}<span class="pg-name">${esc(k)}</span>${flag}<span class="pm-gcount">${g[k].length}</span></div><div class="plan-cards ${open ? '' : 'hide'}">${g[k].map(m => planCard(m, { hideTeam: gb === 'team' })).join('')}</div></div>`;
+    const ck = 'pg:' + k, open = !!state.expanded[ck] || (state.flashId && g[k].some(m => m.id === state.flashId));
+    const risk = attentionItems(g[k]).length, late = g[k].filter(m => timingLevel(m) === 'overdue').length;
+    const flag = (late ? `<span class="pm-gflag">${late} overdue</span>` : '') + (risk > late ? `<span class="pm-gflag pm-gflag-warn">${risk - late} more need${risk - late === 1 ? 's' : ''} attention</span>` : '');
+    return `<div class="plan-group ${open ? '' : 'is-collapsed'}"><div class="plan-group-head" data-toggle="${esc(ck)}">${chev(open)}<span class="pg-name">${esc(k)}</span>${flag}<span class="pm-gcount" title="${g[k].length} milestone${g[k].length === 1 ? '' : 's'}">${g[k].length}</span>${state.planGroup === 'team' && canEdit() ? `<button type="button" class="pg-add" data-addteam="${esc(k)}" aria-label="Add a ${esc(k)} milestone" title="Add a ${esc(k)} milestone">+</button>` : ''}</div><div class="plan-cards ${open ? '' : 'hide'}">${g[k].map(m => planCard(m, { hideTeam: gb === 'team' })).join('')}</div></div>`;
   }).join('');
 }
 function planBodyHtml() {
@@ -688,7 +699,7 @@ function planBodyHtml() {
 }
 function renderPlan() {
   const list = filtered();
-  const focusN = list.filter(m => ['overdue', 'this_month'].includes(timingLevel(m)) || ['behind', 'at_risk'].includes(effectiveStatus(m))).length;
+  const focusN = attentionItems(list).length;   // same rule as the Dashboard's Needs attention
   const focusBtn = `<button class="btn btn-focus ${state.planFocus ? 'on' : ''}" id="planFocus">Needs attention${focusN ? ` <span class="focus-n">${focusN}</span>` : ''}</button>`;
   const isBoard = state.planGroup === 'stage';
   const viewToggle = `<div class="plan-view-toggle"><button class="pvt ${!isBoard ? 'on' : ''}" data-planview="list" title="List view" aria-label="List view"><svg viewBox="0 0 32 32" fill="currentColor" width="18" height="18"><circle cx="7" cy="9" r="3"/><circle cx="7" cy="23" r="3"/><path d="M16 22H30V24H16zM16 8H30V10H16z"/></svg><span class="pvt-l">List</span></button><button class="pvt ${isBoard ? 'on' : ''}" data-planview="board" title="Board view" aria-label="Board view"><svg viewBox="0 0 32 32" fill="currentColor" width="18" height="18"><path d="M24 4H26V28H24zM18 6V26H14V6h4m0-2H14a2 2 0 00-2 2V26a2 2 0 002 2h4a2 2 0 002-2V6a2 2 0 00-2-2zM6 4H8V28H6z"/></svg><span class="pvt-l">Board</span></button></div>`;
@@ -696,8 +707,11 @@ function renderPlan() {
     <select id="planGroupSel" ${state.planFocus ? 'disabled' : ''}>${[['team', 'Team'], ['state', 'State, Florida first'], ['school', 'School opening'], ['market', 'Market'], ['year', 'Due year']].map(([v, l]) => `<option value="${v}" ${state.planGroup === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`;
   const allOpen = (state._planKeys || []).length > 0 && state._planKeys.every(k => state.expanded[k]);
   const expandBtns = (!state.planFocus && !isBoard) ? `<button class="btn btn-ghost btn-sm" id="planToggleAll">${allOpen ? 'Collapse all' : 'Expand all'}</button>` : '';
-  const csvBtn = `<button class="btn btn-ghost btn-sm" id="planCsv">Export Excel</button>`;
-  const right = `${appliedFilterChips({ hiddenOnly: true })}${viewToggle}${focusBtn}${viewSel}${expandBtns}${csvBtn}<button class="btn btn-filled" id="newItem"><svg viewBox="0 0 32 32" fill="currentColor" width="16" height="16"><path d="M17 15L17 8 15 8 15 15 8 15 8 17 15 17 15 24 17 24 17 17 24 17 24 15z"/></svg>New milestone</button>`;
+  const doneN = filtered().filter(m => m.status === 'complete').length;
+  const selBtn = canEdit() && !isBoard ? `<button class="btn btn-ghost btn-sm" id="planSelect" aria-pressed="${!!state.sel}" title="Change several milestones at once">${state.sel ? 'Done selecting' : 'Select'}</button>` : '';
+  const csvBtn = `${selBtn}${!isBoard && doneN ? `<button class="btn btn-ghost btn-sm" id="planHideDone" aria-pressed="${!!state.hideDone}">${state.hideDone ? `Show ${doneN} done` : 'Hide done'}</button>` : ''}<button class="btn btn-ghost btn-sm" id="planViews" aria-haspopup="true" aria-expanded="false">Saved views</button><button class="btn btn-ghost btn-sm" id="planLink" title="Copy a link to this list with its filters">Copy link</button><button class="btn btn-ghost btn-sm" id="planCsv">Export to Excel</button>`;
+  const searchBox = `<div class="fb-searchwrap"><input type="search" id="planSearch" class="fb-search" placeholder="Filter by name, owner or note" aria-label="Filter milestones" value="${esc(state.filters.search || '')}"></div>`;
+  const right = `${searchBox}${appliedFilterChips({ hiddenOnly: true })}${viewToggle}${focusBtn}${viewSel}${expandBtns}${csvBtn}<button class="btn btn-filled" id="newItem"><svg viewBox="0 0 32 32" fill="currentColor" width="16" height="16"><path d="M17 15L17 8 15 8 15 15 8 15 8 17 15 17 15 24 17 24 17 17 24 17 24 15z"/></svg>New milestone</button>`;
   // No H2 - all actions live in the filter bar's right slot.
   $('#view-plan').innerHTML = `
     ${filterBar(['states', 'markets', 'fys', 'areas', 'owners'], { school: true, right })}
@@ -708,7 +722,7 @@ function renderPlan() {
    EDIT ENGINE + cross-tab
    ============================================================ */
 function hasSchoolWork() { return WS === 'readiness' || M().some(m => (m.schoolIds || []).length); }   // Enabling Work is network-wide, so school views stay hidden until a task names a school
-function rerender() { const kb0 = document.querySelector('.kanban'), kbX = kb0 ? kb0.scrollLeft : 0; if (kbX) requestAnimationFrame(() => { const k = document.querySelector('.kanban'); if (k) k.scrollLeft = kbX; }); document.body.classList.toggle('no-school-work', !hasSchoolWork()); requestAnimationFrame(() => { if (typeof updateSticky === 'function') updateSticky(); }); if (state.view === 'progress') renderProgress(); else if (state.view === 'timeline') renderTimeline(); else renderPlan(); requestAnimationFrame(() => paintAvatars()); if (typeof updateFilterBubble === 'function') updateFilterBubble(); }
+function rerender() { const kb0 = document.querySelector('.kanban'), kbX = kb0 ? kb0.scrollLeft : 0; if (kbX) requestAnimationFrame(() => { const k = document.querySelector('.kanban'); if (k) k.scrollLeft = kbX; }); document.body.classList.toggle('no-school-work', !hasSchoolWork()); requestAnimationFrame(() => { if (typeof updateSticky === 'function') updateSticky(); }); if (state.view === 'progress') renderProgress(); else if (state.view === 'timeline') renderTimeline(); else if (state.view === 'meetings') renderMeetings(); else renderPlan(); requestAnimationFrame(() => paintAvatars()); if (typeof updateFilterBubble === 'function') updateFilterBubble(); }
 
 /* ============================================================
    TAB 0 - EXECUTIVE SUMMARY (board / chiefs readout, print-ready)
@@ -722,7 +736,7 @@ function schoolsInView() {
     .filter(s => oyShown(s.openingFY))
     .sort((a, b) => (a.openingFY - b.openingFY) || a.market.localeCompare(b.market));
 }
-function fmtMoney(n) { n = +n || 0; const a = Math.abs(n), sg = n < 0 ? '-' : ''; if (a >= 999500) return sg + '$' + (a / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M'; if (a >= 1e3) return sg + '$' + Math.round(a / 1e3) + 'K'; return sg + '$' + Math.round(a); }
+// fmtMoney is defined once, near the top
 /* consistent R/Y/G by milestone completion: <50% red · ≥50% yellow · all complete green */
 /* greenlight/gating status per domain - deliberately distinct from market brand colors.
    grey = not started · blue = in progress · green = cleared (gate met) · amber/red = off-track */
@@ -779,21 +793,6 @@ function setDashCohort(v) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 // Progress broken down by workstream (functional area), scoped to the current focus.
-function wsBreakdownRows(list) {
-  const rows = teams().map(t => {
-    const tl = list.filter(m => m.functional_area === t);
-    if (!tl.length) return null;
-    const done = tl.filter(m => effectiveStatus(m) === 'complete').length;
-    return { t, n: tl.length, done, pctc: avgProgress(tl), r: ragReady(tl) };
-  }).filter(Boolean).sort((a, b) => (RAG_SEV[b.r.key] || 0) - (RAG_SEV[a.r.key] || 0) || a.pctc - b.pctc);
-  if (!rows.length) return '<div class="muted ex-empty">No milestones in scope</div>';
-  return `<div class="wb-list">${rows.map(x => `<button class="wb-row" data-drilldim="team" data-drillval="${esc(x.t)}" title="Open ${esc(x.t)} in Milestones">
-      <span class="wb-name">${esc(x.t)}</span>
-      <span class="wb-bar"><span style="width:${x.pctc}%;background:${x.r.color}"></span></span>
-      <span class="wb-pct">${x.pctc}%</span>
-      <span class="wb-n" title="${x.done} of ${x.n} milestones complete">${x.done}/${x.n} done</span>
-    </button>`).join('')}</div>`;
-}
 // Breakdown card with a By workstream / By school toggle.
 
 
@@ -801,16 +800,17 @@ function wsBreakdownRows(list) {
 // three FY27 priorities ($7M SoFla + $1.5M Paterson). Compact horizontal bars so it earns a
 // row without stealing focus from the readiness headline above.
 function capitalPriorityStrip() {
-  const camps = (state.data.campaigns || []).filter(c => !state.filters.states.size || state.filters.states.has(c.state));
+  const mkStates = new Set([...state.filters.markets].map(stateOfMarket).filter(Boolean));
+  const camps = (state.data.campaigns || []).filter(c => (!state.filters.states.size || state.filters.states.has(c.state)) && (!mkStates.size || mkStates.has(c.state)));
   if (!camps.length) return '';
   const items = camps.map(c => {
     const met = c.target > 0 && c.raised >= c.target, p = c.target ? (met ? 100 : Math.min(99, Math.floor(100 * c.raised / c.target))) : 0;
     const gap = Math.max(0, (c.target || 0) - (c.raised || 0));
     const tone = met ? 'ok' : p >= 50 ? 'mid' : 'low';
-    return `<div class="cap-item cap-tone-${tone}">
+    return `<div class="cap-item cap-tone-${tone}"${isAdmin() ? ` data-capedit="${esc(c.name)}" role="button" tabindex="0" title="Update amount raised"` : ''}>
       <div class="cap-top"><span class="cap-name">${esc(c.name)}</span><span class="cap-vals">${c.raised ? `<b>${fmtMoney(c.raised)}</b><span class="muted"> of ${fmtMoney(c.target)}</span>` : `<b>${fmtMoney(c.target)}</b><span class="muted"> goal</span>`}</span></div>
       ${c.raised ? `<div class="cap-bar"><span style="width:${p}%"></span></div>
-      <div class="cap-foot"><span class="cap-pct">${p}% raised</span><span class="muted">${met ? 'Target met' : fmtMoney(gap) + ' to go'}</span></div>` : `<div class="cap-foot"><span class="muted">No funds recorded yet</span></div>`}
+      <div class="cap-foot"><span class="cap-pct">${p}% raised${c.updatedAt ? ` · as of ${esc(fmtDate(c.updatedAt))}` : ''}</span><span class="muted">${met ? 'Target met' : fmtMoney(gap) + ' to go'}</span></div>` : `<div class="cap-foot"><span class="muted">${isAdmin() ? 'Click to add the amount raised. ' : ''}No funds recorded yet</span></div>`}
     </div>`;
   }).join('');
   return `<section class="ex-card cap-card">
@@ -863,15 +863,15 @@ function openingsTable(schools, sMs) {
     const issues = off || risk ? [off ? `<span class="dt-bad">${off} behind</span>` : '', risk ? `<span class="dt-warn">${risk} at risk</span>` : ''].filter(Boolean).join(' · ') : '<span class="muted">None</span>';
     return `<tr data-drillschool="${esc(s.id)}" title="Open ${esc(s.market)} ${esc(s.display_label)}">
       <td><span class="dt-dot" style="background:${mkColor(s.market)}"></span><b>${esc(s.market)} ${esc(s.display_label)}</b></td>
-      <td>${fallLbl(s.openingFY)}</td>
+      <td>${fallLbl(s.openingFY)}${s.confirmed === false ? ' <span class="muted">(tentative)</span>' : ''}</td>
       <td>${statusPill(ms.length ? r.label.split(' · ')[0] : 'Not yet scoped', r.color)}</td>
       <td class="num"><span class="dt-prog"><span class="kc-bar"><span style="width:${p}%;background:${r.color}"></span></span>${p}%</span></td>
       <td>${issues}</td>
-      <td class="dt-next">${next ? `${esc(next.activity)} <span class="muted">· ${esc(fmtDate(next.due_date))}</span>` : '<span class="muted">Nothing scheduled</span>'}</td></tr>`;
+      <td class="dt-next" title="${next ? esc(next.activity) : ''}">${next ? `<span class="dt-next-t">${esc(next.activity)}</span> <span class="muted">· ${esc(fmtDate(next.due_date))}</span>` : '<span class="muted">Nothing scheduled</span>'}</td></tr>`;
   }).join('');
   const rk = schools.map(s => ragReady(sMs(s)).key), onT = rk.filter(k => k === 'green' || k === 'blue').length;
   return `<section class="ex-card dt-card"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('flag')}<h3>School openings</h3></div><span class="dt-sum"><b>${onT} of ${schools.length}</b> on track</span></div>
-    <div class="dt-wrap"><table class="dt"><thead><tr><th>Opening</th><th>Opens</th><th>Status</th><th class="num">Progress</th><th>Issues</th><th>Next due</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
+    <div class="dt-wrap"><table class="dt"><thead><tr><th>Opening</th><th>Opens</th><th>Status</th><th class="num" title="Average progress across milestones">Progress</th><th>Issues</th><th>Next due</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
 }
 function attentionItems(list) {
   const rank = m => m.status === 'blocked' ? 0 : effectiveStatus(m) === 'behind' ? 1 : effectiveStatus(m) === 'at_risk' ? 2 : 3;
@@ -899,15 +899,17 @@ function comingUpCard(list) {
 }
 function teamsCard(list) {
   const z = n => n ? n : '<span class="muted">0</span>', showCal = list.some(m => calibration([m]).n);
-  const rows = teams().map(t => {
+  const sev = t => { const o = list.filter(m => m.functional_area === t && m.status !== 'complete'); return o.length ? 1e6 * o.filter(m => ['behind', 'blocked'].includes(effectiveStatus(m))).length + 1e3 * o.filter(m => effectiveStatus(m) === 'at_risk').length + o.length : -1; };
+  const rows = teams().slice().sort((a, b) => sev(b) - sev(a)).map(t => {   // most off track first; finished teams last
     const ms = list.filter(m => m.functional_area === t); if (!ms.length) return '';
     const open = ms.filter(m => m.status !== 'complete');
     const off = open.filter(m => ['behind', 'blocked'].includes(effectiveStatus(m))).length, risk = open.filter(m => effectiveStatus(m) === 'at_risk').length;
     const stale = open.filter(needsCheckin).length, cal = calibration(ms);
-    return `<tr data-drilldim="team" data-drillval="${esc(t)}" title="Open ${esc(t)} in Milestones"><td><b>${esc(t)}</b></td><td class="num">${open.length}</td><td class="num ${off ? 'dt-bad' : ''}">${z(off)}</td><td class="num ${risk ? 'dt-warn' : ''}">${z(risk)}</td><td class="num">${z(stale)}</td><td class="num">${avgProgress(ms)}%</td>${showCal ? `<td class="num">${cal.n ? Math.round(100 * cal.k / cal.n) + '%' : '<span class="muted">0 of 0</span>'}</td>` : ''}</tr>`;
+    return `<tr data-drilldim="team" data-drillval="${esc(t)}" title="Open ${esc(t)} in Milestones" class="${open.length ? '' : 'is-finished'}"><td><b>${esc(t)}</b></td><td class="num">${open.length}</td><td class="num ${off ? 'dt-bad' : ''}">${z(off)}</td><td class="num ${risk ? 'dt-warn' : ''}">${z(risk)}</td><td class="num">${z(stale)}</td><td class="num">${avgProgress(ms)}%</td>${showCal ? `<td class="num">${cal.n ? Math.round(100 * cal.k / cal.n) + '%' : '<span class="muted">0 of 0</span>'}</td>` : ''}</tr>`;
   }).join('');
+  if (!rows) return `<section class="ex-card dt-card"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('people')}<h3>Teams</h3></div></div><p class="muted ex-empty">No milestones in this view</p></section>`;
   return `<section class="ex-card dt-card"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('people')}<h3>Teams</h3></div></div>
-    <div class="dt-wrap"><table class="dt"><thead><tr><th>Team</th><th class="num">Open</th><th class="num">Behind</th><th class="num">At risk</th><th class="num">Updates missing</th><th class="num">Progress</th>${showCal ? '<th class="num">Forecast accuracy</th>' : ''}</tr></thead><tbody>${rows}</tbody></table></div></section>`;
+    <div class="dt-wrap"><table class="dt dt-sortable"><thead><tr><th>Team</th><th class="num">Open</th><th class="num">Behind</th><th class="num">At risk</th><th class="num">Updates missing</th><th class="num" title="Average progress across milestones">Progress</th>${showCal ? '<th class="num">Forecast accuracy</th>' : ''}</tr></thead><tbody>${rows}</tbody></table></div></section>`;
 }
 
 /* The full greeting moved to the top content bar (updateGreeting).
@@ -932,6 +934,7 @@ function applyDrill(dim, val) {
   else if (dim === 'market') state.filters.markets = new Set([val]);
   else if (dim === 'state') state.filters.states = new Set([val]);
   else if (dim === 'year') state.filters.fys = new Set([Number(val)]);
+  else if (dim === 'openingFY') state.filters.openingFYs = new Set([Number(val)]);
   else if (dim === 'school') state.filters.schoolId = val;
   else if (dim === 'status') { state.filters.statuses = new Set([val]); state.filters.timing = ''; }
   else if (dim === 'timing') { state.filters.timing = val; state.filters.statuses.clear(); }
@@ -943,22 +946,78 @@ function applyDrill(dim, val) {
 }
 function refreshResults() { refreshBody(); }
 
-function addItem(stage) {
+function milestoneUrl(id) { return taskLink(id); }
+function duplicateMilestone(id) {
+  if (!guardEdit()) return;
+  if (modalDirty) return toast('Save or discard your changes first', 'warn');
+  const src = findM(id); if (!src) return;
+  closeModal();
+  const m = clone(src);
+  Object.assign(m, { id: uid(), _draft: true, status: 'not_started', progress_percent: 0, stage: 'to_do', noteLog: [], dateHistory: [], checkins: [], completedAt: null, updatedAt: null, updatedBy: null, createdAt: new Date().toISOString() });
+  delete m.statusBeforeBlock;
+  (m.checkpoints || []).forEach(c => { c.done = false; });
+  M().push(m); openModal(m.id);
+  toast('Copy ready. Change what differs, then Save', 'ok');
+}
+// Link to the current page with its filters, to share in Slack or email
+function viewLink() {
+  const f = state.filters, o = {};
+  Object.keys(f).forEach(k => { const v = f[k]; if (v instanceof Set) { if (v.size) o[k] = [...v]; } else if (v) o[k] = v; });
+  const u = new URL(location.href); u.search = ''; u.hash = '';
+  if (Object.keys(o).length) u.searchParams.set('f', JSON.stringify(o));
+  return u.toString() + '#' + state.view;
+}
+function applyViewLink(raw) {
+  let o; try { o = JSON.parse(raw); } catch (e) { return false; }
+  if (!o || typeof o !== 'object') return false;
+  Object.keys(o).forEach(k => {
+    if (!(k in state.filters)) return;
+    const cur = state.filters[k], v = o[k];
+    if (cur instanceof Set && Array.isArray(v)) state.filters[k] = new Set(v.filter(x => typeof x === 'string' || typeof x === 'number').map(x => typeof cur.values().next().value === 'number' || /FYs$/.test(k) || k === 'fys' ? +x : x));
+    else if (typeof v === 'string') state.filters[k] = v.slice(0, 80);
+  });
+  return true;
+}
+// Each person's Group by and List/Board choice sticks between visits
+const PLAN_KEY = 'ngc_plan_' + WS;
+function savePlanGroup() { lsSet(PLAN_KEY, JSON.stringify({ g: state.planGroup, l: state._lastListGroup || '' })); }
+function restorePlanGroup() { try { const v = JSON.parse(lsGet(PLAN_KEY) || 'null'); if (v && typeof v.g === 'string' && /^(team|stage|market|year|school|state|fy)$/.test(v.g)) { state.planGroup = v.g; if (v.l) state._lastListGroup = v.l; } } catch (e) {} }
+function moveToStage(m, stage) {
+  snapshotForUndo('Move milestone: ' + (m.activity || '').slice(0, 30)); logActivity('move', `Moved "${m.activity}" to ${((meta().stages || []).find(x => x[0] === stage) || [stage, stage])[1]}`, { itemId: m.id }); const was = m.stage; m.stage = stage; touch(m);
+      if (m.stage === 'complete') { m.status = 'complete'; m.progress_percent = 100; }
+      else if (m.status === 'complete' && m.stage === 'to_do') { m.status = 'not_started'; m.progress_percent = 0; }
+      else { if (m.status === 'complete') { m.status = 'on_track'; if (m.progress_percent === 100) m.progress_percent = 95; } if (m.status === 'not_started' && m.stage !== 'to_do') m.status = 'on_track'; }
+      touch(m); autosave(); refreshResults(); const col = (meta().stageMeta && meta().stageMeta[m.stage] && meta().stageMeta[m.stage].label) || (m.stage.charAt(0).toUpperCase() + m.stage.slice(1)).replace(/_/g, ' '); toastAction(`Moved to ${col}`, 'Undo', undo);
+}
+// Board on phones and for keyboard users: move a card with a menu instead of dragging
+function openMoveMenu(btn) {
+  if (!guardEdit()) return;
+  const m = findM(btn.dataset.kmove); if (!m) return;
+  const html = `<div class="pop-title">Move to</div><div class="pop-list">${meta().stages.filter(([k]) => k !== (m.stage || 'to_do')).map(([k, l]) => `<button class="pop-item" data-kmoveto="${esc(k)}">${esc(l)}</button>`).join('')}</div>`;
+  const p = openPopover(btn, html);
+  p.addEventListener('click', e => { const o = e.target.closest('[data-kmoveto]'); if (!o) return; closePopover(); moveToStage(m, o.dataset.kmoveto); });
+  const first = p.querySelector('.pop-item'); if (first) first.focus();
+}
+function addItem(stage, team) {
   if (!guardEdit()) return;
   const st = stage || 'to_do', done = st === 'complete';
-  const dm = state.filters.markets.size === 1 ? [...state.filters.markets][0] : '', dt = defaultTeam();
+  const dm = state.filters.markets.size === 1 ? [...state.filters.markets][0] : '', dt = team || defaultTeam();
   const m = { id: uid(), state: stateOfMarket(dm) || '', market: dm, team: dt, functional_area: dt, workstream: 'General', activity: '', schools: [], schoolIds: [], targetFY: currentFY(), targetQuarter: '', openingFY: null, due_date: null, status: done ? 'complete' : 'not_started', stage: st, progress_percent: done ? 100 : 0, priority: 'medium', owner: myOwnerName(), dependency: '', keyMilestone: false, greenlight: false, transition: false, notes: '', tags: [] };
-  m._draft = true; m.createdAt = new Date().toISOString(); if (!m.owner) m.owner = myOwnerName();
+  m._draft = true; m.createdAt = new Date().toISOString();
+  if (!m.owner && state.filters.owners.size === 1 && !state.filters.owners.has('__none__')) m.owner = [...state.filters.owners][0];
+  if (!m.owner) m.owner = myOwnerName();
+  const fsch = state.filters.schoolId && schoolById(state.filters.schoolId); if (fsch) { m.schoolIds = [fsch.id]; m.schools = [fsch.code]; m.market = fsch.market; m.state = fsch.state; }
   M().push(m); openModal(m.id);   // draft: saved (and synced) only when the person clicks Save
 }
 
 /* popovers */
 let popAnchor = null;
-function closePopover() { const p = $('#popover'); if (p) { const back = p.contains(document.activeElement) ? popAnchor : null; p.remove(); if (back && document.contains(back)) back.focus({ preventScroll: true }); } document.removeEventListener('mousedown', outsidePop, true); }
+function closePopover() { document.querySelectorAll('[aria-expanded="true"][aria-haspopup]').forEach(a => a.setAttribute('aria-expanded', 'false')); const p = $('#popover'); if (p) { const back = p.contains(document.activeElement) ? popAnchor : null; p.remove(); if (back && document.contains(back)) back.focus({ preventScroll: true }); } document.removeEventListener('mousedown', outsidePop, true); }
 function outsidePop(e) { if (!e.target.closest('#popover')) closePopover(); }
 function openPopover(anchor, html) {
   closePopover();
   const p = document.createElement('div'); p.className = 'popover'; p.id = 'popover'; p.innerHTML = html; document.body.appendChild(p);
+  if (anchor && anchor.setAttribute) { anchor.setAttribute('aria-expanded', 'true'); if (!anchor.getAttribute('aria-haspopup')) anchor.setAttribute('aria-haspopup', 'true'); }
   const r = anchor.getBoundingClientRect();
   const below = window.innerHeight - r.bottom - 12, above = r.top - 60;
   if (p.offsetHeight > below && above > below) p.style.top = (window.scrollY + Math.max(56, r.top - p.offsetHeight - 6)) + 'px';
@@ -989,11 +1048,16 @@ function lockModalIfReadOnly() {
   if (commentLive()) { const nf = $('#modalBody .notes-field'), ni = $('#noteInput'); if (nf) nf.classList.add('can-comment'); if (ni) ni.disabled = false; }
   $('#modalTitle').textContent += ' (view only)';
 }
+function rememberRecent(id) { try { const k = 'ngc_recent_' + WS, r = JSON.parse(lsGet(k) || '[]').filter(x => x !== id); r.unshift(id); lsSet(k, JSON.stringify(r.slice(0, 6))); } catch (e) {} }
+function recentIds() { try { return JSON.parse(lsGet('ngc_recent_' + WS) || '[]'); } catch (e) { return []; } }
 function openModal(id) {
   closePopover();
-  modalMode = 'task'; modalId = id; modalDirty = false; const m = findM(id); if (!m) return;
+  modalMode = 'task'; modalId = id; modalDirty = false; const m = findM(id); if (!m) return; if (!m._draft) rememberRecent(id);
   modalOpenDoc = clone(m); requestAnimationFrame(() => { const b = $('#modalBody'); if (b) b.scrollTop = 0; });
   $('#modalTitle').textContent = m._draft ? 'New milestone' : 'Milestone details';
+  const seq = state.view === 'plan' ? filtered().slice().sort((a, b) => (a.due_date || '9999').localeCompare(b.due_date || '9999')) : [], at = seq.findIndex(x => x.id === m.id);
+  let nav = $('#modalNav'); if (!nav) { nav = document.createElement('span'); nav.id = 'modalNav'; nav.className = 'modal-nav'; $('#modalTitle').after(nav); }
+  nav.innerHTML = !m._draft && at >= 0 && seq.length > 1 ? `<span class="muted">${at + 1} of ${seq.length}</span><button type="button" class="icon-btn" data-mnav="${esc((seq[at - 1] || {}).id || '')}" ${at === 0 ? 'disabled' : ''} aria-label="Previous milestone" title="Previous">${CI('arrow-up')}</button><button type="button" class="icon-btn" data-mnav="${esc((seq[at + 1] || {}).id || '')}" ${at === seq.length - 1 ? 'disabled' : ''} aria-label="Next milestone" title="Next">${CI('arrow-down')}</button>` : '';
   $('#modalDelete').style.display = m._draft ? 'none' : '';
   const opt = (arr, val) => arr.map(x => Array.isArray(x) ? `<option value="${x[0]}" ${x[0] === val ? 'selected' : ''}>${esc(x[1])}</option>` : `<option ${x === val ? 'selected' : ''}>${esc(x)}</option>`).join('');
   const schoolChecks = state.data.schools.filter(s => s.market === m.market).map(s => `<label class="field-check"><input type="checkbox" class="m-school" value="${esc(s.id)}" ${(m.schoolIds || []).includes(s.id) ? 'checked' : ''}> ${esc(s.display_label)} <span class="muted">${esc(fyLabel(s.openingFY))}</span></label>`).join('') || '<span class="muted">No schools in this market</span>';
@@ -1006,27 +1070,30 @@ function openModal(id) {
     <div class="field" id="mMarketWrap" ${(m.schoolIds || []).length ? 'hidden' : ''}><label>Market</label><select id="mMarket">${opt([['', 'Network-wide'], ...markets().map(x => [x, x])], (m.schoolIds || []).length ? '' : (m.market || ''))}</select></div>
 `;
   $('#modalBody').innerHTML = `
-    ${m.updatedAt ? `<div class="m-updated">Last updated ${esc(fmtWhen(m.updatedAt))}${m.updatedBy ? ' by ' + esc(m.updatedBy) : ''}</div>` : ''}
-    <div class="field"><label>Milestone <span class="req">*</span></label><textarea id="mAct" placeholder="What needs to happen?">${esc(m.activity)}</textarea></div>
+    ${m._draft ? '' : `<div class="m-acts">${isAdmin() ? `<button type="button" class="btn btn-ghost btn-sm" data-mt-addms="${esc(m.id)}">${mbook().topics.some(t => (t.ids || []).includes(m.id)) ? 'On the next agenda' : 'Add to meeting'}</button>` : ''}<button type="button" class="btn btn-ghost btn-sm" data-copylink="${esc(m.id)}">Copy link</button><button type="button" class="btn btn-ghost btn-sm" data-dupe="${esc(m.id)}">Duplicate</button></div>`}
+    ${m.keyMilestone || m.transition ? `<div class="m-tags">${m.keyMilestone ? '<span class="mt-tag mt-tag-blue">Key milestone</span>' : ''}${m.transition ? '<span class="mt-tag">Transition to Regional Ops</span>' : ''}</div>` : ''}
+    ${m.status === 'complete' && m.completedAt ? `<div class="m-updated">Completed ${esc(fmtDate(m.completedAt.slice(0, 10)))}${m.due_date ? (m.completedAt.slice(0, 10) <= m.due_date ? ', on time' : `, ${daysBetween(m.due_date, m.completedAt.slice(0, 10))} days after the due date`) : ''}</div>` : ''}
+    ${m.updatedAt ? `<div class="m-updated">Last updated ${esc(fmtWhen(m.updatedAt))}${m.updatedBy ? ' by ' + esc(m.updatedBy) : ''}${m.createdAt && !m._draft ? ` · added ${esc(fmtDate(m.createdAt.slice(0, 10)))}` : ''}</div>` : ''}
+    <div class="field"><label>Milestone <span class="req">*</span></label><textarea id="mAct" maxlength="300" placeholder="What needs to happen?">${esc(m.activity)}</textarea></div>
     ${m._draft ? soSec : checkinBlock(m)}
     <div class="field-row"><div class="field"><label>Status</label><select id="mStatus">${opt(meta().statuses.map(s => [s, SM(s).label]), m.status)}</select></div>
       <div class="field"><label>Progress</label><div class="prog-input"><input id="mProg" type="number" min="0" max="100" step="5" value="${m.progress_percent || 0}"><span>%</span></div></div></div>
-    <div class="help-text field-help">Updates when overdue or due soon</div>
+    <div class="help-text field-help">Turns At risk or Behind on its own near or past the due date</div>
     <div class="block-flag ${m.status === 'blocked' ? 'on' : ''}" id="mBlockWrap">
       <div class="block-flag-row"><button type="button" class="btn-block" id="mBlockBtn" aria-pressed="${m.status === 'blocked'}">${CI('flag')} <span>${m.status === 'blocked' ? 'Blocked' : 'Flag as blocked'}</span></button>
       <span class="block-hint">${m.status === 'blocked' ? 'Click again to clear' : ''}</span></div>
       <div class="field block-reason"><label for="mBlockWhy">What's blocking it?</label><input id="mBlockWhy" value="${esc(m.dependency)}" ></div>
     </div>
     <div class="m-sec-h">Owner and timing</div>
-    <div class="field-row"><div class="field"><label>Owner</label><select id="mOwner">${ownerOptions(m.owner)}</select>${m._draft ? '' : emailOwnersLink(m)}</div><div class="field"><label>Due date</label><input id="mDue" type="date" value="${esc(m.due_date || '')}"></div></div>
+    <div class="field-row"><div class="field"><label>Owner</label><select id="mOwner">${ownerOptions(m.owner)}</select>${!m.owner && myOwnerName() ? '<button type="button" class="btn btn-text btn-sm" id="mAssignMe">Assign to me</button>' : ''}${m._draft ? '' : emailOwnersLink(m)}</div><div class="field"><label>Due date</label><input id="mDue" type="date" aria-describedby="mDueHint" value="${esc(m.due_date || '')}"><div class="field mdw" id="mDueWhyWrap" hidden><label for="mDueWhy">Why is it moving? <span class="req">*</span></label><input id="mDueWhy" placeholder="For example: lease signing slipped"></div></div></div>
     <div class="field"><label>Co-owners</label>${coOwnerPicker(m)}</div>
     <div class="field"><label>Team</label><select id="mTeam">${opt(teams(), m.functional_area)}</select></div>
     ${checkpointsBlock(m)}
     ${linksDepsBlock(m)}
     ${m._draft ? '' : soSec}
     <div class="m-sec-h">Notes</div>
-    <div class="field"><label>Notes and next steps</label><textarea id="mNotes">${esc(m.notes)}</textarea></div>
-    <details class="sm-details"><summary>More options</summary>
+    <div class="field"><label>Notes and next steps</label><textarea id="mNotes" data-autogrow>${esc(m.notes)}</textarea></div>
+    <details class="sm-details"><summary>More options${((n) => n ? ` <span class="muted">(${n} set)</span>` : '')([m.workstream && m.workstream !== 'General', m.priority && m.priority !== 'medium', m.startDate, m.keyMilestone, m.transition].filter(Boolean).length)}</summary>
       <div class="field"><label>Detail / sub-workstream</label><input id="mWs" value="${esc(m.workstream)}"></div>
       <div class="field-row"><div class="field"><label>Priority</label><select id="mPri">${opt([['high', 'High'], ['medium', 'Medium'], ['low', 'Low']], m.priority)}</select></div></div>
       <div class="field-row"><div class="field"><label>Target fiscal year</label><select id="mFy" ${m.due_date ? 'disabled title="Set from the due date"' : ''}><option value="">-</option>${fyList().map(fy => `<option value="${fy}" ${m.targetFY === fy ? 'selected' : ''}>${fyLabel(fy)}</option>`).join('')}</select></div><div class="field"><label>Quarter</label><select id="mQ" ${m.due_date ? 'disabled title="Set from the due date"' : ''}>${opt(['', 'Q1', 'Q2', 'Q3', 'Q4'], m.targetQuarter)}</select></div></div>
@@ -1050,9 +1117,11 @@ function openModal(id) {
     sel.dispatchEvent(new Event('change', { bubbles: true })); paintBlock();
     if (sel.value === 'blocked') why.focus();
   });
-  sel.addEventListener('change', () => { if (sel.value !== 'blocked') prior = sel.value; paintBlock(); });
+  sel.addEventListener('change', () => { if (sel.value !== 'blocked') prior = sel.value; paintBlock(); const pg = $('#mProg'); if (pg && !pg.disabled && sel.value === 'complete') pg.value = 100; });
   why.addEventListener('input', () => { dep.value = why.value; });
   dep.addEventListener('input', () => { why.value = dep.value; });
+  const dueHint = () => { const v = $('#mDue').value, h = $('#mDueHint') || (() => { const d = document.createElement('div'); d.id = 'mDueHint'; d.className = 'help-text'; $('#mDue').after(d); return d; })(); if (!v) { h.textContent = ''; return; } const d = daysUntil(v); h.textContent = sel.value === 'complete' ? '' : d === 0 ? 'Due today' : d > 0 ? `In ${d} day${d === 1 ? '' : 's'}` : `${-d} day${d === -1 ? '' : 's'} ago`; h.classList.toggle('is-late', d < 0 && sel.value !== 'complete'); };
+  $('#mDue').addEventListener('change', dueHint); sel.addEventListener('change', dueHint); dueHint();
   $('#mCoBox').addEventListener('change', () => { const v = $$('#mCoBox .m-co').filter(x => x.checked).map(x => x.value); $('#mCoBox .co-sum').textContent = v.length ? v.join(', ') : 'None'; });
   wireForecastUI(m);
   // Openings picker: selected chips highlight; the market follows the selected openings
@@ -1069,7 +1138,8 @@ function saveModal() {
   if (!guardEdit()) return;
   if (modalMode === 'school') return saveSchool();
   const m = findM(modalId); if (!m) { closeModal(); toast('A teammate removed this milestone, so your edits were not saved', 'warn'); return; }
-  if (!$('#mAct').value.trim() && !m.activity) { markInvalid($('#mAct'), 'Add a milestone name'); return; }
+  if (!$('#mAct').value.trim()) { markInvalid($('#mAct'), 'Add a milestone name'); return; }
+  if ($('#mStatus').value === 'blocked' && !$('#mBlockWhy').value.trim()) { markInvalid($('#mBlockWhy'), "Say what's blocking it"); return; }
   const startV = ($('#mStart') || {}).value, dueV0 = $('#mDue').value;
   if (startV && dueV0 && startV > dueV0) { const dt = $('#mStart').closest('details'); if (dt) dt.open = true; markInvalid($('#mStart'), 'Start date must be on or before the due date'); return; }
   const wasDraft = !!m._draft;
@@ -1102,7 +1172,10 @@ function saveModal() {
   autosave(); closeModal(); rerender();
   const late = m.due_date && (m.schoolIds || []).map(schoolById).filter(sc => sc && sc.opening_date && m.due_date > sc.opening_date);
   if (late && late.length) toast(`Saved. This is due after ${late[0].display_label} opens on ${fmtDate(late[0].opening_date)}`, 'warn');
-  else toast(wasDraft ? 'Milestone added' : 'Saved', 'ok');
+  if (passFilters(m) && state.view === 'plan') { state.flashId = m.id; rerender(); setTimeout(() => { const el = document.querySelector(`.kcard[data-id="${m.id}"]`); if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.classList.add('kc-flash'); setTimeout(() => el.classList.remove('kc-flash'), 1800); } state.flashId = null; }, 80); }
+  if (late && late.length) return;
+  if (!passFilters(m)) toastAction(`${wasDraft ? 'Added' : 'Saved'}. Your filters hide it`, 'Clear filters', () => { clearFilters(); rerender(); });
+  else toast((wasDraft ? 'Added: ' : 'Saved: ') + clip(m.activity, 40) + (m.status === 'complete' && prevStatus !== 'complete' ? unblockNote(m) : ''), 'ok');
 }
 function deleteModal() {
   if (!guardEdit()) return;
@@ -1129,6 +1202,31 @@ function attemptCloseModal() {
 /* reusable confirmation popup (native confirm() is blocked in sandboxed iframes) */
 function closeConfirm() { const w = $('#confirmBackdrop'); if (w) w.remove(); }
 // In-app text entry (replaces the browser's prompt(), which looks like a system alert and is blocked in some browsers)
+function inputDialog(o, onSave) {
+  closeConfirm();
+  const w = document.createElement('div'); w.className = 'confirm-backdrop'; w.id = 'confirmBackdrop';
+  w.innerHTML = `<div class="confirm-box"><h3>${esc(o.title)}</h3>${o.msg ? `<div class="confirm-msg">${esc(o.msg)}</div>` : ''}
+    <div class="confirm-typed"><input id="cfgName" type="${esc(o.type || 'text')}" autocomplete="${esc(o.autocomplete || 'off')}" ${o.inputmode ? `inputmode="${esc(o.inputmode)}"` : ''} placeholder="${esc(o.placeholder || '')}" value="${esc(o.value == null ? '' : o.value)}" aria-label="${esc(o.title)}"></div>
+    <div class="confirm-actions"><button class="btn btn-tonal" id="cfgCancel">Cancel</button><button class="btn btn-filled" id="cfgOk">Save</button></div></div>`;
+  document.body.appendChild(w);
+  const inp = w.querySelector('#cfgName');
+  const done = ok => { const v = inp.value.trim(); if (ok && o.validate) { const err = o.validate(v); if (err) return markInvalid(inp, err); } closeConfirm(); if (ok && (v || o.allowEmpty)) onSave(v); };
+  w.addEventListener('click', e => { if (e.target === w || e.target.id === 'cfgCancel') done(false); else if (e.target.id === 'cfgOk') done(true); });
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') done(true); else if (e.key === 'Escape') done(false); });
+  setTimeout(() => { inp.focus(); if (inp.select && inp.type !== 'date') inp.select(); }, 30);
+}
+// "2.5M", "$750,000", "750k" -> number
+function parseMoney(v) { const m = String(v).replace(/[$,\s]/g, '').match(/^(\d+(?:\.\d+)?)([kKmM]?)$/); if (!m) return null; return Math.round(+m[1] * ({ k: 1e3, m: 1e6 }[m[2].toLowerCase()] || 1)); }
+function editCampaign(name) {
+  if (!guardAdmin()) return;
+  const c = (state.data.campaigns || []).find(x => x.name === name); if (!c) return;
+  inputDialog({ title: `Raised for ${c.name}`, msg: `Goal ${fmtMoney(c.target)}. Type an amount like 2.5M or 750,000`, value: c.raised || '', inputmode: 'decimal', allowEmpty: true,
+    validate: v => v === '' || parseMoney(v) != null ? '' : 'Use a number, like 2.5M or 750,000' }, v => {
+    const n = v === '' ? 0 : parseMoney(v), before = c.raised || 0; if (n === before) return;
+    c.raised = n; c.updatedAt = todayISO(); logActivity('edit', `Updated ${c.name}: ${fmtMoney(n)} raised`);
+    autosave(); rerender(); toastAction(`${c.name}: ${fmtMoney(n)} raised`, 'Undo', () => { c.raised = before; autosave(); rerender(); });
+  });
+}
 function nameDialog(current, onSave) {
   closeConfirm();
   const w = document.createElement('div'); w.className = 'confirm-backdrop'; w.id = 'confirmBackdrop';
@@ -1182,17 +1280,17 @@ function openSchoolModal(id) {
   const opt = (arr, val) => arr.map(x => Array.isArray(x) ? `<option value="${x[0]}" ${x[0] === val ? 'selected' : ''}>${esc(x[1])}</option>` : `<option ${x === val ? 'selected' : ''}>${esc(x)}</option>`).join('');
   const sm = isNew ? [] : schoolMs(s);
   const roll = sm.length ? rollupStatus(sm) : 'not_started';
-  const taskList = sm.length ? sm.slice().sort(bySortUrgency).map(m => `<div class="sm-task" data-expand="${m.id}">${statusDot(effectiveStatus(m))}<span class="sm-t-title">${esc(m.activity)}</span><span class="sm-t-team">${esc(m.functional_area || '')}</span><span class="sm-t-due">${dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : '-')}</span></div>`).join('') : '<div class="muted" style="font-size:14px">No milestones yet</div>';
+  const taskList = sm.length ? sm.slice().sort((a, b) => ((a.status === 'complete') - (b.status === 'complete')) || (a.due_date || '9999').localeCompare(b.due_date || '9999')).map(m => `<div class="sm-task" data-expand="${m.id}">${statusDot(effectiveStatus(m))}<span class="sm-t-title">${esc(m.activity)}</span><span class="sm-t-team">${esc(m.functional_area || '')}${ownersOf(m).length ? ' · ' + esc(ownersOf(m)[0]) : ''}</span><span class="sm-t-due">${m.status === 'complete' ? 'Done' : dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : 'No due date')}</span></div>`).join('') : '<div class="muted" style="font-size:14px">No milestones yet</div>';
   const summary = isNew ? '' : `<div class="sm-summary">
     <span><span class="state-badge sm" style="background:${stColor(s.state)}">${esc(s.state)}</span> <b>${esc(s.market)}</b> · ${fallLbl(s.openingFY)}</span>
-    <span class="sm-summary-r"><span class="muted">${sm.length} milestone${sm.length === 1 ? '' : 's'}</span>${sm.length ? `<button class="btn btn-text btn-sm sm-openplan" data-openplanschool="${esc(s.id)}" >Open in Milestones ${CI('arrow')}</button>` : ''}</span></div>`;
+    <span class="sm-summary-r">${isAdmin() ? `<button type="button" class="btn btn-text btn-sm" data-mt-addschool="${esc(s.id)}">Add to meeting</button>` : ''}<button type="button" class="btn btn-text btn-sm" data-copyschool="${esc(s.id)}">Copy link</button><span class="muted">${sm.filter(x => x.status === 'complete').length} of ${sm.length} milestone${sm.length === 1 ? '' : 's'} done</span>${sm.length ? `<button class="btn btn-text btn-sm sm-openplan" data-openplanschool="${esc(s.id)}" >Open in Milestones ${CI('arrow')}</button>` : ''}</span></div>`;
   // plain calendar year - a school with openingFY=2028 opens in August 2027, so we show "2027"
-  const fyField = `<div class="field"><label>Opens <span class="req">*</span></label><select id="sFy">${fyList().map(fy => `<option value="${fy}" ${s.openingFY === fy ? 'selected' : ''}>Fall ${fy - 1} (${fyLabel(fy)})</option>`).join('')}</select></div>`;
+  const fyField = `<div class="field"><label>Opens <span class="req">*</span></label><select id="sFy">${fyList().filter(fy => fy > currentFY() || fy === s.openingFY).map(fy => `<option value="${fy}" ${s.openingFY === fy ? 'selected' : ''}>Fall ${fy - 1} (${fyLabel(fy)})</option>`).join('')}</select></div>`;
   const qField = `<input type="hidden" id="sQ" value="${esc(s.openingQuarter || 'Q1')}">`;   // every opening is in August; quarter kept for old data
-  const marketOnly = `<div class="field"><label>Market / location <span class="req">*</span></label><select id="sMarket">${opt(markets(), s.market)}</select></div>`;
-  const labelField = `<div class="field-row"><div class="field"><label>Label <span class="req">*</span></label><input id="sLabel" value="${esc(s.display_label || s.code || '')}" placeholder="ES4"></div><div class="field"><label>School type</label><select id="sType">${opt([['ES', 'Elementary (ES)'], ['MS', 'Middle (MS)'], ['HS', 'High (HS)']], s.school_type)}</select></div></div>`;
-  const marketField = `<div class="field-row"><div class="field"><label>Market / location</label><select id="sMarket">${opt(markets(), s.market)}</select></div><div class="field"><label>Pod</label><input id="sPod" type="number" min="1" value="${s.pod_number || ''}" placeholder="4"></div></div>`;
-  const confField = `<label class="field-check"><input type="checkbox" id="sConf" ${s.confirmed !== false ? 'checked' : ''}> Opening confirmed</label>`;
+  const marketOnly = `<div class="field"><label>Market <span class="req">*</span></label><select id="sMarket">${opt(markets(), s.market)}</select></div>`;
+  const labelField = `<div class="field-row"><div class="field"><label for="sLabel">Name <span class="req">*</span></label><input id="sLabel" value="${esc(s.display_label || s.code || '')}" placeholder="ES4"></div><div class="field"><label>School type</label><select id="sType">${opt([['ES', 'Elementary (ES)'], ['MS', 'Middle (MS)'], ['HS', 'High (HS)']], s.school_type)}</select></div></div>`;
+  const marketField = `<div class="field-row"><div class="field"><label>Market</label><select id="sMarket">${opt(markets(), s.market)}</select></div><div class="field"><label>Pod</label><input id="sPod" type="number" min="1" value="${s.pod_number || ''}" placeholder="4"></div></div>`;
+  const confField = `<label class="field-check"><input type="checkbox" id="sConf" ${s.confirmed !== false ? 'checked' : ''}> Opening confirmed</label><div class="help-text">Uncheck while the date is tentative. Cards then say "Tentative"</div>`;
   $('#modalBody').innerHTML = isNew ? `
     ${labelField}
     ${marketOnly}
@@ -1206,7 +1304,7 @@ function openSchoolModal(id) {
     <div class="reschedule">
       <div class="rs-head">Reschedule opening</div>
       ${fyField}${qField}
-      <label class="field-check"><input type="checkbox" id="sShift" checked> <span>Move open milestone deadlines too</span></label>
+      <label class="field-check"><input type="checkbox" id="sShift" checked> <span>Move open milestone deadlines too${((k) => k ? ` (${k})` : '')(schoolMs(s).filter(x => x.status !== 'complete' && x.due_date).length)}</span></label>
     </div>
     <div class="field"><label>Milestones</label><div class="sm-tasks">${taskList}</div>
       <div class="sm-task-actions"><button class="btn btn-tonal btn-sm" id="addTaskForSchool">+ Add milestone</button>${templatesButton(s)}</div>${templatesPanel(s)}</div>
@@ -1232,9 +1330,9 @@ function saveSchool() {
   const s = isNew ? { id: schoolId || uid() } : schoolById(schoolId);
   const old = { code: s.code, market: s.market, openingFY: s.openingFY }, current = isNew ? null : clone(s);
   const label = $('#sLabel').value.trim().toUpperCase().replace(/\s+/g, '');
-  if (!label) { markInvalid($('#sLabel'), 'Add a label, like ES4'); return; }
+  if (!label) { markInvalid($('#sLabel'), 'Add a name, like ES4'); return; }
   const dup = state.data.schools.find(x => x.id !== s.id && x.market === $('#sMarket').value && (x.display_label || '').toUpperCase() === label);
-  if (dup) { toast(`${$('#sMarket').value} already has ${label}. Pick a different label.`, 'err'); $('#sLabel').focus(); return; }
+  if (dup) { toast(`${$('#sMarket').value} already has ${label}. Pick a different name`, 'err'); $('#sLabel').focus(); return; }
   snapshotForUndo((isNew ? 'Add school ' : 'Edit school ') + label);
   s.display_label = label; s.code = label; s.school_type = $('#sType').value;
   s.pod_number = $('#sPod').value ? +$('#sPod').value : null;
@@ -1269,7 +1367,7 @@ function saveSchool() {
 function deleteSchool() {
   if (!guardEdit()) return;
   const s = schoolById(schoolId); if (!s) return; const tasks = schoolMs(s), sid = s.id, mk = s.market, ofy = s.openingFY, cd = s.code;
-  confirmDialog({ title: `Remove ${esc(s.market)} ${esc(s.display_label)}?`, message: `This removes it from the opening schedule` + (tasks.length ? ` Milestones that belong only to this school (up to <b>${tasks.length}</b>) are removed too.` : ''), confirmLabel: 'Remove school', danger: true, onConfirm: () => {
+  confirmDialog({ title: `Remove ${s.market} ${s.display_label}?`, message: `This removes it from the opening schedule` + (tasks.length ? ` Milestones that belong only to this school (up to <b>${tasks.length}</b>) are removed too.` : ''), confirmLabel: 'Remove school', danger: true, onConfirm: () => {
     snapshotForUndo('Remove school ' + s.display_label); logActivity('delete', 'Removed school ' + s.market + ' ' + s.display_label);
     state.data.schools = state.data.schools.filter(x => x.id !== sid);
     // unlink this school from its tasks; drop a task only if it belonged to no other school
@@ -1378,7 +1476,209 @@ function addTaskForSchool() {
 function todayISO() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
 // People pickers draw from the team list (Settings, Customize, Owners). Names already on a
 // milestone but not on the list stay selectable and are labeled, so nothing is silently dropped.
-function rosterNames() { return (meta().owners || []).map(o => o.name).filter(Boolean); }
+function rosterNames() { return (meta().owners || []).map(o => o.name).filter(Boolean).sort((a, b) => a.localeCompare(b)); }   // pickers list people A to Z
+// Sign-in helpers: Show password, and a note when Caps Lock is on
+document.addEventListener('change', e => {
+  if (!e.target.classList || !e.target.classList.contains('pw-show')) return;
+  const f = e.target.closest('form') || e.target.closest('.auth-card, .auth-box, .confirm-box') || document;
+  f.querySelectorAll('input[type=password], input[data-pw]').forEach(i => { i.dataset.pw = '1'; i.type = e.target.checked ? 'text' : 'password'; });
+});
+['keydown', 'keyup'].forEach(ev => document.addEventListener(ev, e => {
+  const i = e.target; if (!i || i.tagName !== 'INPUT' || !(i.type === 'password' || i.dataset.pw) || !e.getModifierState) return;
+  let n = i.parentElement.querySelector('.caps-note');
+  const on = e.getModifierState('CapsLock');
+  if (on && !n) { n = document.createElement('div'); n.className = 'help-text caps-note'; n.textContent = 'Caps Lock is on'; i.after(n); }
+  else if (!on && n) n.remove();
+}));
+let planSearchT = 0;
+document.addEventListener('keydown', e => {
+  if (e.target.id === 'planSearch' && e.key === 'Escape' && e.target.value) { e.preventDefault(); e.stopPropagation(); e.target.value = ''; state.filters.search = ''; refreshBody(); }
+}, true);
+document.addEventListener('input', e => {
+  if (e.target.id !== 'planSearch') return;
+  clearTimeout(planSearchT);
+  planSearchT = setTimeout(() => { state.filters.search = e.target.value.trim().slice(0, 80); refreshBody(); }, 200);
+});
+document.addEventListener('keydown', e => {
+  const p = $('#popover'); if (!p || !p.contains(document.activeElement) || !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
+  if (document.activeElement.matches('input[type=text], input[type=search], textarea')) return;
+  const items = [...p.querySelectorAll('button:not([disabled]), input[type=checkbox], a[href]')].filter(x => x.offsetParent); if (!items.length) return;
+  const i = items.indexOf(document.activeElement); e.preventDefault();
+  const j = e.key === 'Home' ? 0 : e.key === 'End' ? items.length - 1 : (i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+  items[j].focus();
+});
+function showShortcuts() {
+  const mac = /Mac|iPhone|iPad/.test(navigator.platform), k = mac ? 'Cmd' : 'Ctrl';
+  const rows = [['N', 'New milestone'], ['/', 'Search'], [k + '+Up / Down', 'Previous or next milestone in the dialog'], ['Shift+click', 'Select a range (Select mode)'], [k + '+A', 'Select all shown (Select mode)'], ['Alt+Left / Right', 'Move between meeting items'], [k + '+K', 'Search'], [k + '+Z', 'Undo'], [k + '+Enter', 'Save a dialog, or mark a meeting item discussed'], ['Esc', 'Close, or clear the Milestones filter'], ['Arrow keys', 'Move through an open menu']];
+  openSheet('Keyboard shortcuts', `<table class="dt kb-table" aria-label="Keyboard shortcuts"><tbody>${rows.map(([a, b]) => `<tr><td><kbd>${esc(a)}</kbd></td><td>${esc(b)}</td></tr>`).join('')}</tbody></table>`, '<button class="btn btn-filled" data-sheet-close>Done</button>');
+}
+function syncSearchHint() { const i = document.querySelector('.cb-search input'); if (i) i.placeholder = hasSchoolWork() ? 'Search openings, milestones, people' : 'Search milestones and people'; }
+// Settings > Data checks: gaps that make reminders, filters and dates less reliable
+function dataChecksHtml() {
+  const open = M().filter(m => m.status !== 'complete' && !m._draft);
+  const noOwner = open.filter(m => !ownersOf(m).length).length, noDue = open.filter(m => !m.due_date).length;
+  const people = meta().owners || [], noEmail = people.filter(o => !o.email).length;
+  const teamLike = people.filter(o => teams().some(t => t.toLowerCase() === o.name.toLowerCase()) || o.name.includes('&')).length;
+  const empty = hasSchoolWork() ? (state.data.schools || []).filter(sc => !schoolMs(sc).length).length : 0;
+  const row = (n, label, attrs) => `<li class="dc-row ${n ? 'has' : ''}"><span class="dc-n">${n}</span><span class="dc-l">${label}</span>${n && attrs ? `<button type="button" class="btn btn-ghost btn-sm" ${attrs}>Show</button>` : ''}</li>`;
+  const lateActs = openActions().filter(a => a.due && a.due < todayISO()).length;
+  const total = noOwner + noDue + noEmail + teamLike + empty + (MEETINGS_ON ? lateActs : 0);
+  return `<details class="dw-sec dw-fold"><summary>Data checks${total ? ` <span class="dc-badge">${total}</span>` : ''}</summary>
+    <ul class="dc-list">${row(noOwner, 'Open milestones with no owner', 'data-dc="noowner"')}${row(noDue, 'Open milestones with no due date', 'data-dc="nodue"')}${row(noEmail, 'People with no email (reminders skip them)', 'data-dc="people"')}${row(teamLike, 'People entries that look like a team', 'data-dc="people"')}${hasSchoolWork() ? row(empty, 'School openings with no milestones', 'data-dc="empty"') : ''}${MEETINGS_ON ? row(lateActs, 'Meeting action items past due', 'data-goview="meetings"') : ''}</ul></details>`;
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-dc]'); if (!b) return;
+  const k = b.dataset.dc, close = () => { $('#drawer').classList.remove('open'); $('#drawerBackdrop').classList.remove('open'); };
+  if (k === 'noowner') { close(); clearFilters(); state.filters.owners = new Set(['__none__']); setView('plan'); rerender(); }
+  else if (k === 'nodue') { close(); clearFilters(); applyDrill('flag', 'nodue'); }
+  else if (k === 'empty') { close(); setView('timeline'); }
+  else if (k === 'people') { const d = [...document.querySelectorAll('#drawer details')].find(x => /Customize/.test(x.querySelector('summary').textContent)); if (d) { d.open = true; const h = [...d.querySelectorAll('h4')].find(x => x.textContent === 'Owners'); (h || d).scrollIntoView({ behavior: 'smooth', block: 'start' }); const miss = [...d.querySelectorAll('.cz-email')].find(x => !x.value); if (miss) setTimeout(() => miss.focus(), 300); } }
+});
+// Saved views: each person keeps named filter sets per board (this browser)
+const VIEWS_KEY = 'ngc_views_' + WS;
+function savedViews() { try { return JSON.parse(lsGet(VIEWS_KEY) || '[]'); } catch (e) { return []; } }
+function filtersSnapshot() { const f = state.filters, o = {}; Object.keys(f).forEach(k => { const v = f[k]; if (v instanceof Set) { if (v.size) o[k] = [...v]; } else if (v) o[k] = v; }); return o; }
+function openViewsMenu(anchor) {
+  const vs = savedViews();
+  const html = `<div class="pop-title">Saved views</div><div class="pop-list">${vs.map((v, i) => `<div class="sv-row"><button class="pop-item" data-sv-apply="${i}">${esc(v.name)}</button><button class="icon-btn" data-sv-del="${i}" aria-label="Delete ${esc(v.name)}" title="Delete">${CI('close')}</button></div>`).join('') || '<div class="pop-empty muted">No saved views yet</div>'}</div>
+    <button class="pop-item sv-save" data-sv-save ${Object.keys(filtersSnapshot()).length ? '' : 'disabled title="Set some filters first"'}>Save current filters</button>`;
+  const p = openPopover(anchor, html);
+  p.addEventListener('click', e => {
+    const a = e.target.closest('[data-sv-apply]'), d = e.target.closest('[data-sv-del]'), sv = e.target.closest('[data-sv-save]');
+    if (a) { const v = savedViews()[+a.dataset.svApply]; closePopover(); clearFilters(); applyViewLink(JSON.stringify(v.f)); if (v.view) setView(v.view); rerender(); toast(`Showing "${v.name}"`, 'ok'); }
+    else if (d) { const list = savedViews(); list.splice(+d.dataset.svDel, 1); lsSet(VIEWS_KEY, JSON.stringify(list)); closePopover(); toast('View deleted', 'ok'); }
+    else if (sv && !sv.disabled) { closePopover(); inputDialog({ title: 'Name this view', placeholder: 'For example: Florida, due this year' }, name => { const list = savedViews().filter(x => x.name !== name); list.push({ name: name.slice(0, 60), f: filtersSnapshot(), view: state.view }); lsSet(VIEWS_KEY, JSON.stringify(list.slice(-12))); toast(`Saved "${name}"`, 'ok'); }); }
+  });
+}
+document.addEventListener('click', e => { const b = e.target.closest('#planViews'); if (b) openViewsMenu(b); });
+// Keep the column tabs in step with swiping
+document.addEventListener('scroll', e => {
+  const k = e.target; if (!k.classList || !k.classList.contains('kanban')) return;
+  clearTimeout(k._t); k._t = setTimeout(() => {
+    const cols = [...k.querySelectorAll('.kcol')], x = k.scrollLeft; let best = 0;
+    cols.forEach((c, i) => { if (Math.abs(c.offsetLeft - k.offsetLeft - x) < Math.abs(cols[best].offsetLeft - k.offsetLeft - x)) best = i; });
+    state.kbCol = best; document.querySelectorAll('.kb-tab').forEach((t, i) => { t.classList.toggle('on', i === best); t.setAttribute('aria-selected', i === best); });
+  }, 80);
+}, true);
+document.addEventListener('input', e => {
+  if (e.target.classList && e.target.classList.contains('co-find')) { const q = e.target.value.trim().toLowerCase(); e.target.parentElement.querySelectorAll('.co-list .field-check').forEach(l => { l.hidden = !!q && !l.textContent.toLowerCase().includes(q); }); return; }
+  if (e.target.id !== 'depFind') return;
+  const q = e.target.value.trim().toLowerCase(), sel = $('#depAdd'); if (!sel) return;
+  let first = null; [...sel.querySelectorAll('option')].forEach(o => { if (!o.value) return; const hit = !q || o.textContent.toLowerCase().includes(q); o.hidden = !hit; if (hit && !first) first = o; });
+  [...sel.querySelectorAll('optgroup')].forEach(g => { g.hidden = ![...g.children].some(o => !o.hidden); });
+  if (q && first) sel.size = Math.min(8, [...sel.options].filter(o => !o.hidden).length + 1); else sel.removeAttribute('size');
+});
+// Click a column heading to sort that table (Carbon sortable data table)
+document.addEventListener('click', e => {
+  const th = e.target.closest('.dt-sortable thead th'); if (!th) return;
+  const tbl = th.closest('table'), i = [...th.parentElement.children].indexOf(th), body = tbl.tBodies[0]; if (!body) return;
+  const dir = th.getAttribute('aria-sort') === 'descending' ? 'ascending' : 'descending';
+  tbl.querySelectorAll('thead th').forEach(x => x.removeAttribute('aria-sort')); th.setAttribute('aria-sort', dir);
+  const val = tr => { const t = (tr.children[i] || {}).textContent || ''; const n = parseFloat(t.replace(/[^0-9.-]/g, '')); return isNaN(n) ? t.toLowerCase() : n; };
+  [...body.rows].sort((a, b) => { const x = val(a), y = val(b); const c = typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y)); return dir === 'ascending' ? c : -c; }).forEach(r => body.appendChild(r));
+});
+function hiMatch(text, q) { const t = esc(text || ''), ws = String(q || '').trim().split(/\s+/).filter(w => w.length > 1).map(w => esc(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')); return ws.length ? t.replace(new RegExp('(' + ws.join('|') + ')', 'gi'), '<mark>$1</mark>') : t; }
+document.addEventListener('toggle', e => {
+  const d = e.target; if (!d.matches || !d.matches('#drawer details.dw-fold')) return;
+  const k = (d.querySelector('summary') || {}).textContent; if (!k) return;
+  try { const o = JSON.parse(lsGet('ngc_dw_open') || '{}'); o[k.replace(/\d+/g, '').trim()] = d.open; lsSet('ngc_dw_open', JSON.stringify(o)); } catch (x) {}
+}, true);
+function restoreDrawerFolds() { try { const o = JSON.parse(lsGet('ngc_dw_open') || '{}'); document.querySelectorAll('#drawer details.dw-fold').forEach(d => { const k = ((d.querySelector('summary') || {}).textContent || '').replace(/\d+/g, '').trim(); if (k in o) d.open = o[k]; }); } catch (e) {} }
+(function watchVersion() {
+  const mine = window.GH_VERSION; if (!mine) return; let told = false;
+  const check = () => { if (told || document.visibilityState !== 'visible') return; fetch('version.js?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.text() : '').then(t => { const m = /GH_VERSION\s*=\s*'([^']+)'/.exec(t || ''); if (m && m[1] !== mine && !told) { told = true; toastAction(`A newer version (${m[1]}) is ready`, 'Reload', () => location.reload()); } }).catch(() => {}); };
+  setInterval(check, 30 * 60000); document.addEventListener('visibilitychange', check);
+})();
+// 20 another tab changed this board's saved copy (only matters when not connected to the shared board)
+window.addEventListener('storage', e => { if (e.key === LS.data && !(state.sb && state.sb.connected)) toastAction('This board changed in another tab', 'Reload', () => location.reload()); });
+document.addEventListener('mouseover', e => {
+  const i = e.target.closest && e.target.closest('#drawer .cz-name[data-cztype]'); if (!i || i.title) return;
+  const t = i.dataset.cztype, n = czInUse(t === 'owner' ? 'owner' : t, i.dataset.czold || i.value); i.title = `${n} item${n === 1 ? '' : 's'} use this`;
+});
+function otherBoardLink(q) { const other = WS === 'readiness' ? ['enabling.html', 'Enabling Work'] : ['readiness.html', 'Growth Readiness']; return ` <a class="cmdk-other" href="${other[0]}?q=${encodeURIComponent((q || '').trim())}#plan">Search ${other[1]}</a>`; }
+// ---------- bulk edit ----------
+function bulkList() { return [...(state.sel || [])].map(findM).filter(Boolean); }
+function paintBulkBar() {
+  let bar = $('#bulkBar');
+  if (!state.sel || state.view !== 'plan') { if (bar) bar.remove(); document.body.classList.remove('bulk-on'); return; }
+  document.body.classList.add('bulk-on');
+  if (!bar) { bar = document.createElement('div'); bar.id = 'bulkBar'; bar.className = 'bulk-bar'; bar.setAttribute('role', 'toolbar'); bar.setAttribute('aria-label', 'Selected milestones'); document.body.appendChild(bar); }
+  const n = state.sel.size, shown = filtered().filter(m => !(state.hideDone && m.status === 'complete')).length;
+  bar.innerHTML = `<span class="bulk-n" aria-live="polite">${n} selected</span>${n < shown ? `<button class="bulk-btn" data-bulk="all">Select all ${shown}</button>` : ''}
+    <span class="bulk-acts">${n ? '<button class="bulk-btn" data-bulk="status" aria-haspopup="true">Status</button><button class="bulk-btn" data-bulk="owner" aria-haspopup="true">Owner</button><button class="bulk-btn" data-bulk="team" aria-haspopup="true">Team</button><button class="bulk-btn" data-bulk="due">Due date</button>' + (isAdmin() ? '<button class="bulk-btn" data-bulk="meeting">Add to meeting</button>' : '') + '<button class="bulk-btn" data-bulk="delete">Delete</button>' : '<span class="bulk-hint">Click milestones to select them</span>'}<button class="bulk-btn bulk-cancel" data-bulk="cancel" title="Esc">Cancel</button></span>`;
+}
+function bulkApply(label, fn) {
+  const list = bulkList(); if (!list.length || !guardEdit()) return;
+  snapshotForUndo(`${label} (${list.length})`);
+  list.forEach(m => { fn(m); touch(m); });
+  logActivity('edit', `${label} for ${list.length} milestone${list.length === 1 ? '' : 's'}`);
+  autosave(); state.sel = new Set(); renderPlan(); paintBulkBar();
+  toastAction(`${label}: ${list.length} milestone${list.length === 1 ? '' : 's'}`, 'Undo', undo);
+}
+function bulkMenu(btn, title, opts, onPick) {
+  const p = openPopover(btn, `<div class="pop-title">${esc(title)}</div>${opts.length > 10 ? '<input type="search" class="pop-find" placeholder="Find" aria-label="Find">' : ''}<div class="pop-list">${opts.map(([v, l]) => `<button class="pop-item pop-check" data-bv="${esc(v)}">${esc(l)}</button>`).join('')}</div>`);
+  const f = p.querySelector('.pop-find'); if (f) { f.addEventListener('input', () => { const q = f.value.toLowerCase(); p.querySelectorAll('[data-bv]').forEach(b => { b.hidden = !!q && !b.textContent.toLowerCase().includes(q); }); }); setTimeout(() => f.focus(), 0); }
+  p.addEventListener('click', e => { const b = e.target.closest('[data-bv]'); if (!b) return; closePopover(); onPick(b.dataset.bv, b.textContent); });
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-bulk]'); if (!b) return;
+  const k = b.dataset.bulk;
+  if (k === 'cancel') { state.sel = null; renderPlan(); return paintBulkBar(); }
+  if (k === 'all') { filtered().filter(m => !(state.hideDone && m.status === 'complete')).forEach(m => state.sel.add(m.id)); state._expandAllOnce = true; renderPlan(); return paintBulkBar(); }
+  if (k === 'status') return bulkMenu(b, 'Set status', meta().statuses.filter(x => x !== 'blocked').map(x => [x, SM(x).label]), v => bulkApply(`Status set to ${SM(v).label}`, m => { m.status = v; if (v === 'complete') { m.progress_percent = 100; m.stage = 'complete'; } else { if (m.stage === 'complete') m.stage = 'in_progress'; if (m.progress_percent === 100) m.progress_percent = 95; } }));
+  if (k === 'owner') return bulkMenu(b, 'Set owner', [['', 'Unassigned'], ...rosterNames().map(x => [x, x])], v => bulkApply(v ? `Owner set to ${v}` : 'Owner cleared', m => { m.owner = v; m.coOwners = (m.coOwners || []).filter(o => o !== v); }));
+  if (k === 'team') return bulkMenu(b, 'Set team', teams().map(x => [x, x]), v => bulkApply(`Team set to ${v}`, m => { m.functional_area = v; m.team = v; }));
+  if (k === 'due') {
+    closeConfirm(); const w = document.createElement('div'); w.className = 'confirm-backdrop'; w.id = 'confirmBackdrop';
+    w.innerHTML = `<div class="confirm-box" role="dialog" aria-modal="true" aria-labelledby="bdH"><h3 id="bdH">Set due date for ${state.sel.size}</h3><div class="field"><label for="bdDate">Due date</label><input id="bdDate" type="date"></div><div class="field"><label for="bdWhy">Why are these moving? <span class="req">*</span></label><input id="bdWhy" placeholder="For example: opening moved to Fall 2028"></div><div class="confirm-actions"><button class="btn btn-tonal" id="cfgCancel">Cancel</button><button class="btn btn-filled" id="cfgOk">Set date</button></div></div>`;
+    document.body.appendChild(w); setTimeout(() => $('#bdDate').focus(), 30);
+    w.addEventListener('click', ev => { if (ev.target === w || ev.target.id === 'cfgCancel') return closeConfirm(); if (ev.target.id !== 'cfgOk') return; const d = $('#bdDate').value, why = $('#bdWhy').value.trim(); if (!d) return markInvalid($('#bdDate'), 'Pick a date'); if (!why) return markInvalid($('#bdWhy'), 'Say why the dates are moving'); closeConfirm(); bulkApply(`Due date set to ${fmtDate(d)}`, m => { const from = m.due_date; m.due_date = d; syncFiscal(m); if (from && from !== d) logDateMove(m, from, d, why); }); });
+    return;
+  }
+  if (k === 'meeting') { if (!guardAdmin()) return; const b2 = mbook(), list = bulkList().filter(m => !b2.topics.some(t => (t.ids || []).includes(m.id))); if (!list.length) return toast('Already on the next agenda', 'ok'); list.forEach(m => b2.topics.push({ id: uid(), title: m.activity, owner: m.owner || '', mins: 5, ids: [m.id] })); autosave(); state.sel = new Set(); renderPlan(); paintBulkBar(); return toastAction(`${list.length} added to the next meeting`, 'Open', () => setView('meetings')); }
+  if (k === 'delete') { const n = state.sel.size; return confirmDialog({ title: `Delete ${n} milestone${n === 1 ? '' : 's'}?`, message: 'They are removed from the board', confirmLabel: 'Delete', danger: true, onConfirm: () => { const ids = new Set(state.sel); snapshotForUndo(`Delete ${n} milestones`); state.data.milestones = M().filter(m => !ids.has(m.id)); logActivity('delete', `Deleted ${n} milestones`); autosave(); state.sel = new Set(); renderPlan(); paintBulkBar(); toastAction(`Deleted ${n} milestone${n === 1 ? '' : 's'}`, 'Undo', undo); } }); }
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return; const w = $('#sheetBackdrop'); if (!w || !w.querySelector('.ck-row') || w.dataset.ok) return;
+  const n = [...w.querySelectorAll('.ck-row')].filter(r => r.dataset.answer).length; if (!n || $('#confirmBackdrop')) return;
+  e.preventDefault(); e.stopImmediatePropagation(); confirmDialog({ title: `Discard ${n} check-in${n === 1 ? '' : 's'}?`, message: 'Your answers have not been saved', confirmLabel: 'Discard', danger: true, onConfirm: () => { w.dataset.ok = '1'; closeSheet(); } });
+}, true);
+document.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key === 'a' && state.sel && state.view === 'plan' && !(e.target.matches && e.target.matches('input, textarea'))) { e.preventDefault(); const b = document.querySelector('[data-bulk="all"]'); if (b) b.click(); } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && state.sel && !$('#popover') && !$('#confirmBackdrop') && !$('#modalBackdrop.open')) { state.sel = null; renderPlan(); paintBulkBar(); } });
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-mnav]'); if (!b || !b.dataset.mnav) return;
+  if (modalDirty) return toast('Save or discard your changes first', 'warn');
+  openModal(b.dataset.mnav);
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('[data-allmentions]')) return;
+  const items = myMentions(30);
+  openSheet('Mentions for you', `<p class="modal-lede">Last 30 days</p><div class="al-list">${items.map(({ m, nt }) => `<div class="al-row" data-expand="${esc(m.id)}"><div class="al-main"><div class="al-t">${esc(m.activity)}</div><div class="al-m"><b>${esc(nt.by || 'Someone')}</b> · ${esc(fmtWhen(nt.t))} · ${esc(clip(nt.text || '', 120))}</div></div></div>`).join('')}</div>`, '<button class="btn btn-filled" data-sheet-close>Done</button>');
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || !e.target.id) return;
+  const m = /^czNew-(markets|teams|owner)$/.exec(e.target.id) || (['czNewRole', 'czNewEmail'].includes(e.target.id) ? [0, 'owner'] : null);
+  if (m) { e.preventDefault(); czAdd(m[1]); }
+});
+document.addEventListener('mouseover', e => { const q = e.target.closest && e.target.closest('.cb-quarter, .fq-wrap, #fqBar'); if (q && !q.title) { const f = fiscalQuarter(); q.title = `${f.q} of FY${String(currentFY()).slice(2)}. KIPP's fiscal year runs July to June`; } });
+document.addEventListener('input', e => { if (e.target.matches && e.target.matches('textarea[data-autogrow]')) { e.target.style.height = 'auto'; e.target.style.height = Math.min(400, e.target.scrollHeight + 2) + 'px'; } });
+document.addEventListener('click', e => { const b = e.target.closest('[data-copylink], [data-copyschool], #planLink'); if (!b) return; const t = b.textContent; setTimeout(() => { b.textContent = 'Copied'; setTimeout(() => { b.textContent = t; }, 1400); }, 0); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && e.target.matches && e.target.matches('.pop-find, .dep-find, .co-find') && e.target.value) { e.preventDefault(); e.stopPropagation(); e.target.value = ''; e.target.dispatchEvent(new Event('input', { bubbles: true })); return; }
+  if ((e.metaKey || e.ctrlKey) && (e.key === 'ArrowUp' || e.key === 'ArrowDown') && $('#modalBackdrop.open') && !(e.target.matches && e.target.matches('input, textarea, select'))) { const b = document.querySelectorAll('[data-mnav]')[e.key === 'ArrowUp' ? 0 : 1]; if (b && !b.disabled) { e.preventDefault(); b.click(); } }
+}, true);
+document.addEventListener('keydown', e => {
+  const t = e.target.closest && e.target.closest('.kb-tab'); if (!t || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+  const tabs = [...document.querySelectorAll('.kb-tab')], i = tabs.indexOf(t); e.preventDefault();
+  const j = e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : (i + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+  tabs[j].focus(); tabs[j].click();
+});
+function lockMeetingsNav() {
+  if (MEETINGS_ON) return;
+  document.querySelectorAll('.nav-tab[data-view="meetings"]').forEach(b => { b.disabled = true; b.setAttribute('aria-disabled', 'true'); b.title = 'Coming soon'; if (!b.querySelector('.nav-lock')) b.insertAdjacentHTML('beforeend', '<svg class="nav-lock" viewBox="0 0 32 32" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M24 14h-2V8a6 6 0 00-12 0v6H8a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V16a2 2 0 00-2-2zM12 8a4 4 0 018 0v6h-8zm12 20H8V16h16z"/></svg><span class="sr-only">, coming soon</span>'); });
+}
+document.addEventListener('DOMContentLoaded', lockMeetingsNav); setTimeout(lockMeetingsNav, 0);
+function boardSlug() { return (WS_SEED[WS] ? WS_SEED[WS].title : 'Growth Readiness').toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
 function ownerOptions(cur) {
   const names = rosterNames(), extra = cur && !names.includes(cur) ? [cur] : [];
   return `<option value="" ${!cur ? 'selected' : ''}>Unassigned</option>` + names.map(n => `<option value="${esc(n)}" ${n === cur ? 'selected' : ''}>${esc(n)}</option>`).join('')
@@ -1387,7 +1687,7 @@ function ownerOptions(cur) {
 function coOwnerPicker(m) {
   const cur = m.coOwners || [], names = [...rosterNames(), ...cur.filter(c => !rosterNames().includes(c))];
   const sum = cur.length ? cur.join(', ') : 'None';
-  return `<details class="co-pick" id="mCoBox"><summary><span class="co-sum">${esc(sum)}</span></summary><div class="co-list">${names.map(n => `<label class="field-check"><input type="checkbox" class="m-co" value="${esc(n)}" ${cur.includes(n) ? 'checked' : ''}> ${esc(n)}${rosterNames().includes(n) ? '' : ' <span class="muted">· not on team list</span>'}</label>`).join('')}</div></details>`;
+  return `<details class="co-pick" id="mCoBox"><summary><span class="co-sum">${esc(sum)}</span></summary>${names.length > 10 ? '<input type="search" class="co-find" placeholder="Find a person" aria-label="Find a co-owner">' : ''}<div class="co-list">${names.map(n => `<label class="field-check"><input type="checkbox" class="m-co" value="${esc(n)}" ${cur.includes(n) ? 'checked' : ''}> ${esc(n)}${rosterNames().includes(n) ? '' : ' <span class="muted">· not on team list</span>'}</label>`).join('')}</div></details>`;
 }
 // School openings are the primary objects; a milestone links to one or more of them
 function schoolPicker(m) {
@@ -1474,6 +1774,7 @@ const SETTINGS_SECTIONS = {
   statuses: ['statuses', 'statusMeta', 'stages', 'priorities'],
   templates: ['milestoneTemplates'],
   meeting: ['meeting'],   // committee meeting date and update cadence
+  meetbook: ['meetBook'],   // agenda topics, a meeting in progress, minutes and action items (per board)
   campaigns: null,   // stored at state.data.campaigns, not in meta
   seeded: ['wsSeeded']   // other boards only: set once the starting tasks are loaded
 };
@@ -1576,7 +1877,11 @@ async function sbLoadData(client) {
   // Load the team-wide audit feed so Team activity shows everyone's changes.
   refreshActivityViews();
 }
-function quietRerender() { if (!$('#popover') && !$('#modalBackdrop').classList.contains('open')) rerender(); }
+function quietRerender() {
+  const a = document.activeElement, typing = a && a.matches && a.matches('input, textarea, select') && a.closest('#view-meetings, #view-plan .filterbar, .fb-searchwrap');
+  if (typing) { clearTimeout(quietRerender.t); quietRerender.t = setTimeout(quietRerender, 1500); return; }   // try again once they pause
+  if (!$('#popover') && !$('#modalBackdrop').classList.contains('open')) rerender();
+}
 function sbOnRemote(p) {
   try {
     if (p.table === SB_TABLE.settings) {
@@ -1654,8 +1959,9 @@ function setSyncAlert(reason) {
   a.querySelector('.sync-msg').textContent = "Your changes aren't on the shared board yet: " + reason + '. Keep this page open while we retry';
   syncRetry = setTimeout(() => sbPush(), 30000);
 }
-window.addEventListener('online', () => { if ($('#syncAlert')) sbPush(); });
-window.addEventListener('beforeunload', e => { if ($('#syncAlert')) { e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('online', () => { if ($('#syncAlert')) sbPush(); if (state.sb && state.sb.connected) toast('Back online', 'ok'); });
+window.addEventListener('offline', () => { if (state.sb && state.sb.connected) toast('Offline. Changes sync when you reconnect', 'warn'); });
+window.addEventListener('beforeunload', e => { if ($('#syncAlert') || (modalDirty && $('#modalBackdrop.open'))) { e.preventDefault(); e.returnValue = ''; } });   // unsynced work or an unsaved dialog
 async function sbPush() {
   if (!(state.sb && state.sb.connected) || !sbLoaded || !state.auth.user) return;
   const client = state.sb.client;
@@ -1703,6 +2009,7 @@ function renderDrawer() {
       <div id="sbStatus"></div>
     </section>
 
+    ${admin ? dataChecksHtml() : ''}
     ${admin ? meetingSettingsHtml() : ''}
     ${admin ? integrationsSettingsHtml() : ''}
     ${admin ? `<details class="dw-sec dw-fold"><summary>${num()}Customize markets, teams, and owners</summary>
@@ -1714,7 +2021,7 @@ function renderDrawer() {
     </details>
 
     <details class="dw-sec dw-fold"><summary>${num()}Manage school openings</summary>
-      ${schoolsPanel()}
+      ${hasSchoolWork() ? schoolsPanel() : ''}
       <div class="ms-bulk">
         <div class="ms-bulk-warn">Deletes all school openings and their milestones</div>
         <button class="btn btn-danger-solid" id="msDeleteAll" ${state.data.schools.length ? '' : 'disabled'}>Delete all school openings</button>
@@ -1726,7 +2033,7 @@ function renderDrawer() {
       <div class="dw-btns"><button class="btn" id="expBtn">Download backup</button><button class="btn" id="csvBtn">Export milestones to Excel</button>${admin ? '<button class="btn" id="impBtn">Import</button><input type="file" id="impFile" accept="application/json" class="hide">' : ''}</div>
     </details>
 
-    <div class="dw-about">${WS_SEED[WS] ? WS_SEED[WS].title : 'Growth Readiness'} · ${M().length} milestones · ${state.data.schools.length} schools · v${meta().version || 1}</div>`;
+    <div class="dw-about">${WS_SEED[WS] ? WS_SEED[WS].title : 'Growth Readiness'} · ${M().filter(m => !m._draft).length} milestone${M().filter(m => !m._draft).length === 1 ? '' : 's'} · ${state.data.schools.length} school${state.data.schools.length === 1 ? '' : 's'}${state.sb && state.sb.connected ? ' · Saved for everyone' : ' · Saved on this device'}${window.GH_VERSION ? ` · Version ${window.GH_VERSION}` : ''}</div>`;
 }
 
 /* ---------- schools management panel (drawer section 4) ---------- */
@@ -1787,27 +2094,28 @@ function czSection(label, type, rows) {
     </div>${list}</div>`;
 }
 function czOwners() {
-  const rows = (meta().owners || []).map(o => `<div class="cz-row"><input class="cz-name" data-cztype="owner" data-czold="${esc(o.name)}" value="${esc(o.name)}"><input class="cz-role" data-czowner="${esc(o.name)}" value="${esc(o.role || '')}" placeholder="Role"><input class="cz-email" type="email" data-czowner="${esc(o.name)}" value="${esc(o.email || '')}" placeholder="email" aria-label="Email for ${esc(o.name)}"><button class="cz-del" data-cztype="owner" data-czval="${esc(o.name)}" title="Remove" aria-label="Remove">${CI('close')}</button></div>`).join('');
-  return `<div class="cz-block"><h4 style="margin-top:14px">Owners</h4><div class="cz-add"><input class="cz-new" id="czNew-owner" placeholder="Add a person"><input class="cz-new" id="czNewRole" placeholder="Role, optional"><input class="cz-new" id="czNewEmail" type="email" placeholder="Email, optional"><button class="btn btn-tonal btn-sm" data-czadd="owner">Add</button></div>${rows}</div>`;
+  const noEmail = (meta().owners || []).filter(o => !o.email).length;
+  const rows = (meta().owners || []).slice().sort((a, b) => a.name.localeCompare(b.name)).map(o => `<div class="cz-row" title="${czInUse('owner', o.name)} milestone${czInUse('owner', o.name) === 1 ? '' : 's'}"><input class="cz-name" data-cztype="owner" data-czold="${esc(o.name)}" value="${esc(o.name)}" ${teams().some(t => t.toLowerCase() === o.name.toLowerCase() || o.name.includes('&')) ? 'title="This looks like a team, not a person" aria-invalid="true"' : ''}><input class="cz-role" data-czowner="${esc(o.name)}" value="${esc(o.role || '')}" placeholder="Job title" aria-label="Job title"><input class="cz-email" type="email" data-czowner="${esc(o.name)}" value="${esc(o.email || '')}" placeholder="email" aria-label="Email for ${esc(o.name)}"><button class="cz-del" data-cztype="owner" data-czval="${esc(o.name)}" title="Remove" aria-label="Remove">${CI('close')}</button></div>`).join('');
+  return `<div class="cz-block"><h4 style="margin-top:14px">Owners</h4>${noEmail ? `<p class="help-text">${noEmail} ${noEmail === 1 ? 'person has' : 'people have'} no email, so reminders skip them</p>` : ''}<div class="cz-add"><input class="cz-new" id="czNew-owner" placeholder="Add a person"><input class="cz-new" id="czNewRole" placeholder="Job title, optional"><input class="cz-new" id="czNewEmail" type="email" placeholder="Email, optional"><button class="btn btn-tonal btn-sm" data-czadd="owner">Add</button></div>${rows}</div>`;
 }
 function czInUse(type, val) { if (type === 'owner') return M().filter(m => ownersOf(m).includes(val)).length; return type === 'markets' ? M().filter(m => m.market === val).length + state.data.schools.filter(s => s.market === val).length : M().filter(m => m.functional_area === val).length; }
 function czRename(type, oldV, newV) {
   if (!guardAdmin()) return;
   newV = newV.trim(); if (!newV || newV === oldV) return;
   if (type === 'markets') {
-    if (markets().includes(newV)) return toast('That market already exists', 'err');
+    if (markets().some(x => x !== oldV && x.toLowerCase() === newV.toLowerCase())) return toast('That market already exists', 'err');
     meta().markets = markets().map(x => x === oldV ? newV : x);
     statesMeta().forEach(s => s.markets = s.markets.map(x => x === oldV ? newV : x));
     M().forEach(m => { if (m.market === oldV) m.market = newV; if (m.location === oldV) m.location = newV; m.tags = (m.tags || []).map(t => t === oldV ? newV : t); });
     state.data.schools.forEach(s => { if (s.market === oldV) s.market = newV; if (s.location === oldV) s.location = newV; });
   } else if (type === 'teams') {
-    if (teams().includes(newV)) return toast('That team already exists', 'err');
+    if (teams().some(x => x !== oldV && x.toLowerCase() === newV.toLowerCase())) return toast('That team already exists', 'err');
     meta().teams = teams().map(x => x === oldV ? newV : x); meta().functionalAreas = meta().teams;
     M().forEach(m => { if (m.team === oldV) m.team = newV; if (m.functional_area === oldV) m.functional_area = newV; });
   } else if (type === 'owner') {
-    if ((meta().owners || []).some(o => o.name === newV)) { toast(`${newV} is already on the team list`, 'err'); renderDrawer(); return; }
+    if ((meta().owners || []).some(o => o.name !== oldV && o.name.toLowerCase() === newV.toLowerCase())) { toast(`${newV} is already on the team list`, 'err'); renderDrawer(); return; }
     (meta().owners || []).forEach(o => { if (o.name === oldV) o.name = newV; });
-    toast(`Renamed. Update ${newV}'s account name to match.`, 'warn');
+    toast(`Renamed. Update ${newV}'s account name to match`, 'warn');
     M().forEach(m => { if (m.owner === oldV) m.owner = newV; if (m.coOwners) m.coOwners = m.coOwners.map(o => o === oldV ? newV : o); });
   }
   autosave(); rerender(); renderDrawer();
@@ -1815,24 +2123,69 @@ function czRename(type, oldV, newV) {
 function czRemove(type, val) {
   if (!guardAdmin()) return;
   const n = czInUse(type, val);
+  if (n && type === 'owner') return handOffOwner(val, n);
+  if (n && type === 'teams') return handOffTeam(val, n);
   if (n) return toast(type === 'owner' ? `${val} owns ${n} milestone${n === 1 ? '' : 's'}. Reassign ${n === 1 ? 'it' : 'them'} first.` : `${val} is used by ${n} item${n === 1 ? '' : 's'}. Reassign ${n === 1 ? 'it' : 'them'} first.`, 'err');
-  confirmDialog({ title: `Remove "${esc(val)}"?`, message: `This removes the ${type === 'markets' ? 'market' : type === 'teams' ? 'team' : 'person'} from your lists.`, confirmLabel: 'Remove', danger: true, onConfirm: () => {
+  confirmDialog({ title: `Remove "${val}"?`, message: `This removes the ${type === 'markets' ? 'market' : type === 'teams' ? 'team' : 'person'} from your lists.`, confirmLabel: 'Remove', danger: true, onConfirm: () => {
     if (type === 'owner') meta().owners = (meta().owners || []).filter(o => o.name !== val);
     else if (type === 'markets') { meta().markets = markets().filter(x => x !== val); statesMeta().forEach(s => s.markets = s.markets.filter(x => x !== val)); }
     else { meta().teams = teams().filter(x => x !== val); meta().functionalAreas = meta().teams; }
     autosave(); rerender(); renderDrawer();
   } });
 }
+// Someone leaves or changes roles: move all their milestones (owned and co-owned) to one person, then drop them from the list.
+function handOffOwner(val, n) {
+  const others = (meta().owners || []).map(o => o.name).filter(x => x && x !== val);
+  if (!others.length) return toast(`${val} owns ${n} milestone${n === 1 ? '' : 's'}. Add another person first`, 'err');
+  let to = others[0];
+  confirmDialog({ title: `Hand off ${val}'s milestones`, confirmLabel: 'Hand off and remove',
+    message: `<div class="field"><label for="cfgHandoff">Give ${n} milestone${n === 1 ? '' : 's'} to</label><select id="cfgHandoff">${others.map(o => `<option>${esc(o)}</option>`).join('')}</select></div>`,
+    onConfirm: () => {
+      const prevOwners = clone(meta().owners || []);
+      snapshotForUndo(`Hand off ${val} to ${to}`);
+      M().forEach(m => {
+        let ch = false;
+        if (m.owner === val) { m.owner = to; ch = true; }
+        if ((m.coOwners || []).includes(val)) { m.coOwners = [...new Set(m.coOwners.map(o => o === val ? to : o))].filter(o => o !== m.owner); ch = true; }
+        if (ch) touch(m);
+      });
+      meta().owners = (meta().owners || []).filter(o => o.name !== val);
+      logActivity('edit', `Handed off ${val}'s milestones to ${to}`);
+      autosave(); rerender(); renderDrawer();
+      toastAction(`${n} milestone${n === 1 ? '' : 's'} moved to ${to}`, 'Undo', () => { undo(); meta().owners = prevOwners; autosave(); rerender(); renderDrawer(); });
+    } });
+  const sel = $('#cfgHandoff'); if (sel) sel.addEventListener('change', () => { to = sel.value; });
+}
+function handOffTeam(val, n) {
+  const others = teams().filter(t => t !== val);
+  if (!others.length) return toast('Add another team first', 'err');
+  let to = others[0];
+  confirmDialog({ title: `Move ${val}'s milestones`, confirmLabel: 'Move and remove',
+    message: `<div class="field"><label for="cfgHandoff">Move ${n} milestone${n === 1 ? '' : 's'} to</label><select id="cfgHandoff">${others.map(o => `<option>${esc(o)}</option>`).join('')}</select></div>`,
+    onConfirm: () => {
+      const prev = clone(teams());
+      snapshotForUndo(`Move team ${val} to ${to}`);
+      M().forEach(m => { let ch = false; if (m.functional_area === val) { m.functional_area = to; ch = true; } if (m.team === val) { m.team = to; ch = true; } if (ch) touch(m); });
+      meta().teams = teams().filter(t => t !== val); meta().functionalAreas = meta().teams;
+      logActivity('edit', `Moved ${val}'s milestones to ${to}`); autosave(); rerender(); renderDrawer();
+      toastAction(`${n} milestone${n === 1 ? '' : 's'} moved to ${to}`, 'Undo', () => { undo(); meta().teams = prev; meta().functionalAreas = prev; autosave(); rerender(); renderDrawer(); });
+    } });
+  const sel = $('#cfgHandoff'); if (sel) sel.addEventListener('change', () => { to = sel.value; });
+}
 function czAdd(type) {
   if (!guardAdmin()) return;
   const v = ($('#czNew-' + type) || {}).value ? $('#czNew-' + type).value.trim() : '';
   if (!v) return flagEmpty($('#czNew-' + type));
-  if (type === 'markets') { if (markets().includes(v)) return toast('Already on the list', 'err'); const st = $('#czNewState').value; markets().push(v); const s = statesMeta().find(x => x.code === st); if (s) s.markets.push(v); }
-  else if (type === 'teams') { if (teams().includes(v)) return toast('Already on the list', 'err'); teams().push(v); meta().functionalAreas = teams(); }
-  else if (type === 'owner') { (meta().owners = meta().owners || []).push({ name: v, role: ($('#czNewRole') || {}).value || '', email: (($('#czNewEmail') || {}).value || '').trim() }); }
+  const has = (list, x) => list.some(y => String(y).toLowerCase() === x.toLowerCase());
+  if (type === 'markets') { if (has(markets(), v)) return toast('Already on the list', 'err'); const st = $('#czNewState').value; markets().push(v); const s = statesMeta().find(x => x.code === st); if (s) s.markets.push(v); }
+  else if (type === 'teams') { if (has(teams(), v)) return toast('Already on the list', 'err'); teams().push(v); meta().functionalAreas = teams(); }
+  else if (type === 'owner') {
+    const ex = (meta().owners || []).find(o => o.name.toLowerCase() === v.toLowerCase()); if (ex) return toast(`${ex.name} is already on the team list`, 'err');
+    const em = (($('#czNewEmail') || {}).value || '').trim(); if (em && !validEmail(em)) return markInvalid($('#czNewEmail'), 'Check the email address');
+    (meta().owners = meta().owners || []).push({ name: v, role: ($('#czNewRole') || {}).value || '', email: (($('#czNewEmail') || {}).value || '').trim() }); }
   autosave(); rerender(); renderDrawer();
 }
-function exportJson() { const b = new Blob([JSON.stringify(state.data, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `growth-hub-backup-${todayISO()}.json`; a.click(); URL.revokeObjectURL(a.href); toast('Backup downloaded', 'ok'); }
+function exportJson() { const c = clone(state.data); c.milestones = (c.milestones || []).filter(m => !m._draft); c.board = WS; const b = new Blob([JSON.stringify(c, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `growth-hub-${boardSlug()}-backup-${todayISO()}.json`; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); toast('Backup downloaded', 'ok'); }
 // Spreadsheet export of what's on screen (current filters), for Excel and Google Sheets users
 /* Excel export styled with IBM Carbon. Written directly so the page needs no spreadsheet library. */
 function xmlEsc(v) { return String(v == null ? '' : v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
@@ -1871,16 +2224,16 @@ function exportXlsx() {
   const txt = (c, r, v, st) => (v === '' || v == null) ? `<c r="${colName(c)}${r}" s="${st}"/>` : `<c r="${colName(c)}${r}" s="${st}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(v)}</t></is></c>`;
   const num = (c, r, v, st) => v == null ? `<c r="${colName(c)}${r}" s="${st}"/>` : `<c r="${colName(c)}${r}" s="${st}"><v>${v}</v></c>`;
   const serial = d => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || ''); return m ? (Date.UTC(+m[1], +m[2] - 1, +m[3]) - Date.UTC(1899, 11, 30)) / 86400000 : null; };
-  const COLS = [['Milestone', 52], ['Status', 14], ['Progress', 11], ['Due date', 14], ['Owner', 22], ['Co-owners', 24], ['Team', 22], ['Market', 14], ['Schools', 18], ['Priority', 10], ['Blocked by', 28], ['Notes', 44], ['Last updated', 14], ['Updated by', 20]];
+  const COLS = [['Milestone', 52], ['Status', 14], ['Progress', 11], ['Due date', 14], ['Owner', 22], ['Co-owners', 24], ['Team', 22], ['Market', 14], ['Schools', 18], ['Priority', 10], ['Blocked by', 28], ['Notes', 44], ['Last updated', 14], ['Updated by', 20], ['Waiting on', 32], ['Checkpoints', 14]];
   const board = WS_SEED[WS] ? WS_SEED[WS].title : 'Growth Readiness', n = list.length, last = 4 + n;
   const when = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   const rows = [`<row r="1" ht="36" customHeight="1">${txt(0, 1, 'Milestones', 1)}</row>`, `<row r="2" ht="20" customHeight="1">${txt(0, 2, `${board} · ${when} · ${n} milestone${n === 1 ? '' : 's'}`, 2)}</row>`, `<row r="4" ht="32" customHeight="1">${COLS.map((c, i) => txt(i, 4, c[0], 3)).join('')}</row>`];
   list.forEach((m, i) => {
     const r = 5 + i, es = effectiveStatus(m), p = Math.max(0, Math.min(100, m.progress_percent || 0)) / 100;
     rows.push(`<row r="${r}">` + [txt(0, r, m.activity, 4), txt(1, r, SM(es).label, XL_STATUS[es] || 7), num(2, r, p, 6), num(3, r, serial(m.due_date), 5), txt(4, r, m.owner, 4), txt(5, r, (m.coOwners || []).join('; '), 4), txt(6, r, m.functional_area, 4), txt(7, r, m.market, 4),
-      txt(8, r, (m.schoolIds || []).map(id => (schoolById(id) || {}).display_label).filter(Boolean).join('; '), 4), txt(9, r, (PRIORITY[m.priority] || {}).label, 4), txt(10, r, m.status === 'blocked' ? m.dependency : '', 4), txt(11, r, m.notes, 13), num(12, r, serial(m.updatedAt), 5), txt(13, r, m.updatedBy, 4)].join('') + '</row>');
+      txt(8, r, (m.schoolIds || []).map(id => (schoolById(id) || {}).display_label).filter(Boolean).join('; '), 4), txt(9, r, (PRIORITY[m.priority] || {}).label, 4), txt(10, r, m.status === 'blocked' ? m.dependency : '', 4), txt(11, r, m.notes, 13), num(12, r, serial(m.updatedAt), 5), txt(13, r, m.updatedBy, 4), txt(14, r, (m.blockedBy || []).map(findM).filter(Boolean).map(d => d.activity).join('; '), 4), txt(15, r, (m.checkpoints || []).length ? `${m.checkpoints.filter(c => c.done).length} of ${m.checkpoints.length} done` : '', 4)].join('') + '</row>');
   });
-  const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetPr><tabColor rgb="FF0F62FE"/></sheetPr><dimension ref="A1:N${last}"/><sheetViews><sheetView showGridLines="0" workbookViewId="0"><pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A5" sqref="A5"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="24" customHeight="1"/><cols>${COLS.map((c, i) => `<col min="${i + 1}" max="${i + 1}" width="${c[1]}" customWidth="1"/>`).join('')}</cols><sheetData>${rows.join('')}</sheetData><autoFilter ref="A4:N${last}"/><pageMargins left="0.5" right="0.5" top="0.5" bottom="0.5" header="0.3" footer="0.3"/><pageSetup orientation="landscape" fitToHeight="0"/></worksheet>`;
+  const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetPr><tabColor rgb="FF0F62FE"/></sheetPr><dimension ref="A1:P${last}"/><sheetViews><sheetView showGridLines="0" workbookViewId="0"><pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A5" sqref="A5"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="24" customHeight="1"/><cols>${COLS.map((c, i) => `<col min="${i + 1}" max="${i + 1}" width="${c[1]}" customWidth="1"/>`).join('')}</cols><sheetData>${rows.join('')}</sheetData><autoFilter ref="A4:P${last}"/><pageMargins left="0.5" right="0.5" top="0.5" bottom="0.5" header="0.3" footer="0.3"/><pageSetup orientation="landscape" fitToHeight="0"/></worksheet>`;
   const blob = zipStore([
     ['[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'],
     ['_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
@@ -1889,7 +2242,7 @@ function exportXlsx() {
     ['xl/styles.xml', xlsxStyles()],
     ['xl/worksheets/sheet1.xml', sheet]
   ]);
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `growth-hub-milestones-${todayISO()}.xlsx`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `growth-hub-${boardSlug()}-${todayISO()}.xlsx`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   toast(`Exported ${n} milestone${n === 1 ? '' : 's'}`, 'ok');
 }
 // Admin only. Adds and updates records from a backup file; never deletes anything, so
@@ -1899,7 +2252,9 @@ function importJson(file) {
   const r = new FileReader();
   r.onload = () => {
     let d; try { d = JSON.parse(r.result); if (!Array.isArray(d.milestones)) throw 0; } catch (e) { return toast("That file isn't a Growth Hub backup", 'err'); }
-    const ms = d.milestones.filter(x => x && x.id), ss = (Array.isArray(d.schools) ? d.schools : []).filter(x => x && x.id);
+    if (d.board && d.board !== WS) return toast(`That backup is from ${WS_SEED[d.board] ? WS_SEED[d.board].title : 'another board'}. Open that board to import it`, 'err');
+    const ms = d.milestones.filter(x => x && x.id && !x._draft), ss = (Array.isArray(d.schools) ? d.schools : []).filter(x => x && x.id);
+    if (!ms.length && !ss.length) return toast('That backup has no milestones or schools', 'warn');
     const newM = ms.filter(x => !findM(x.id)).length, newS = ss.filter(x => !schoolById(x.id)).length;
     confirmDialog({
       title: 'Import this file?',
@@ -1910,7 +2265,7 @@ function importJson(file) {
         const put = (arr, x) => { const i = arr.findIndex(y => y.id === x.id); if (i >= 0) arr[i] = x; else arr.push(x); };
         ms.forEach(x => put(M(), syncFiscal(x))); ss.forEach(x => put(S(), x));
         logActivity('edit', `Imported ${ms.length} milestones and ${ss.length} schools`);
-        autosave(); rerender(); renderDrawer(); toast('Import complete', 'ok');
+        autosave(); rerender(); renderDrawer(); toastAction(`Imported ${ms.length} milestone${ms.length === 1 ? '' : 's'}`, 'Undo', () => { undo(); renderDrawer(); });
       }
     });
   };
@@ -1933,36 +2288,48 @@ function openStatusMenu(btn) {
     else { if (m.stage === 'complete') m.stage = 'in_progress'; if (m.progress_percent === 100) m.progress_percent = 95; }
     logActivity('status', `Set "${m.activity}" to ${SM(v).label}`, { itemId: m.id });
     autosave(); rerender();
-    toastAction(`Marked ${SM(v).label.toLowerCase()}`, 'Undo', undo);
+    toastAction(`Marked ${SM(v).label.toLowerCase()}` + (v === 'complete' ? unblockNote(m) : ''), 'Undo', undo);
   });
 }
 function toastAction(msg, label, fn) {
   const w = $('#toastWrap'); capToasts(w); const t = document.createElement('div'); t.className = 'toast ok toast-act';
   t.innerHTML = `<span>${esc(msg)}</span><button class="toast-btn">${esc(label)}</button>`;
   t.querySelector('button').addEventListener('click', () => { t.remove(); fn(); });
-  w.appendChild(t);
-  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .2s'; setTimeout(() => t.remove(), 200); }, 6000);
+  w.appendChild(t); holdToast(t, 6000);
+}
+// Fade a toast after ms, but wait while the pointer or keyboard focus is on it
+function holdToast(t, ms) {
+  let timer; const go = () => { timer = setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 300); }, ms); };
+  const stop = () => clearTimeout(timer);
+  t.addEventListener('mouseenter', stop); t.addEventListener('focusin', stop);
+  t.addEventListener('mouseleave', () => { stop(); go(); }); t.addEventListener('focusout', () => { stop(); go(); });
+  go();
 }
 function capToasts(w) { while (w.children.length > 2) w.firstChild.remove(); }
-function toast(msg, kind) { const w = $('#toastWrap'); capToasts(w); const t = document.createElement('div'); t.className = 'toast' + (kind ? ' ' + kind : ''); t.textContent = msg; w.appendChild(t); setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 300); }, kind === 'warn' || kind === 'err' ? 6000 : 2400); }
-const VIEWS = ['progress', 'timeline', 'plan'];
+function toast(msg, kind) { const w = $('#toastWrap'); capToasts(w); const t = document.createElement('div'); t.className = 'toast' + (kind ? ' ' + kind : ''); t.textContent = msg; w.appendChild(t); holdToast(t, kind === 'warn' || kind === 'err' ? 6000 : 2400); }
+// Meetings is locked while it's being redesigned. Set to true to turn it back on everywhere.
+const MEETINGS_ON = false;
+document.documentElement.classList.toggle('mt-locked', !MEETINGS_ON);
+const VIEWS = ['progress', 'timeline', 'plan', 'meetings'];
 function setView(v, fromPop) {
   if (!VIEWS.includes(v)) v = 'progress';
+  if (v === 'meetings' && !MEETINGS_ON) v = 'progress';
   if (v === 'reports') v = 'progress';
   if (v === 'timeline' && !hasSchoolWork()) v = 'progress';
   state.view = v;
   $$('.nav-tab').forEach(t => { const on = t.dataset.view === v; t.classList.toggle('active', on); if (on) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current'); });
-  document.title = ({ progress: 'Dashboard', timeline: 'Openings', plan: 'Milestones' }[v] || 'Dashboard') + ' · ' + (WS_SEED[WS] ? WS_SEED[WS].title : 'Growth Readiness') + ' · Growth Hub';
+  document.title = ({ progress: 'Dashboard', timeline: 'Openings', plan: 'Milestones', meetings: 'Meetings' }[v] || 'Dashboard') + ' · ' + (WS_SEED[WS] ? WS_SEED[WS].title : 'Growth Readiness') + ' · Growth Hub';
   const pg = $('#planGroup'); if (pg) pg.classList.toggle('expanded', v === 'plan');
   $$('.nav-subitem').forEach(x => x.classList.toggle('active', v === 'plan' && (x.dataset.plan === 'focus' ? state.planFocus : (!state.planFocus && state.planGroup === x.dataset.plan))));
   $$('.view').forEach(s => { const on = s.id === 'view-' + v; s.classList.toggle('active', on); if (!on) s.innerHTML = ''; });
   
-  document.body.dataset.view = v;
+  document.body.dataset.view = v; syncSearchHint(); if (v !== 'plan' && state.sel) { state.sel = null; } if (typeof paintBulkBar === 'function') paintBulkBar();
+  if (!fromPop && document.activeElement && document.activeElement.closest && document.activeElement.closest('.nav-tab')) setTimeout(() => { const h = document.querySelector(`#view-${v} h1, #view-${v} h2, #ctxTitle`); if (h) { if (!h.hasAttribute('tabindex')) h.tabIndex = -1; h.focus({ preventScroll: true }); } }, 60);
   if (typeof closeFilterPanel === 'function') closeFilterPanel();
   updateGreeting();
   rerender();
   if (typeof updateFilterBubble === 'function') updateFilterBubble();
-  if (!fromPop) { try { if (location.hash !== '#' + v) history.pushState({ v }, '', '#' + v); } catch (e) {} }
+  try { if (location.hash !== '#' + v) { if (fromPop) history.replaceState({ v }, '', '#' + v); else history.pushState({ v }, '', '#' + v); } } catch (e) {}   // a redirected link shows the page you landed on
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -1980,7 +2347,7 @@ function wireEvents() {
     }
   });
   const nt = $('#navToggle'); if (nt) nt.addEventListener('click', () => { const on = document.body.classList.toggle('nav-collapsed'); syncNavTitles(); lsSet('ngc_nav', on ? '1' : '0'); nt.title = on ? 'Expand menu' : 'Collapse menu'; const lbl = nt.querySelector('.nav-util-lbl'); if (lbl) lbl.textContent = on ? 'Expand' : 'Collapse'; });
-  const showDrawer = () => { renderDrawer(); $('#drawer').classList.add('open'); $('#drawerBackdrop').classList.add('open'); };
+  const showDrawer = () => { renderDrawer(); restoreDrawerFolds(); $('#drawer').classList.add('open'); $('#drawerBackdrop').classList.add('open'); };
   const openDrawer = () => {
     showDrawer();
   };
@@ -1993,6 +2360,12 @@ function wireEvents() {
   $('#modalBody').addEventListener('change', e => { if ((e.target.matches ? e.target.matches('input[type="checkbox"], input[type="radio"], select') : false)) modalDirty = true; });
   // the modal lives outside .container, so clicks inside it need their own delegation
   $('#modalBody').addEventListener('click', e => {
+    if (e.target.closest('#mAssignMe')) { const o = $('#mOwner'); o.value = myOwnerName(); o.dispatchEvent(new Event('change', { bubbles: true })); e.target.closest('#mAssignMe').remove(); return; }
+    const asc = e.target.closest('[data-mt-addschool]'); if (asc) { if (!guardAdmin()) return; const sc = schoolById(asc.dataset.mtAddschool); if (!sc) return; const title = `${sc.market} ${sc.display_label} readiness`, b = mbook(); if (b.topics.some(t => t.title === title)) return toast('Already on the next agenda', 'ok'); const ids = schoolMs(sc).filter(m => m.status !== 'complete').sort((x, y) => (x.due_date || '9999').localeCompare(y.due_date || '9999')).map(m => m.id); b.topics.push({ id: uid(), title, owner: '', mins: 10, ids, note: `${ids.length} open milestone${ids.length === 1 ? '' : 's'}` }); autosave(); asc.textContent = 'On the next agenda'; return toastAction('Added to the next meeting agenda', 'Open', () => { closeModal(); setView('meetings'); }); }
+    const am = e.target.closest('[data-mt-addms]'); if (am) { if (!guardAdmin()) return; const m = findM(am.dataset.mtAddms), b = mbook(); if (!m || b.topics.some(t => (t.ids || []).includes(m.id))) return toast('Already on the next agenda', 'ok'); b.topics.push({ id: uid(), title: m.activity, owner: m.owner || '', mins: 5, ids: [m.id] }); autosave(); am.textContent = 'On the next agenda'; return toastAction('Added to the next meeting agenda', 'Open', () => { closeModal(); setView('meetings'); }); }
+    const cl = e.target.closest('[data-copylink]'); if (cl) return copyText(milestoneUrl(cl.dataset.copylink), 'Link copied');
+    const cs = e.target.closest('[data-copyschool]'); if (cs) { const u = new URL(milestoneUrl('x')); u.searchParams.delete('m'); u.searchParams.set('s', cs.dataset.copyschool); return copyText(u.toString(), 'Link copied'); }
+    const dp = e.target.closest('[data-dupe]'); if (dp) return duplicateMilestone(dp.dataset.dupe);
     if (e.target.closest('#noteAdd')) return postNote(e.target.closest('.notes-field'));
     if (e.target.closest('#addTaskForSchool')) { taskReturnSchool = schoolId; return addTaskForSchool(); }
     if (e.target.closest('#tplToggle')) return toggleTemplatesPanel();
@@ -2015,11 +2388,7 @@ function wireEvents() {
   document.addEventListener('dragend', e => { const c = e.target.closest('.kcard'); if (c) c.classList.remove('dragging'); $$('.kcol-body.over').forEach(b => b.classList.remove('over')); });
   document.addEventListener('dragover', e => { const b = e.target.closest('.kcol-body'); if (b) { e.preventDefault(); b.classList.add('over'); } });
   document.addEventListener('dragleave', e => { const b = e.target.closest('.kcol-body'); if (b && !b.contains(e.relatedTarget)) b.classList.remove('over'); });
-  document.addEventListener('drop', e => { const b = e.target.closest('.kcol-body'); if (b) { e.preventDefault(); b.classList.remove('over'); const m = findM(e.dataTransfer.getData('text/plain')); if (m && m.stage !== b.dataset.kstage && guardEdit()) { snapshotForUndo('Move milestone: ' + (m.activity || '').slice(0, 30)); logActivity('move', `Moved "${m.activity}" to ${b.dataset.kstage}`, { itemId: m.id }); const was = m.stage; m.stage = b.dataset.kstage; touch(m);
-      if (m.stage === 'complete') { m.status = 'complete'; m.progress_percent = 100; }
-      else if (m.status === 'complete' && m.stage === 'to_do') { m.status = 'not_started'; m.progress_percent = 0; }
-      else { if (m.status === 'complete') { m.status = 'on_track'; if (m.progress_percent === 100) m.progress_percent = 95; } if (m.status === 'not_started' && m.stage !== 'to_do') m.status = 'on_track'; }
-      touch(m); autosave(); refreshResults(); const col = (meta().stageMeta && meta().stageMeta[m.stage] && meta().stageMeta[m.stage].label) || (m.stage.charAt(0).toUpperCase() + m.stage.slice(1)).replace(/_/g, ' '); toastAction(`Moved to ${col}`, 'Undo', undo); } } });
+  document.addEventListener('drop', e => { const b = e.target.closest('.kcol-body'); if (b) { e.preventDefault(); b.classList.remove('over'); const m = findM(e.dataTransfer.getData('text/plain')); if (m && m.stage !== b.dataset.kstage && guardEdit()) { moveToStage(m, b.dataset.kstage); } } });
 
   $('.container').addEventListener('click', e => {
     const fm = e.target.closest('.fb-menu'); if (fm) return openFilterMenu(fm, fm.dataset.fmenu);
@@ -2029,26 +2398,34 @@ function wireEvents() {
     if (e.target.closest('#clearFilters2')) { clearFilters(); return rerender(); }
     if (e.target.closest('#pmExpandAll')) { (state._pmKeys || []).forEach(k => state.expanded[k] = true); return refreshBody(); }
     if (e.target.closest('#pmCollapseAll')) { state.expanded = {}; return refreshBody(); }
-    const plv = e.target.closest('[data-planview]'); if (plv) { state.planGroup = plv.dataset.planview === 'board' ? 'stage' : (state._lastListGroup || 'team'); if (plv.dataset.planview !== 'board') state._lastListGroup = state.planGroup; return renderPlan(); }
+    const plv = e.target.closest('[data-planview]'); if (plv) { state.planGroup = plv.dataset.planview === 'board' ? 'stage' : (state._lastListGroup || 'team'); if (plv.dataset.planview !== 'board') state._lastListGroup = state.planGroup; savePlanGroup(); return renderPlan(); }
     const pv = e.target.closest('[data-progressview]'); if (pv) { state.progressView = pv.dataset.progressview; return renderProgress(); }
     const pd = e.target.closest('[data-progressdim]'); if (pd) { state.progressDim = pd.dataset.progressdim; return refreshBody(); }
     const ch = e.target.closest('[data-cohort]'); if (ch) return setDashCohort(ch.dataset.cohort);
     const bd = e.target.closest('[data-dashbd]'); if (bd) { state.dashBreakdown = bd.dataset.dashbd; return refreshBody(); }
     if (e.target.closest('[data-open-checkins]')) return openCheckins();
-    if (e.target.closest('[data-open-agenda]')) return openAgenda();
-    if (e.target.closest('[data-mtg-held]')) return markMeetingHeld();
+    if (e.target.closest('[data-open-agenda]')) return setView('meetings');
+    if (e.target.closest('[data-mtg-held]')) { if (meta().meetBook && meta().meetBook.live) { toast('A meeting is running. End it on the Meetings page to save the minutes', 'warn'); return setView('meetings'); } return markMeetingHeld(); }
     if (e.target.closest('[data-open-settings]')) { renderDrawer(); $('#drawer').classList.add('open'); $('#drawerBackdrop').classList.add('open'); return; }
     if (e.target.closest('[data-copy-all]')) return copyText(reminderText(M().filter(needsCheckin)));
     const etm = e.target.closest('[data-email-team]'); if (etm) return emailTeam(etm.dataset.emailTeam);
     const ctm = e.target.closest('[data-copy-team]'); if (ctm) { const txt = teamNote(ctm.dataset.copyTeam); return txt ? copyText(txt) : null; }
     const qs = e.target.closest('[data-qstatus]'); if (qs) { e.stopPropagation(); return openStatusMenu(qs); }
+    const oc = e.target.closest('.kc-owners .pchip[title]'); if (oc) { e.stopPropagation(); const who = oc.title === 'Unassigned' ? '__none__' : oc.title; state.filters.owners = new Set([who]); rerender(); return toast(`Showing ${who === '__none__' ? 'unassigned' : who + "'s"} milestones`, 'ok'); }
+    const km = e.target.closest('[data-kmove]'); if (km) { e.stopPropagation(); return openMoveMenu(km); }
+    const kj = e.target.closest('[data-kbjump]'); if (kj) { const cols = document.querySelectorAll('.kanban .kcol'), c = cols[+kj.dataset.kbjump], k = document.querySelector('.kanban'); if (c && k) k.scrollTo({ left: c.offsetLeft - k.offsetLeft, behavior: 'smooth' }); return; }
+    const ce = e.target.closest('[data-capedit]'); if (ce) return editCampaign(ce.dataset.capedit);
     const dr = e.target.closest('[data-drilldim]'); if (dr) return applyDrill(dr.dataset.drilldim, dr.dataset.drillval);
     const gv = e.target.closest('[data-goview]'); if (gv) { window.scrollTo({ top: 0, behavior: 'smooth' }); return setView(gv.dataset.goview); }
     if (e.target.closest('[data-activityall]')) return toggleActivity();
     const as = e.target.closest('[data-addstage]'); if (as) return addItem(as.dataset.addstage);
-    const cp = e.target.closest('[data-complete]'); if (cp) { if (!guardEdit()) { e.preventDefault(); return; } const m = findM(cp.dataset.complete); if (m) { snapshotForUndo('Complete: ' + (m.activity || '').slice(0, 30)); m.status = 'complete'; m.progress_percent = 100; m.stage = 'complete'; touch(m); logActivity('status', `Completed "${m.activity}"`, { itemId: m.id }); autosave(); rerender(); toast('Marked complete', 'ok'); } return; }
+    const cp = e.target.closest('[data-complete]'); if (cp) { if (!guardEdit()) { e.preventDefault(); return; } const m = findM(cp.dataset.complete); if (m) { snapshotForUndo('Complete: ' + (m.activity || '').slice(0, 30)); m.status = 'complete'; m.progress_percent = 100; m.stage = 'complete'; touch(m); logActivity('status', `Completed "${m.activity}"`, { itemId: m.id }); autosave(); rerender(); toast('Marked complete' + unblockNote(m), 'ok'); } return; }
     const sm = e.target.closest('[data-showmore]'); if (sm) { const p = sm.dataset.showmore; if (p === 'focus') state.planFocus = true; else { state.planGroup = p; state.planFocus = false; } return setView('plan'); }
+    const at = e.target.closest('[data-addteam]'); if (at) { e.stopPropagation(); return addItem(null, at.dataset.addteam); }
     const tg = e.target.closest('[data-toggle]'); if (tg) { const k = tg.dataset.toggle; state.expanded[k] = !state.expanded[k]; return refreshBody(); }
+    if (state.sel && state.view === 'plan') { const kc = e.target.closest('.kcard[data-id]'); if (kc && !e.target.closest('button, a, input, select, textarea')) { const id = kc.dataset.id;
+      if (e.shiftKey && state.lastSel) { const all = [...document.querySelectorAll('.kcard[data-id]')].map(x => x.dataset.id), i = all.indexOf(state.lastSel), j = all.indexOf(id); if (i >= 0 && j >= 0) { all.slice(Math.min(i, j), Math.max(i, j) + 1).forEach(x => state.sel.add(x)); document.querySelectorAll('.kcard[data-id]').forEach(x => x.classList.toggle('is-sel', state.sel.has(x.dataset.id))); state.lastSel = id; return paintBulkBar(); } }
+      state.lastSel = id; state.sel.has(id) ? state.sel.delete(id) : state.sel.add(id); kc.classList.toggle('is-sel', state.sel.has(id)); kc.setAttribute('aria-selected', state.sel.has(id)); return paintBulkBar(); } }
     const ex = e.target.closest('[data-expand]'); if (ex && !e.target.closest('button:not([data-expand]), a, input, select, textarea, label')) return openModal(ex.dataset.expand);
     const oi = e.target.closest('[data-openitem]'); if (oi) return openModal(oi.dataset.openitem);
     const dm = e.target.closest('[data-drillmine]');
@@ -2066,6 +2443,9 @@ function wireEvents() {
     const gp = e.target.closest('[data-goplan]'); if (gp) { const m = findM(gp.dataset.goplan); if (m) { state.filters.search = m.activity; const cb = $('#cbSearch'); if (cb) cb.value = m.activity; } setView('plan'); return; }
     if (e.target.closest('#planFocus')) { state.planFocus = !state.planFocus; return renderPlan(); }
     if (e.target.closest('#planCsv')) return exportXlsx();
+    if (e.target.closest('#planSelect')) { state.sel = state.sel ? null : new Set(); if (state.sel) { state._expandAllOnce = true; } renderPlan(); paintBulkBar(); const a = $('#toastWrap'); if (a && state.sel) toast('Select mode: click milestones, Shift-click for a range, Esc to stop', 'ok'); return; }
+    if (e.target.closest('#planHideDone')) { state.hideDone = !state.hideDone; lsSet('ngc_hide_done_' + WS, state.hideDone ? '1' : ''); return renderPlan(); }
+    if (e.target.closest('#planLink')) return copyText(viewLink(), 'Link copied');
     const tAll = e.target.closest('#planToggleAll');
     if (tAll) { const keys = state._planKeys || [], open = keys.length > 0 && keys.every(k => state.expanded[k]); keys.forEach(k => { if (open) delete state.expanded[k]; else state.expanded[k] = true; }); tAll.textContent = open ? 'Expand all' : 'Collapse all'; return refreshBody(); }
     if (e.target.closest('#addSchool')) return openSchoolModal(null);
@@ -2075,7 +2455,7 @@ function wireEvents() {
     const afc = e.target.closest('[data-afclear]'); if (afc) { removeAppliedFilter(afc.dataset.afclear); return rerender(); }
   });
   $('.container').addEventListener('change', e => {
-    if (e.target.id === 'planGroupSel') { state.planGroup = e.target.value; state._lastListGroup = state.planGroup; refreshBody(); }
+    if (e.target.id === 'planGroupSel') { state.planGroup = e.target.value; state._lastListGroup = state.planGroup; savePlanGroup(); refreshBody(); }
     else if (e.target.id === 'dashSchool') { state.filters.schoolId = e.target.value; refreshBody(); const cl = $('#clearFilters'); if (cl) cl.classList.toggle('hide', !activeCount()); }
   });
 
@@ -2087,7 +2467,7 @@ function wireEvents() {
     if ((e.target.id === 'msDeleteAll' || e.target.closest('[data-msdel], [data-czadd], .cz-del')) && !guardAdmin()) return;
     if (e.target.id === 'msDeleteAll') return bulkDeleteAllSchools();
     const msE = e.target.closest('[data-msedit]'); if (msE) { $('#drawer').classList.remove('open'); $('#drawerBackdrop').classList.remove('open'); return openSchoolModal(msE.dataset.msedit); }
-    const msD = e.target.closest('[data-msdel]'); if (msD) { const sid = msD.dataset.msdel; const s = schoolById(sid); if (!s) return; const tasks = schoolMs(s); confirmDialog({ title: `Remove ${esc(s.display_label)}?`, message: `Remove <b>${esc(s.display_label)} (${esc(s.market)})</b>` + (tasks.length ? ` and its <b>${tasks.length} milestone${tasks.length === 1 ? '' : 's'}</b>` : '') + ' from the schedule.', confirmLabel: 'Remove school', danger: true, onConfirm: () => { snapshotForUndo('Remove school: ' + s.display_label); const cd = s.code; state.data.schools = state.data.schools.filter(x => x.id !== sid); state.data.milestones = M().filter(m => { if (!(m.schoolIds || []).includes(sid)) return true; m.schoolIds = m.schoolIds.filter(id => id !== sid); m.schools = (m.schools || []).filter(c => c !== cd); return m.schoolIds.length > 0; }); autosave(); rerender(); renderDrawer(); toast('School removed', 'ok'); } }); return; }
+    const msD = e.target.closest('[data-msdel]'); if (msD) { const sid = msD.dataset.msdel; const s = schoolById(sid); if (!s) return; const tasks = schoolMs(s); confirmDialog({ title: `Remove ${s.display_label}?`, message: `Remove <b>${esc(s.display_label)} (${esc(s.market)})</b>` + (tasks.length ? ` and its <b>${tasks.length} milestone${tasks.length === 1 ? '' : 's'}</b>` : '') + ' from the schedule.', confirmLabel: 'Remove school', danger: true, onConfirm: () => { snapshotForUndo('Remove school: ' + s.display_label); const cd = s.code; state.data.schools = state.data.schools.filter(x => x.id !== sid); state.data.milestones = M().filter(m => { if (!(m.schoolIds || []).includes(sid)) return true; m.schoolIds = m.schoolIds.filter(id => id !== sid); m.schools = (m.schools || []).filter(c => c !== cd); return m.schoolIds.length > 0; }); autosave(); rerender(); renderDrawer(); toast('School removed', 'ok'); } }); return; }
     const cza = e.target.closest('[data-czadd]'); if (cza) return czAdd(cza.dataset.czadd);
     const czd = e.target.closest('.cz-del'); if (czd) return czRemove(czd.dataset.cztype, czd.dataset.czval);
   });
@@ -2121,7 +2501,7 @@ function canEdit() { return isEditor(); }
 function guardEdit() { if (canEdit()) return true; toast('You have view-only access', 'err'); return false; }
 function guardAdmin() { if (isAdmin()) return true; toast('Only admins can change shared settings', 'err'); return false; }
 // Hide edit controls for view-only accounts (CSS keys off body.read-only).
-function applyRoleUI() { document.body.classList.toggle('read-only', !!(state.auth && state.auth.user) && !canEdit()); }
+function applyRoleUI() { const ro = !!(state.auth && state.auth.user) && !canEdit(); document.body.classList.toggle('read-only', ro); const c = $('#modalCancel'); if (c) c.textContent = ro ? 'Close' : 'Cancel'; }
 
 async function loadProfile(userId) {
   const client = state.sb && state.sb.client; if (!client || !userId) return null;
@@ -2167,8 +2547,9 @@ async function signInEmail(email, password) {
   state.auth.user = data.user; await loadProfile(data.user.id);
   return data.user;
 }
-async function signOutUser() {
+async function signOutUser(force) {
   const client = state.sb && state.sb.client; if (!client) return;
+  if (!force && ($('#syncAlert') || (modalDirty && $('#modalBackdrop.open')))) return confirmDialog({ title: 'Sign out with unsaved changes?', message: 'Some of your changes have not reached the shared board yet. Signing out may lose them.', confirmLabel: 'Sign out anyway', danger: true, onConfirm: () => signOutUser(true) });
   await client.auth.signOut();
   state.auth.user = null; state.auth.profile = null;
   showAuthScreen();
@@ -2183,6 +2564,7 @@ function showAuthScreen(err, mode, info) {
   const fields = mode === 'signin' ? `
         <div class="field"><label for="authEmail">Work email</label><input id="authEmail" type="email" autocomplete="username" required></div>
         <div class="field"><label for="authPw">Password</label><input id="authPw" type="password" autocomplete="current-password" required></div>
+        <label class="field-check"><input type="checkbox" class="pw-show"> Show password</label>
         <button type="submit" class="btn btn-filled" id="authSubmit">Sign in</button>`
     : mode === 'forgot' ? `
         <div class="field"><label for="authEmail">Work email</label><input id="authEmail" type="email" autocomplete="username" required></div>
@@ -2191,6 +2573,7 @@ function showAuthScreen(err, mode, info) {
         <input type="email" autocomplete="username" value="${esc((state.auth.user && state.auth.user.email) || '')}" hidden>
         <div class="field"><label for="authPw">New password</label><input id="authPw" type="password" autocomplete="new-password" required minlength="12"></div>
         <div class="field"><label for="authPw2">Confirm new password</label><input id="authPw2" type="password" autocomplete="new-password" required minlength="12"></div>
+        <label class="field-check"><input type="checkbox" class="pw-show"> Show passwords</label>
         <button type="submit" class="btn btn-filled" id="authSubmit">Save password</button>`;
   const foot = mode === 'signin' ? '<button type="button" class="auth-link" data-authmode="forgot">Forgot password?</button><div>No account? Ask your admin.</div>'
     : mode === 'forgot' ? '<button type="button" class="auth-link" data-authmode="signin">Back to sign in</button>'
@@ -2354,18 +2737,22 @@ function openUserMenu(anchor) {
   const p = currentProfile(); if (!p) return;
   closePopover();
   const html = `<div class="user-menu">
-      <div class="um-head"><div class="um-name">${esc(p.full_name || p.email)}</div><div class="um-email">${esc(p.email || '')}</div><div class="um-role">Role: <b>${esc(p.role || 'viewer')}</b></div>
-        ${myOwner() ? `<div class="um-role">Owner: <b>${esc(myOwner().name)}</b>${myOwner().role ? ` · ${esc(myOwner().role)}` : ''}</div>` : `<div class="um-unlinked">Ask an admin to link you to an owner</div>`}</div>
+      <div class="um-head"><div class="um-name">${esc(p.full_name || p.email)}</div><div class="um-email">${esc(p.email || '')}</div><div class="um-role">Role: <b>${esc({ admin: 'Admin', editor: 'Editor', viewer: 'View only' }[p.role || 'viewer'] || p.role)}</b></div>
+        ${myOwner() ? `<div class="um-role">Owner: <b>${esc(myOwner().name)}</b>${myOwner().role ? ` · ${esc(myOwner().role)}` : ''}</div>` : `<div class="um-unlinked">${isAdmin() ? 'Add your email to your name in Settings, Owners' : 'Ask an admin to link you to an owner'}</div>`}</div>
       <div class="um-actions">
+        ${myOwner() ? '<button class="um-item" id="umMine">My milestones</button>' : ''}
         <button class="um-item" id="umCalendar">Add deadlines to Outlook</button>
+        <button class="um-item" id="umKeys">Keyboard shortcuts</button>
         <button class="um-item" id="umPassword">Change password</button>
         <button class="um-item" id="umSignOut">Sign out</button>
-      </div>
+      </div>${window.GH_VERSION ? `<div class="um-version">Version ${esc(window.GH_VERSION)}</div>` : ''}
     </div>`;
   const pop = openPopover(anchor, html);
   pop.querySelector('#umSignOut').addEventListener('click', () => { closePopover(); signOutUser(); });
   pop.querySelector('#umPassword').addEventListener('click', () => { closePopover(); openPasswordDialog(); });
   pop.querySelector('#umCalendar').addEventListener('click', () => { closePopover(); openCalendarSheet(); });
+  pop.querySelector('#umKeys').addEventListener('click', () => { closePopover(); showShortcuts(); });
+  const mine = pop.querySelector('#umMine'); if (mine) mine.addEventListener('click', () => { closePopover(); clearFilters(); state.filters.owners = new Set([myOwnerName()]); setView('plan'); rerender(); });
 }
 
 /* ---------- change password (Supabase Auth) ----------
@@ -2639,9 +3026,9 @@ function openCmdk() {
 function closeCmdk() { $('#cmdkBackdrop').classList.add('hide'); }
 function renderCmdkResults(q) {
   const body = $('#cmdkBody');
-  cmdkItems = buildCmdkItems(q).filter(x => !x.hide);
+  cmdkItems = buildCmdkItems(q).filter(x => !x.hide && (MEETINGS_ON || !/^(Go to Meetings|Start meeting|Action: |Meeting agenda)/.test(x.name)));
   if (cmdkIdx >= cmdkItems.length) cmdkIdx = 0;
-  body.innerHTML = cmdkItems.map((item, i) => `<div class="cmdk-item ${i === cmdkIdx ? 'active' : ''}" data-cmdk="${i}"><span class="cmdk-ic">${item.icon}</span><div class="cmdk-label"><span class="cmdk-name">${esc(item.name)}</span>${item.hint ? `<span class="cmdk-hint">${esc(item.hint)}</span>` : ''}</div>${item.kbd ? `<kbd class="cmdk-kbd">${item.kbd}</kbd>` : ''}</div>`).join('') || '<div class="cmdk-empty">No results</div>';
+  body.innerHTML = cmdkItems.map((item, i) => `<div class="cmdk-item ${i === cmdkIdx ? 'active' : ''}" data-cmdk="${i}"><span class="cmdk-ic">${item.icon}</span><div class="cmdk-label"><span class="cmdk-name">${hiMatch(item.name, q)}</span>${item.hint ? `<span class="cmdk-hint">${esc(item.hint)}</span>` : ''}</div>${item.kbd ? `<kbd class="cmdk-kbd">${item.kbd}</kbd>` : ''}</div>`).join('') || `<div class="cmdk-empty">No results for “${esc((q || '').trim())}” on this board.${otherBoardLink(q)}</div>`;
 }
 function buildCmdkItems(q) {
   // Uniform Material outlined SVG icons (1.75 stroke, 18px). No emojis.
@@ -2650,13 +3037,21 @@ function buildCmdkItems(q) {
   items.push({ icon: ic('<path d="M24 21H26V26H24zM20 16H22V26H20zM11 26a5.0059 5.0059 0 01-5-5H8a3 3 0 103-3V16a5 5 0 010 10z"/><path d="M28,2H4A2.002,2.002,0,0,0,2,4V28a2.0023,2.0023,0,0,0,2,2H28a2.0027,2.0027,0,0,0,2-2V4A2.0023,2.0023,0,0,0,28,2Zm0,9H14V4H28ZM12,4v7H4V4ZM4,28V13H28.0007l.0013,15Z"/>'), name: 'Go to Dashboard', hint: '', kbd: '', action: () => setView('progress') });
   items.push({ icon: ic('<path d="M24 4H26V28H24zM18 6V26H14V6h4m0-2H14a2 2 0 00-2 2V26a2 2 0 002 2h4a2 2 0 002-2V6a2 2 0 00-2-2zM6 4H8V28H6z"/>'), name: 'Go to Milestones', hint: '', kbd: '', action: () => setView('plan') });
   items.push({ icon: ic('<path d="M26,4h-4V2h-2v2h-8V2h-2v2H6C4.9,4,4,4.9,4,6v20c0,1.1,0.9,2,2,2h20c1.1,0,2-0.9,2-2V6C28,4.9,27.1,4,26,4z M26,26H6V12h20	V26z M26,10H6V6h4v2h2V6h8v2h2V6h4V10z"/>'), name: 'Go to Openings', hide: !hasSchoolWork(), hint: '', kbd: '', action: () => setView('timeline') });
+  items.push({ icon: ic('<path d="M28 26H4a2 2 0 01-2-2V8a2 2 0 012-2h24a2 2 0 012 2v16a2 2 0 01-2 2zM4 8v16h24V8z"/><path d="M6 10h2v2H6zM10 10h2v2h-2zM14 10h2v2h-2zM18 10h2v2h-2zM22 10h4v2h-4zM6 14h4v2H6zM12 14h2v2h-2zM16 14h2v2h-2zM20 14h6v2h-6zM9 20h14v2H9z"/>'), name: 'Keyboard shortcuts', hint: 'N, /, Cmd+K, Cmd+Z, Cmd+Enter', kbd: '', action: showShortcuts });
+  if (q && q.trim().length > 1) openActions().filter(a => a.text.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 3).forEach(a => items.push({ icon: ic('<path d="M14 21.414l-5-5.001L10.413 15 14 18.586 21.585 11 23 12.415l-9 8.999z"/><path d="M16 2a14 14 0 1014 14A14 14 0 0016 2zm0 26a12 12 0 1112-12 12 12 0 01-12 12z"/>'), name: 'Action: ' + a.text, hint: `${a.owner || 'No owner'}${a.due ? ' · due ' + fmtDate(a.due) : ''} · meeting ${fmtDate(a.meeting)}`, kbd: '', action: () => setView('meetings') }));
+  if ((!q || !q.trim()) && recentIds().length) items.push({ icon: ic('<path d="M12 12h2v12h-2zM18 12h2v12h-2z"/><path d="M4 6v2h2v20a2 2 0 002 2h16a2 2 0 002-2V8h2V6zm4 22V8h16v20zM12 2h8v2h-8z"/>'), name: 'Clear recently opened', hint: 'Only on this browser', kbd: '', action: () => { lsSet('ngc_recent_' + WS, '[]'); toast('Cleared', 'ok'); } });
+  if (!q || !q.trim()) recentIds().map(findM).filter(Boolean).slice(0, 4).forEach(m => items.push({ icon: ic('<path d="M16 30a14 14 0 1114-14 14 14 0 01-14 14zm0-26a12 12 0 1012 12A12 12 0 0016 4z"/><path d="M20.59 22L15 16.41V7h2v8.58l5 5.01z"/>'), name: m.activity, hint: 'Recently opened', kbd: '', action: () => openModal(m.id) }));
+  savedViews().forEach(v => items.push({ icon: ic('<path d="M18 28H14a2 2 0 01-2-2V18.41L4.59 11A2 2 0 014 9.59V6a2 2 0 012-2H26a2 2 0 012 2V9.59a2 2 0 01-.59 1.41L20 18.41V26a2 2 0 01-2 2zM6 6V9.59l8 8V26h4V17.59l8-8V6z"/>'), name: 'View: ' + v.name, hint: 'Saved filters', kbd: '', action: () => { clearFilters(); applyViewLink(JSON.stringify(v.f)); setView(v.view || 'plan'); rerender(); } }));
+  items.push({ icon: ic('<path d="M26 4h-4V2h-2v2h-8V2h-2v2H6a2 2 0 00-2 2v20a2 2 0 002 2h20a2 2 0 002-2V6a2 2 0 00-2-2zm0 22H6V12h20z"/>'), name: 'Go to Meetings', hint: 'Agenda, action items, minutes', kbd: '', action: () => setView('meetings') });
+  if (isAdmin() && !mbook().live) items.push({ icon: ic('<path d="M11 23a1 1 0 01-1-1V10a1 1 0 011.45-.89l12 6a1 1 0 010 1.78l-12 6A1 1 0 0111 23z"/>'), name: 'Start meeting', hint: 'Run the agenda', kbd: '', action: () => { setView('meetings'); startMeeting(); } });
   items.push({ icon: ic('<path d="M17 15L17 8 15 8 15 15 8 15 8 17 15 17 15 24 17 24 17 17 24 17 24 15z"/>'), name: 'New milestone', hint: '', kbd: 'N', action: () => addItem() });
   items.push({ icon: ic('<path d="M16.6123,2.2138a1.01,1.01,0,0,0-1.2427,0L1,13.4194l1.2427,1.5717L4,13.6209V26a2.0041,2.0041,0,0,0,2,2H26a2.0037,2.0037,0,0,0,2-2V13.63L29.7573,15,31,13.4282ZM18,26H14V18h4Zm2,0V18a2.0023,2.0023,0,0,0-2-2H14a2.002,2.002,0,0,0-2,2v8H6V12.0615l10-7.79,10,7.8005V26Z"/>'), name: 'Add school opening', hide: !hasSchoolWork(), hint: '', kbd: '', action: () => openSchoolModal(null) });
-  items.push({ icon: ic('<path d="M20,10H7.8149l3.5874-3.5859L10,5,4,11,10,17l1.4023-1.4146L7.8179,12H20a6,6,0,0,1,0,12H12v2h8a8,8,0,0,0,0-16Z"/>'), name: 'Undo last change', hint: undoStack.length ? undoStack[undoStack.length - 1].label : 'nothing to undo', kbd: '⌘Z', action: () => undo() });
+  if (undoStack.length) items.push({ icon: ic('<path d="M20,10H7.8149l3.5874-3.5859L10,5,4,11,10,17l1.4023-1.4146L7.8179,12H20a6,6,0,0,1,0,12H12v2h8a8,8,0,0,0,0-16Z"/>'), name: 'Undo last change', hint: undoStack[undoStack.length - 1].label, kbd: '⌘Z', action: () => undo() });
   items.push({ icon: ic('<path d="M28,9H25V3H7V9H4a2,2,0,0,0-2,2V21a2,2,0,0,0,2,2H7v6H25V23h3a2,2,0,0,0,2-2V11A2,2,0,0,0,28,9ZM9,5H23V9H9ZM23,27H9V17H23Zm5-6H25V15H7v6H4V11H28Z"/>'), name: 'Print report', hint: 'Dashboard', kbd: '', action: () => { setView('progress'); setTimeout(() => window.print(), 400); } });
-  items.push({ icon: ic('<path d="M16 22H30V24H16zM14 19.4L12.6 18 6 24.6 3.4 22 2 23.4 6 27.4zM16 8H30V10H16zM14 5.4L12.6 4 6 10.6 3.4 8 2 9.4 6 13.4z"/>'), name: 'Check in on my milestones', hint: 'Forecast', kbd: '', action: () => openCheckins() });
+  items.push({ icon: ic('<path d="M16 22H30V24H16zM14 19.4L12.6 18 6 24.6 3.4 22 2 23.4 6 27.4zM16 8H30V10H16zM14 5.4L12.6 4 6 10.6 3.4 8 2 9.4 6 13.4z"/>'), name: 'Check in on my milestones', hint: 'Will each land on time?', kbd: '', action: () => openCheckins() });
   items.push({ icon: ic('<circle cx="7" cy="9" r="3"/><circle cx="7" cy="23" r="3"/><path d="M16 22H30V24H16zM16 8H30V10H16z"/>'), name: 'Meeting agenda', hint: 'What changed, off track, missing updates', kbd: '', action: () => openAgenda() });
   items.push({ icon: ic('<path d="M26,4h-4V2h-2v2h-8V2h-2v2H6C4.9,4,4,4.9,4,6v20c0,1.1,0.9,2,2,2h20c1.1,0,2-0.9,2-2V6C28,4.9,27.1,4,26,4z M26,26H6V12h20	V26z M26,10H6V6h4v2h2V6h8v2h2V6h4V10z"/>'), name: 'Add deadlines to Outlook', hint: 'Calendar', kbd: '', action: () => openCalendarSheet() });
+  items.push({ icon: ic('<path d="M29.25 6.76a6 6 0 00-8.5 0l1.42 1.42a4 4 0 115.67 5.67l-8 8a4 4 0 11-5.67-5.66l1.41-1.42-1.41-1.42-1.42 1.42a6 6 0 000 8.5A6 6 0 0017 25a6 6 0 004.27-1.76l8-8a6 6 0 00-.02-8.48zM4.19 24.82a4 4 0 010-5.67l8-8a4 4 0 015.67 0A3.94 3.94 0 0119 14a4 4 0 01-1.17 2.85L15.71 19l1.42 1.42 2.12-2.12a6 6 0 00-8.51-8.51l-8 8a6 6 0 000 8.51A6 6 0 007 28a6.07 6.07 0 004.28-1.76l-1.42-1.42a4 4 0 01-5.67 0z"/>'), name: 'Copy link to this view', hint: 'Current page and filters', kbd: '', action: () => copyText(viewLink(), 'Link copied') });
   items.push({ icon: ic('<path d="M26 24v4H6V24H4v4H4a2 2 0 002 2H26a2 2 0 002-2h0V24zM26 14L24.59 12.59 17 20.17 17 2 15 2 15 20.17 7.41 12.59 6 14 16 24 26 14z"/>'), name: 'Export milestones to Excel', hint: 'Current filters', kbd: '', action: () => exportXlsx() });
   items.push({ icon: ic('<path d="M27,16.76c0-.25,0-.5,0-.76s0-.51,0-.77l1.92-1.68A2,2,0,0,0,29.3,11L26.94,7a2,2,0,0,0-1.73-1,2,2,0,0,0-.64.1l-2.43.82a11.35,11.35,0,0,0-1.31-.75l-.51-2.52a2,2,0,0,0-2-1.61H13.64a2,2,0,0,0-2,1.61l-.51,2.52a11.48,11.48,0,0,0-1.32.75L7.43,6.06A2,2,0,0,0,6.79,6,2,2,0,0,0,5.06,7L2.7,11a2,2,0,0,0,.41,2.51L5,15.24c0,.25,0,.5,0,.76s0,.51,0,.77L3.11,18.45A2,2,0,0,0,2.7,21L5.06,25a2,2,0,0,0,1.73,1,2,2,0,0,0,.64-.1l2.43-.82a11.35,11.35,0,0,0,1.31.75l.51,2.52a2,2,0,0,0,2,1.61h4.72a2,2,0,0,0,2-1.61l.51-2.52a11.48,11.48,0,0,0,1.32-.75l2.42.82a2,2,0,0,0,.64.1,2,2,0,0,0,1.73-1L29.3,21a2,2,0,0,0-.41-2.51ZM25.21,24l-3.43-1.16a8.86,8.86,0,0,1-2.71,1.57L18.36,28H13.64l-.71-3.55a9.36,9.36,0,0,1-2.7-1.57L6.79,24,4.43,20l2.72-2.4a8.9,8.9,0,0,1,0-3.13L4.43,12,6.79,8l3.43,1.16a8.86,8.86,0,0,1,2.71-1.57L13.64,4h4.72l.71,3.55a9.36,9.36,0,0,1,2.7,1.57L25.21,8,27.57,12l-2.72,2.4a8.9,8.9,0,0,1,0,3.13L27.57,20Z"/><path d="M16,22a6,6,0,1,1,6-6A5.94,5.94,0,0,1,16,22Zm0-10a3.91,3.91,0,0,0-4,4,3.91,3.91,0,0,0,4,4,3.91,3.91,0,0,0,4-4A3.91,3.91,0,0,0,16,12Z"/>'), name: 'Open settings', hint: '', kbd: '', action: () => { const s = $('#settingsBtn'); if (s) s.click(); } });
   items.push({ icon: ic('<path d="M28.7071,19.293,26,16.5859V13a10.0136,10.0136,0,0,0-9-9.9492V1H15V3.0508A10.0136,10.0136,0,0,0,6,13v3.5859L3.2929,19.293A1,1,0,0,0,3,20v3a1,1,0,0,0,1,1h7v.7768a5.152,5.152,0,0,0,4.5,5.1987A5.0057,5.0057,0,0,0,21,25V24h7a1,1,0,0,0,1-1V20A1,1,0,0,0,28.7071,19.293ZM19,25a3,3,0,0,1-6,0V24h6Zm8-3H5V20.4141L7.707,17.707A1,1,0,0,0,8,17V13a8,8,0,0,1,16,0v4a1,1,0,0,0,.293.707L27,20.4141Z"/>'), name: 'Activity log', hint: '', kbd: '⌃⇧A', action: () => toggleActivity() });
@@ -2675,13 +3070,14 @@ function buildCmdkItems(q) {
   const words = ql.split(/\s+/).filter(Boolean), hit = txt => { const t = txt.toLowerCase(); return words.every(w => t.includes(w)); };
   (state.data.schools || []).filter(s => hit(`${s.display_label || ''} ${s.code || ''} ${s.market || ''} ${s.state || ''} fall ${s.openingFY - 1} ${fyLabel(s.openingFY)}`))
     .slice(0, 4).forEach(s => results.push({ icon: sIc, name: `${s.market} ${s.display_label}`, hint: `School opening · ${fallLbl(s.openingFY)}`, kbd: '', action: () => openSchoolModal(s.id) }));
-  mils.filter(m => hit(`${m.activity} ${ownersOf(m).join(' ')} ${m.market} ${m.functional_area} ${m.workstream || ''} ${(m.tags || []).join(' ')} ${m.notes || ''}`))
-    .slice(0, 8).forEach(m => results.push({ icon: mIc, name: m.activity, hint: `${m.market || 'Network'} · ${m.functional_area}${m.due_date ? ' · Due ' + fmtDate(m.due_date) : ''}${ownersOf(m).length ? ' · ' + ownersOf(m).join(' / ') : ''}`, kbd: '', action: () => openModal(m.id) }));
-  [...new Set(mils.flatMap(ownersOf))].filter(o => o.toLowerCase().includes(ql)).slice(0, 5).forEach(o => {
-    const n = mils.filter(m => ownsM(m, o)).length;
-    results.push({ icon: oIc, name: o, hint: `Owner · ${n} milestone${n === 1 ? '' : 's'}`, kbd: '', action: () => { clearFilters(); state.filters.search = o; const cb = $('#cbSearch'); if (cb) cb.value = o; setView('plan'); } });
+  [...new Set(mils.flatMap(ownersOf))].filter(o => o.toLowerCase().includes(ql)).slice(0, 5).forEach(o => {   // people first: "show me Susie's work"
+    const n = mils.filter(m => ownsM(m, o) && m.status !== 'complete').length;
+    const late = mils.filter(m => ownsM(m, o) && timingLevel(m) === 'overdue').length;
+    results.push({ icon: oIc, name: o, hint: `${n} open milestone${n === 1 ? '' : 's'}${late ? ` · ${late} overdue` : ''}`, kbd: '', action: () => { clearFilters(); state.filters.owners = new Set([o]); setView('plan'); rerender(); } });
   });
-  return [...nav, ...results];
+  mils.filter(m => hit(`${m.activity} ${ownersOf(m).join(' ')} ${m.market} ${m.functional_area} ${m.workstream || ''} ${(m.tags || []).join(' ')} ${m.notes || ''}`))
+    .slice(0, 8).forEach(m => results.push({ icon: mIc, name: m.activity, hint: `${SM(effectiveStatus(m)).label} · ${m.market || 'Network'} · ${m.functional_area}${m.due_date ? ' · Due ' + fmtDate(m.due_date) : ''}${ownersOf(m).length ? ' · ' + ownersOf(m).join(' / ') : ''}`, kbd: '', action: () => openModal(m.id) }));
+  return [...nav, ...results].filter(x => MEETINGS_ON || !/^(Go to Meetings|Start meeting|Action: |Meeting agenda)/.test(x.name));
 }
 function execCmdk() {
   if (cmdkItems[cmdkIdx]) { cmdkItems[cmdkIdx].action(); closeCmdk(); }
@@ -2706,6 +3102,7 @@ function wireKeyboard() {
   document.addEventListener('keydown', e => {
     const inInput = (e.target.matches ? e.target.matches('input, textarea, select, [contenteditable]') : false);
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); openCmdk(); return; }
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'Enter' || e.key === 's') && $('#modalBackdrop.open') && !$('#confirmBackdrop')) { const sv = $('#modalSave'); e.preventDefault(); if (sv && getComputedStyle(sv).display !== 'none') sv.click(); return; }
     if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) { if (!inInput) { e.preventDefault(); undo(); } return; }
     if (e.ctrlKey && e.shiftKey && e.key === 'A') { e.preventDefault(); toggleActivity(); return; }
     if (inInput) return;
@@ -2767,6 +3164,8 @@ function initA11yLabels() {   // every control gets a programmatic name, includi
   let n = 0;
   const NAMES = { 'cz-new': 'New entry', 'cz-name': 'Name', 'cz-role': 'Role', 'cz-email': 'Email', 'cz-state': 'State', 'fb-select': 'Filter' };
   const run = root => {
+    root.querySelectorAll('[aria-haspopup]:not([aria-expanded])').forEach(b => b.setAttribute('aria-expanded', 'false'));
+    root.querySelectorAll('table:not([aria-label]):not([aria-labelledby])').forEach(t => { const h = t.closest('section, .ex-card'); const hh = h && h.querySelector('h2, h3'); if (hh) t.setAttribute('aria-label', hh.textContent.trim()); });   // tables take their card's title as a name
     root.querySelectorAll('.field > label, .field label:first-child').forEach(l => {
       if (l.htmlFor) return; const c = l.parentElement.querySelector('input:not([type=checkbox]):not([type=radio]), select, textarea'); if (!c) return;
       if (!c.id) c.id = 'ctl' + (++n); l.htmlFor = c.id;
@@ -2873,7 +3272,8 @@ function initContentBar() {
 }
 function bootApp() {
   // Personalize for whoever is signed in (drops any prior account's "Mine" scope first)
-  state.filters.owners.clear(); applyMyDefaults();
+  if (!state.viewLinkApplied) { state.filters.owners.clear(); applyMyDefaults(); }
+  restorePlanGroup(); state.hideDone = lsGet('ngc_hide_done_' + WS) === '1';   // a shared view link keeps its filters
   // Clear any loading skeleton painted by index.html or a prior boot attempt.
   const sk = document.getElementById('bootSkeleton'); if (sk) sk.remove();
   wireEvents();
@@ -2910,7 +3310,7 @@ const CI_MAP = { yes: 'on_track', probably: 'at_risk', unlikely: 'behind' };
 const CI_REV = { on_track: 'yes', at_risk: 'probably', behind: 'unlikely' };
 const CI_LABEL = { yes: 'Yes, on time', probably: 'Probably', unlikely: 'Unlikely' };
 const CHECKIN_DAYS = 14, STALE_DAYS = 21, HORIZON_DAYS = 180;
-const FLAG_LABEL = { stale: 'Update missing', watermelon: 'Needs a look', slipped: 'Deadline moved (30 days)' };
+const FLAG_LABEL = { nodue: 'No due date', stale: 'Update missing', watermelon: 'Needs a look', slipped: 'Deadline moved (30 days)', newly_off: 'Newly off track', completed_recent: 'Completed since last meeting' };
 
 function lastCheckin(m) { const c = m.checkins; return Array.isArray(c) && c.length ? c[c.length - 1] : null; }
 function daysSince(t) { return t ? Math.floor((Date.now() - new Date(t).getTime()) / 86400000) : null; }
@@ -2944,12 +3344,17 @@ function watermelonReasons(m) {
   const moves = (m.dateHistory || []).length; if (moves >= 2) r.push(`Deadline moved ${moves === 2 ? 'twice' : moves + ' times'}`);
   if (d != null && d >= 0 && d <= 30 && p < 50) r.push(`Due in ${d} day${d === 1 ? '' : 's'} at ${p}% done`);
   r.push(...waitingReasons(m));
+  if (!m.due_date) r.push('No due date');
+  if (!ownersOf(m).length) r.push('No owner');
   return r;
 }
 function flagPass(m, f) {
   if (f === 'stale') return needsCheckin(m);
   if (f === 'watermelon') return watermelonReasons(m).length > 0;
+  if (f === 'nodue') return m.status !== 'complete' && !m.due_date;
   if (f === 'slipped') return (m.dateHistory || []).some(h => daysSince(h.t) <= 30);
+  if (f === 'newly_off') return newlyOffTrack(m);
+  if (f === 'completed_recent') return m.status === 'complete' && !!m.completedAt && new Date(m.completedAt).getTime() > new Date(lastMeetingISO() + 'T23:59:59').getTime();
   return true;
 }
 function logDateMove(m, from, to, reason) {
@@ -2965,15 +3370,6 @@ function slipSummary(m) {
 }
 function recordCheckin(m, answer, forecast, note) {
   (m.checkins = m.checkins || []).push({ t: new Date().toISOString(), by: currentDisplayName() || '', answer, forecast: answer === 'yes' ? null : (forecast || null), note: (note || '').trim() });
-}
-function forecastChip(m) {
-  if (m.status === 'complete') return '';
-  const w = watermelonReasons(m), parts = [];
-  if (w.length) parts.push(`<span class="fc-chip fc-warn" title="${esc(w.join('\n'))}">Check: ${esc(w[0].split(':')[0].toLowerCase())}</span>`);
-  else if (needsCheckin(m)) parts.push('<span class="fc-chip fc-stale" title="No check-in in the last 2 weeks">Update missing</span>');
-  const sl = slipSummary(m);
-  if (sl) parts.push(`<span class="fc-chip fc-slip" title="${esc((m.dateHistory || []).map(h => `${fmtDate(h.from)} → ${fmtDate(h.to)}${h.reason ? ': ' + h.reason : ''}`).join('\n'))}">${esc(sl)}</span>`);
-  return parts.length ? `<div class="fc-chips">${parts.join('')}</div>` : '';
 }
 
 // Forecast accuracy: of milestones someone called "on time" 30+ days before the due date, how many landed on time
@@ -3000,7 +3396,7 @@ function forecastCard(list) {
   const cal = rows.length ? `<table class="fc-cal"><thead><tr><th>Team</th><th>Called "on time" 30+ days out</th><th>Landed on time</th></tr></thead><tbody>${rows.map(r => `<tr><td>${esc(r.team)}</td><td>${r.n}</td><td><b>${r.pct}%</b> <span class="muted">(${r.k} of ${r.n})</span></td></tr>`).join('')}</tbody></table>`
     : '<p class="muted fc-empty">No completed forecasts yet</p>';
   return `<section class="ex-card fc-card">
-    <div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('check')}<h3>Forecast check</h3></div><div class="fc-actions"><button class="btn btn-ghost btn-sm" data-open-checkins>Check-ins</button><button class="btn btn-ghost btn-sm" data-open-agenda>Meeting agenda</button></div></div>
+    <div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('check')}<h3>Forecast check</h3></div><div class="fc-actions"><button class="btn btn-ghost btn-sm" data-open-checkins>Check-ins</button><button class="btn btn-ghost btn-sm" data-open-agenda>Open agenda</button></div></div>
     <div class="fc-tiles">${tile(stale, 'Update missing', 'stale', 'Open milestones due within 6 months with no check-in in 2 weeks')}${tile(wm, 'Needs a look', 'watermelon', 'Marked on track, but pace, check-ins, or deadline moves disagree')}${tile(sl, 'Deadlines moved', 'slipped', 'Due dates changed in the last 30 days')}</div>
     <div class="fc-sub"><h4>Forecast accuracy by team</h4>${cal}</div>
   </section>`;
@@ -3008,6 +3404,7 @@ function forecastCard(list) {
 
 /* ---------- Milestone editor: check-in, checkpoints, deadline reason ---------- */
 function checkinBlock(m) {
+  if (m.status === 'complete') return '';
   const lc = lastCheckin(m), hist = (m.checkins || []).slice().reverse(), wm = watermelonReasons(m);
   const q = m.due_date ? `Will this land by <b>${esc(fmtDate(m.due_date))}</b>?` : 'Set a due date, then check in.';
   return `<div class="ci-block" id="ciBlock">
@@ -3029,8 +3426,8 @@ function checkpointsBlock(m) {
   const cps = m.checkpoints || [];
   return `<div class="field"><label>Checkpoints</label>
       <div class="cp-list" id="cpList">${cps.map(cpRow).join('')}</div>
-      <div class="cp-actions"><button type="button" class="btn btn-tonal btn-sm" id="cpAdd">+ Add checkpoint</button>${cps.length ? '' : '<button type="button" class="btn btn-ghost btn-sm" id="cpSuggest">Suggest 3</button>'}</div></div>
-    <div class="field" id="mDueWhyWrap" hidden><label>Why is the deadline moving? <span class="req">*</span></label><input id="mDueWhy" placeholder="Reason"></div>`;
+      <div class="cp-actions"><button type="button" class="btn btn-tonal btn-sm" id="cpAdd">+ Add checkpoint</button>${cps.length ? '' : '<button type="button" class="btn btn-ghost btn-sm" id="cpSuggest" title="Plan, draft and final review, spread before the due date">Add 3 standard steps</button>'}</div></div>
+`;
 }
 let ciAnswer = null;
 function wireForecastUI(m) {
@@ -3047,11 +3444,12 @@ function wireForecastUI(m) {
   const due = $('#mDue'), orig = m.due_date || '';
   if (due) due.addEventListener('change', () => { $('#mDueWhyWrap').hidden = !!m._draft || !(orig && due.value && due.value !== orig); });
   const list = $('#cpList');
+  list.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.classList.contains('cp-title') && e.target.value.trim()) { e.preventDefault(); e.stopPropagation(); $('#cpAdd').click(); } });
   $('#cpAdd').addEventListener('click', () => { list.insertAdjacentHTML('beforeend', cpRow({})); list.lastElementChild.querySelector('.cp-title').focus(); modalDirty = true; });
   const sg = $('#cpSuggest');
   if (sg) sg.addEventListener('click', () => {
     const dueV = ($('#mDue') || {}).value; if (!dueV) { toast('Set a due date first', 'err'); return; }
-    const t0 = today().getTime(), t1 = parseDate(dueV).getTime(); if (t1 <= t0) { toast('The due date has passed. Add checkpoints by hand.', 'err'); return; }
+    const t0 = today().getTime(), t1 = parseDate(dueV).getTime(); if (t1 <= t0) { toast('The due date has passed. Add checkpoints by hand', 'err'); return; }
     const at = f => { const d = new Date(t0 + (t1 - t0) * f); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
     [['Plan, owners, and inputs confirmed', 0.25], ['Draft or first version done', 0.6], ['Final review complete', 0.9]].forEach(([title, f]) => list.insertAdjacentHTML('beforeend', cpRow({ title, due: at(f) })));
     sg.remove(); modalDirty = true;
@@ -3065,6 +3463,8 @@ function readForecastUI(m) {
   const moved = !m._draft && !!oldDue && !!newDue && newDue !== oldDue;
   if (moved && !why) { $('#mDueWhyWrap').hidden = false; markInvalid($('#mDueWhy'), 'Add a reason for moving the deadline'); return false; }
   const cps = $$('#cpList .cp-row').map(r => ({ id: r.dataset.cpid, title: r.querySelector('.cp-title').value.trim(), due: r.querySelector('.cp-due').value || null, done: r.querySelector('.cp-done').checked })).filter(c => c.title);
+  const dueNow = ($('#mDue') || {}).value, lateCp = dueNow && cps.find(c => c.due && c.due > dueNow && !c.done);
+  if (lateCp) toast(`"${clip(lateCp.title, 40)}" is dated after the milestone's due date`, 'warn');
   return { answer, fc, note, moved, oldDue, newDue, why, cps };
 }
 function applyForecastUI(m, fx, prevStatus) {
@@ -3095,17 +3495,24 @@ function openCheckins() {
   const list = (me ? pool.filter(m => ownsM(m, me)) : pool.filter(needsCheckin)).sort((a, b) => (needsCheckin(b) - needsCheckin(a)) || (a.due_date < b.due_date ? -1 : 1));
   const cal = me ? calibration(M().filter(m => ownsM(m, me))) : null;
   const rows = list.map(m => { const lc = lastCheckin(m); return `<div class="ck-row ${needsCheckin(m) ? 'due' : ''}" data-ckid="${esc(m.id)}">
-      <div class="ck-main"><div class="ck-t">${esc(m.activity)}</div><div class="ck-m">Due ${esc(fmtDate(m.due_date))}${me ? '' : ' · ' + esc(ownersOf(m).join(' / ') || 'Unassigned')} · ${lc ? 'last: ' + esc(CI_LABEL[lc.answer] || lc.answer) + ', ' + esc(fmtWhen(lc.t)) : 'no check-in yet'}</div></div>
-      <div class="ci-seg">${['yes', 'probably', 'unlikely'].map(a => `<button type="button" class="ci-opt ci-${a}" data-ck="${a}">${CI_LABEL[a]}</button>`).join('')}</div>
+      <div class="ck-main"><div class="ck-t"><button type="button" class="ag-link" data-expand="${esc(m.id)}" title="Open">${esc(m.activity)}</button></div><div class="ck-m">Due ${esc(fmtDate(m.due_date))}${me ? '' : ' · ' + esc(ownersOf(m).join(' / ') || 'Unassigned')} · ${lc ? 'last: ' + esc(CI_LABEL[lc.answer] || lc.answer) + ', ' + esc(fmtWhen(lc.t)) : 'no check-in yet'}</div></div>
+      <div class="ci-seg">${['yes', 'probably', 'unlikely'].map(a => `<button type="button" class="ci-opt ci-${a}" data-ck="${a}" aria-pressed="false">${CI_LABEL[a]}</button>`).join('')}</div>
       <div class="ck-more" hidden><input type="date" class="ck-fc" aria-label="Expected finish date" title="Expected finish date"><input class="ck-note" placeholder="Risk or ask"></div></div>`; }).join('');
-  const lede = `<p class="modal-lede">Will each milestone land by its due date?</p>`;
+  const lede = `<p class="modal-lede">Will each milestone land by its due date?${list.length > 2 ? ' <button type="button" class="btn btn-ghost btn-sm" data-ck-allyes>Mark all on time</button>' : ''}</p>`;
   const calHtml = cal && cal.n ? `<p class="ck-cal">Your forecast accuracy: ${cal.k} of ${cal.n} on time</p>` : '';
   const w = openSheet(me ? 'Your check-ins' : 'Check-ins needed', lede + calHtml + (rows || '<p class="muted">No check-ins due</p>'),
-    `<button class="btn btn-text" data-sheet-close>Cancel</button><button class="btn btn-filled" id="ckSave">Save check-ins</button>`);
+    `<button class="btn btn-text" data-sheet-close>Cancel</button><button class="btn btn-filled" id="ckSave" disabled>Save check-ins</button>`);
+  w.addEventListener('click', e => {   // closing with answers picked asks first
+    const leaving = e.target === w || e.target.closest('[data-sheet-close]');
+    const n = $$('#sheetBackdrop .ck-row').filter(r => r.dataset.answer).length;
+    if (leaving && n && !w.dataset.ok) { e.stopImmediatePropagation(); e.preventDefault(); confirmDialog({ title: `Discard ${n} check-in${n === 1 ? '' : 's'}?`, message: 'Your answers have not been saved', confirmLabel: 'Discard', danger: true, onConfirm: () => { w.dataset.ok = '1'; closeSheet(); } }); }
+  }, true);
   w.addEventListener('click', e => {
+    if (e.target.closest('[data-ck-allyes]')) { w.querySelectorAll('.ck-row').forEach(r => { const y = r.querySelector('[data-ck="yes"]'); if (y && !r.dataset.answer) y.click(); }); return; }
     const b = e.target.closest('[data-ck]'); if (!b) return;
-    const row = b.closest('.ck-row'); row.querySelectorAll('[data-ck]').forEach(x => x.classList.toggle('on', x === b));
+    const row = b.closest('.ck-row'); row.querySelectorAll('[data-ck]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
     row.dataset.answer = b.dataset.ck; row.querySelector('.ck-more').hidden = false; row.querySelector('.ck-fc').hidden = b.dataset.ck === 'yes';
+    const n = $$('#sheetBackdrop .ck-row').filter(r => r.dataset.answer).length; $('#ckSave').textContent = `Save ${n} check-in${n === 1 ? '' : 's'}`; $('#ckSave').disabled = !n;
   });
   $('#ckSave').addEventListener('click', () => {
     const picked = $$('#sheetBackdrop .ck-row').filter(r => r.dataset.answer);
@@ -3134,30 +3541,7 @@ function copyText(txt, msg) {
   fallback();
   function fallback() { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) { toast("Couldn't copy", 'err'); } ta.remove(); }
 }
-function openAgenda() {
-  const list = filtered(), open = list.filter(m => m.status !== 'complete');
-  const off = open.filter(m => m.status !== 'blocked' && effectiveStatus(m) === 'behind'), risk = open.filter(m => effectiveStatus(m) === 'at_risk'), blocked = open.filter(m => m.status === 'blocked');
-  const wm = open.filter(m => watermelonReasons(m).length), moved = list.filter(m => (m.dateHistory || []).some(h => daysSince(h.t) <= 14)), stale = open.filter(needsCheckin);
-  const meta1 = m => esc([m.market, ownersOf(m).join(' / ') || 'Unassigned', m.due_date ? 'due ' + fmtDate(m.due_date) : ''].filter(Boolean).join(' · '));
-  const li = (m, extra) => `<li><b>${esc(m.activity)}</b> <span class="muted">${meta1(m)}</span>${extra ? `<div class="ag-x">${extra}</div>` : ''}</li>`;
-  const ciX = m => { const c = lastCheckin(m); return c ? [c.forecast ? 'Expects ' + esc(fmtDate(c.forecast)) : '', c.note ? 'Ask: ' + esc(c.note) : ''].filter(Boolean).join(' · ') : ''; };
-  const sec = (title, items, fn) => items.length ? `<section class="ag-sec"><h4>${title} <span class="muted">(${items.length})</span></h4><ul>${items.map(fn).join('')}</ul></section>` : '';
-  const byOwner = {}; stale.forEach(m => (ownersOf(m).length ? ownersOf(m) : ['Unassigned']).forEach(o => (byOwner[o] = byOwner[o] || 0, byOwner[o]++)));
-  const body = `<p class="modal-lede">${esc(new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }))} · current filters</p>`
-    + `<div id="agSince"><p class="muted">Loading what changed since the last meeting</p></div><h3 class="ag-h">Open issues</h3>`
-    + sec('Behind', off, m => li(m, ciX(m)))
-    + sec('Blocked', blocked, m => li(m, m.dependency ? 'Blocked by: ' + esc(m.dependency) : ''))
-    + sec('At risk', risk, m => li(m, ciX(m)))
-    + sec('Needs a look', wm, m => li(m, watermelonReasons(m).map(esc).join('; ')))
-    + sec('Deadlines moved in the last 2 weeks', moved, m => { const h = (m.dateHistory || []).slice(-1)[0]; return li(m, `${esc(fmtDate(h.from))} → ${esc(fmtDate(h.to))}${h.reason ? ': ' + esc(h.reason) : ''}`); })
-    + (stale.length ? `<section class="ag-sec"><h4>Update missing <span class="muted">(${stale.length})</span></h4><ul>${Object.entries(byOwner).sort((a, b) => b[1] - a[1]).map(([o, n]) => `<li><b>${esc(o)}</b> <span class="muted">${n} milestone${n === 1 ? '' : 's'}</span></li>`).join('')}</ul></section>` : '')
-    + ((off.length + blocked.length + risk.length + wm.length + moved.length + stale.length) ? '' : '<p class="muted">Nothing to raise</p>');
-  const w = openSheet('Meeting agenda', body, `${stale.length ? '<button class="btn btn-ghost" id="agEmail">Email reminders</button><button class="btn btn-ghost" id="agCopy">Copy reminder text</button>' : ''}<button class="btn btn-filled" id="agPrint">Print agenda</button>`);
-  $('#agPrint').addEventListener('click', () => { document.body.classList.add('print-agenda'); window.addEventListener('afterprint', () => document.body.classList.remove('print-agenda'), { once: true }); window.print(); });
-  const cp = $('#agCopy'); if (cp) cp.addEventListener('click', () => copyText(reminderText(stale)));
-  const em = $('#agEmail'); if (em) em.addEventListener('click', () => openMail([...new Set(stale.flatMap(ownersOf))].map(ownerEmail).filter(Boolean), 'Growth Hub check-ins before our next meeting', reminderText(stale)));
-  fillSinceLastMeeting(list);
-}
+function openAgenda() { return setView('meetings'); }
 document.addEventListener('scroll', e => { const t = e.target; if (t && t.classList && t.classList.contains('modal-body')) t.classList.toggle('is-scrolled', t.scrollTop > 0); }, true);
 
 /* ============================================================
@@ -3208,16 +3592,16 @@ function committeeSignals() {
 
 function committeeCard() {
   const s = committeeSignals(), mt = mtg();
-  const when = s.next ? `Next meeting ${esc(fmtDate(s.next))} · ${s.daysToNext === 0 ? 'today' : s.daysToNext < 0 ? `${Math.abs(s.daysToNext)} days ago` : `in ${s.daysToNext} day${s.daysToNext === 1 ? '' : 's'}`}` : '<button class="btn btn-text btn-sm" data-open-settings>Set the next meeting date</button>';
+  const when = s.next ? `Next meeting ${esc(fmtDate(s.next))}${mt.time ? ', ' + esc(fmtTime(mt.time)) : ''} · ${s.daysToNext === 0 ? 'today' : s.daysToNext < 0 ? `${Math.abs(s.daysToNext)} days ago` : `in ${s.daysToNext} day${s.daysToNext === 1 ? '' : 's'}`}` : '<button class="btn btn-text btn-sm" data-open-settings>Set the next meeting date</button>';
   const head = { start: 'No team updates yet', ok: 'On track for the next meeting', touch: `Touch base with ${s.teams.length} team${s.teams.length === 1 ? '' : 's'}`, early: 'Consider an early meeting' }[s.level];
-  const rows = s.teams.map(t => `<div class="cm-row"><div class="cm-main"><div class="cm-team">${esc(t.team)}</div><div class="cm-why">${esc(t.reasons.join(' · '))}${t.people.length ? ' · ' + esc(t.people.join(', ')) : ''}</div></div><span class="cm-row-acts"><button class="btn btn-ghost btn-sm" data-email-team="${esc(t.team)}">Email</button><button class="btn btn-ghost btn-sm" data-copy-team="${esc(t.team)}">Copy note</button></span></div>`).join('');
+  const rows = s.teams.map(t => `<div class="cm-row"><div class="cm-main"><div class="cm-team">${esc(t.team)}</div><div class="cm-why">${esc(t.reasons.join(' · '))}${t.people.length ? ' · ' + esc(t.people.slice(0, 3).join(', ') + (t.people.length > 3 ? ` and ${t.people.length - 3} more` : '')) : ''}</div></div><span class="cm-row-acts"><button class="btn btn-ghost btn-sm" data-email-team="${esc(t.team)}">Email</button><button class="btn btn-ghost btn-sm" data-copy-team="${esc(t.team)}">Copy note</button></span></div>`).join('');
   return `<section class="ex-card cm-card cm-${s.level}">
     <div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('people')}<h3>Between meetings</h3></div><div class="cm-when">${when}</div></div>
     <div class="cm-status"><span class="cm-dot"></span><b>${head}</b></div>
     ${s.early.length ? `<ul class="cm-early">${s.early.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
-    ${s.level === 'start' ? `<div class="cm-first"><span>Ask team leads for their first check-in</span><button class="btn btn-tonal btn-sm" data-copy-all>Copy reminder for everyone</button></div>` : rows ? `<div class="cm-list">${rows}</div>` : ''}
-    <div class="cm-counts">${[['stale', 'Updates missing', M().filter(needsCheckin).length], ['watermelon', 'Needs a look', M().filter(m => m.status !== 'complete' && watermelonReasons(m).length).length], ['slipped', 'Deadlines moved', M().filter(m => flagPass(m, 'slipped')).length]].map(([fl, l, n]) => `<button class="cm-count" data-drilldim="flag" data-drillval="${fl}"><b>${n}</b> ${l}</button>`).join('')}</div>
-    <div class="cm-foot"><span class="muted">Updates every ${cadenceDays() === 7 ? 'week' : '2 weeks'}${mt.last ? ` · last meeting ${esc(fmtDate(mt.last))}` : ''}</span><span class="cm-actions"><button class="btn btn-ghost btn-sm" data-open-agenda>Meeting agenda</button><button class="btn btn-tonal btn-sm" data-mtg-held>Mark meeting held</button></span></div>
+    ${s.level === 'start' ? `<div class="cm-first"><span>Ask team leads for their first check-in</span><span class="cm-first-acts"><button class="btn btn-ghost btn-sm" data-mt="remind">Email everyone</button><button class="btn btn-tonal btn-sm" data-copy-all>Copy reminder for everyone</button></span></div>` : rows ? `<div class="cm-list">${rows}</div>` : ''}
+    <div class="cm-counts">${[['stale', 'Updates missing', M().filter(needsCheckin).length], ['watermelon', 'Needs a look', M().filter(m => m.status !== 'complete' && watermelonReasons(m).length).length], ['slipped', 'Deadlines moved', M().filter(m => flagPass(m, 'slipped')).length]].map(([fl, l, n]) => `<button class="cm-count" data-drilldim="flag" data-drillval="${fl}"><b>${n}</b> ${l}</button>`).join('')}${openActions().length ? `<button class="cm-count" data-goview="meetings"><b>${openActions().length}</b> Action items</button>` : ''}</div>
+    <div class="cm-foot"><span class="muted">Updates every ${cadenceDays() === 7 ? 'week' : '2 weeks'}${mt.last ? ` · last meeting ${meta().meetBook && (meta().meetBook.minutes || []).length ? `<button type="button" class="btn btn-text btn-sm cm-minlink" data-goview="meetings">${esc(fmtDate(mt.last))}</button>` : esc(fmtDate(mt.last))}` : ''}</span><span class="cm-actions">${isAdmin() && mt.next === todayISO() && !(meta().meetBook && meta().meetBook.live) ? '<button class="btn btn-filled btn-sm" data-goview="meetings" data-mt="start">Start meeting</button>' : ''}<button class="btn btn-ghost btn-sm" data-open-agenda>Open agenda</button><button class="btn btn-tonal btn-sm" data-mtg-held>Mark meeting held</button></span></div>
   </section>`;
 }
 function teamNote(team) {
@@ -3229,21 +3613,22 @@ function teamNote(team) {
 function markMeetingHeld() {
   if (!guardAdmin()) return;
   const mt = mtg(), t = todayISO(), before = { last: mt.last, next: mt.next };
-  mt.last = t; if (!(mt.next && mt.next > t)) mt.next = offsetDateISO(t, 1);   // keep a future date someone already set
+  mt.last = t; if (!(mt.next && mt.next > t)) mt.next = nextMeetingAfter(t);   // keep a future date someone already set
   logActivity('edit', 'Marked committee meeting held'); autosave(); rerender();
   toastAction(`Meeting held. Next one ${fmtDate(mt.next)}`, 'Undo', () => { const m2 = mtg(); m2.last = before.last; m2.next = before.next; autosave(); rerender(); });
 }
 function meetingSettingsHtml() {
   const mt = mtg();
-  return `<details class="dw-sec dw-fold" open><summary>Committee meetings</summary>
+  return `<details class="dw-sec dw-fold" open><summary>Committee meetings</summary><button type="button" class="btn btn-text btn-sm dw-golink" data-goview="meetings">Open Meetings</button>
     <div class="field-row"><div class="field"><label>Next meeting</label><input type="date" id="mtgNext" value="${esc(mt.next || '')}"></div>
+    <div class="field"><label for="mtgEvery">Committee meets</label><select id="mtgEvery">${[['month', 'Monthly'], ['2weeks', 'Every 2 weeks'], ['week', 'Weekly']].map(([v, l]) => `<option value="${v}" ${(mt.every || 'month') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
     <div class="field"><label>Team updates</label><select id="mtgCadence"><option value="14" ${cadenceDays() === 14 ? 'selected' : ''}>Every 2 weeks</option><option value="7" ${cadenceDays() === 7 ? 'selected' : ''}>Every week</option></select></div></div>
   </details>`;
 }
 document.addEventListener('change', e => {
-  const id = e.target && e.target.id; if (id !== 'mtgNext' && id !== 'mtgCadence') return;
+  const id = e.target && e.target.id; if (id !== 'mtgNext' && id !== 'mtgCadence' && id !== 'mtgEvery') return;
   if (!guardAdmin()) { renderDrawer(); return; }
-  if (id === 'mtgNext') mtg().next = e.target.value || null; else mtg().cadenceDays = +e.target.value;
+  if (id === 'mtgNext') mtg().next = e.target.value || null; else if (id === 'mtgEvery') mtg().every = e.target.value; else mtg().cadenceDays = +e.target.value;
   autosave(); rerender(); toast('Meeting settings saved', 'ok');
 });
 
@@ -3287,14 +3672,15 @@ function renderMasthead() {
     if (schools.length) {
       const keys = schools.map(s => ragReady(sMs(s)).key), onT = keys.filter(k => k === 'green' || k === 'blue').length;
       const tone = onT === schools.length ? 'ok' : keys.includes('red') ? 'bad' : 'warn';
-      items.push(`<button class="mb-fact" data-mb="openings"><i class="mb-dot mb-${tone}"></i><b>${onT} of ${schools.length}</b> openings on track</button>`);
+      const offOpen = state.data.schools.filter(sc => sc.openingFY && ['red', 'yellow'].includes(ragReady(schoolMs(sc)).key)).map(sc => sc.market + ' ' + sc.display_label);
+      items.push(`<button class="mb-fact" data-mb="openings" ${offOpen.length ? `title="Not on track: ${esc(offOpen.join(', '))}"` : ''}><i class="mb-dot mb-${tone}"></i><b>${onT} of ${schools.length}</b> openings on track</button>`);
     }
     const att = attentionItems(filtered()).length;
     items.push(`<button class="mb-fact" data-mb="attention"><i class="mb-dot mb-${att ? 'warn' : 'ok'}"></i>${att ? `<b>${att}</b> need${att === 1 ? 's' : ''} attention` : 'Nothing needs attention'}</button>`);
     const sig = committeeSignals();
     if (sig.next) {
       const d = sig.daysToNext, when = d === 0 ? 'today' : d < 0 ? `was ${fmtDate(sig.next)}` : d === 1 ? 'tomorrow' : `in ${d} days`;
-      items.push(`<button class="mb-fact" data-mb="meeting"><i class="mb-dot mb-info"></i>Next meeting <b>${esc(when)}</b></button>`);
+      items.push(`<button class="mb-fact" data-mb="meeting"><i class="mb-dot mb-info"></i>Next meeting <b>${esc(when)}${mtg().time && d >= 0 ? ', ' + esc(fmtTime(mtg().time)) : ''}</b></button>`);
     } else if (isAdmin()) items.push(`<button class="mb-fact" data-mb="setmeeting"><i class="mb-dot mb-none"></i>Next meeting not set</button>`);
   } catch (e) {}
   brief.innerHTML = items.join('');
@@ -3313,8 +3699,7 @@ document.addEventListener('click', e => {
   const k = b.dataset.mb;
   if (k === 'openings') go('#view-progress .dt-card');
   else if (k === 'attention') go('#view-progress .al-card');
-  else if (k === 'meeting') go('#view-progress .cm-card');
-  else if (k === 'setmeeting') { const s = document.querySelector('[data-open-settings]'); if (s) s.click(); else go('#view-progress .cm-card'); }
+  else if (k === 'meeting' || k === 'setmeeting') { if (MEETINGS_ON) setView('meetings'); else if (k === 'setmeeting') { const s2 = document.querySelector('[data-open-settings]'); if (s2) s2.click(); } else go('#view-progress .cm-card'); }
 });
 /* Sidebar counts: only what needs action. Openings off track or at risk; milestones needing attention. */
 function renderNavCounts() {
@@ -3322,6 +3707,7 @@ function renderNavCounts() {
   try {
     const off = state.data.schools.filter(s => s.openingFY && ['red', 'yellow'].includes(ragReady(schoolMs(s)).key)).length;
     set('#navBadgeOpen', off, 'danger', off + ' opening' + (off === 1 ? '' : 's') + ' at risk or behind');
+    const lv = $('#navBadgeMtg'); if (lv) { const on = !!(meta().meetBook && meta().meetBook.live); lv.hidden = !on; lv.title = on ? 'A meeting is in progress' : ''; }
     const att = attentionItems(M()).length;
     set('#navBadgePlan', att, 'warn', att + ' milestone' + (att === 1 ? '' : 's') + ' need attention');
   } catch (e) {}
@@ -3345,11 +3731,12 @@ function ctxScopeParts() {
 function renderCtxBar() {
   const t = $('#ctxTitle'), sc = $('#ctxScope'); if (!t || !sc) return;
   const v = state.view, parts = ctxScopeParts();
-  t.textContent = v === 'timeline' ? 'Openings' : v === 'plan' ? 'Milestones' : 'Dashboard';
+  t.textContent = v === 'timeline' ? 'Openings' : v === 'plan' ? 'Milestones' : v === 'meetings' ? 'Meetings' : 'Dashboard';
   let count = '';
   try {
-    if (v === 'plan') { const n = filtered().length; count = n + ' milestone' + (n === 1 ? '' : 's'); }
+    if (v === 'plan') { const all = filtered(), n = state.hideDone ? all.filter(m => m.status !== 'complete').length : all.length, hid = all.length - n; count = n + ' milestone' + (n === 1 ? '' : 's') + (hid ? ` · ${hid} done hidden` : ''); }
     else if (v === 'timeline') { const n = ganttSchools().filter(s => s.openingFY).length; count = n + ' school' + (n === 1 ? '' : 's'); }
+    else if (v === 'meetings') { const L = mbook().live; count = L ? `Meeting in progress · item ${L.idx + 1} of ${L.items.length}` : (mtg().next ? 'Next meeting ' + fmtDate(mtg().next) : 'No meeting scheduled'); }
   } catch (e) {}
   const scope = parts.length ? parts.join(' · ') : (v === 'progress' ? 'All markets and teams' : '');
   sc.textContent = [scope, count].filter(Boolean).join(' · ');
@@ -3422,7 +3809,7 @@ function myMentions(days) {
 function mentionsCard() {
   const items = myMentions(14); if (!items.length) return '';
   return `<section class="ex-card mn-card"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('people')}<h3>Mentions for you</h3></div><span class="dt-sum">${items.length}</span></div>
-    <div class="al-list">${items.slice(0, 4).map(({ m, nt }) => `<div class="al-row" data-expand="${esc(m.id)}"><div class="al-main"><div class="al-t">${esc(m.activity)}</div><div class="al-m"><b>${esc(nt.by || 'Someone')}</b> · ${esc(fmtWhen(nt.t))} · ${esc(clip(nt.text, 140))}</div></div></div>`).join('')}</div></section>`;
+    ${items.length > 4 ? `<button class="card-more" data-allmentions>View all ${items.length}</button>` : ''}<div class="al-list">${items.slice(0, 4).map(({ m, nt }) => `<div class="al-row" data-expand="${esc(m.id)}"><div class="al-main"><div class="al-t">${esc(m.activity)}</div><div class="al-m"><b>${esc(nt.by || 'Someone')}</b> · ${esc(fmtWhen(nt.t))} · ${esc(clip(nt.text, 140))}</div></div></div>`).join('')}</div></section>`;
 }
 
 /* ---------- documents and "waiting on" ---------- */
@@ -3434,6 +3821,11 @@ function depIssue(m, d) {
   if (effectiveStatus(d) === 'behind') return 'behind';
   if (d.due_date && m.due_date && d.due_date > m.due_date) return 'due after this one';
   return '';
+}
+// After a milestone is completed: say who can now move
+function unblockNote(m) {
+  const n = M().filter(x => x.status !== 'complete' && (x.blockedBy || []).includes(m.id)).length;
+  return n ? `. Unblocks ${n} milestone${n === 1 ? '' : 's'}` : '';
 }
 function waitingReasons(m) {
   return (m.blockedBy || []).map(findM).filter(Boolean).map(d => { const i = depIssue(m, d); return i ? `Waits on "${clip(d.activity, 48)}", which is ${i}` : ''; }).filter(Boolean);
@@ -3458,7 +3850,7 @@ function linksDepsBlock(m) {
   const deps = (m.blockedBy || []).map(findM).filter(Boolean), needed = M().filter(x => (x.blockedBy || []).includes(m.id));
   return `<div class="m-sec-h">Waiting on</div>
     <div class="field"><div id="depList">${deps.map(d => depRowHtml(m, d)).join('')}</div>
-      <select id="depAdd" aria-label="Add a milestone this waits on"><option value="">Add a milestone this waits on</option>${depOptions(m, deps.map(d => d.id))}</select>
+      ${M().length > 40 ? '<input type="search" id="depFind" class="dep-find" placeholder="Find a milestone to wait on" aria-label="Find a milestone to wait on">' : ''}<select id="depAdd" aria-label="Add a milestone this waits on"><option value="">Add a milestone this waits on</option>${depOptions(m, deps.map(d => d.id))}</select>
       </div>
     ${needed.length ? `<div class="field"><label>Needed by</label><div class="dep-needed">${needed.map(n => `<div class="dep-row">${statusDot(effectiveStatus(n))}<button type="button" class="dep-name" data-expand="${esc(n.id)}">${esc(n.activity)}</button><span class="dep-meta">${n.due_date ? 'Due ' + esc(fmtDate(n.due_date)) : ''}</span></div>`).join('')}</div></div>` : ''}
     <div class="m-sec-h">Documents</div>
@@ -3469,6 +3861,7 @@ function addLinkFromInputs() {
   const u = $('#lkUrl'), l = $('#lkLabel'); if (!u || !u.value.trim()) return true;
   const url = safeUrl(u.value.trim().match(/^https?:\/\//i) ? u.value.trim() : 'https://' + u.value.trim());
   if (!url) { markInvalid(u, 'Paste a full link that starts with https://'); return false; }
+  if ($$('#lkList .lk-row').some(r => r.dataset.url === url)) { markInvalid(u, 'That link is already here'); return false; }
   $('#lkList').insertAdjacentHTML('beforeend', linkRowHtml({ url, label: l.value.trim() }));
   u.value = ''; l.value = ''; modalDirty = true; return true;
 }
@@ -3557,15 +3950,18 @@ function buildIcs(name, items, schools) {
   const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//KIPP NGC//Growth Hub//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', `X-WR-CALNAME:${icsEsc(name)}`];
   items.filter(m => m.due_date && !m._draft).forEach(m => L.push(...ev(`m-${m.id}@growth-hub`, m.due_date, `${m.status === 'complete' ? 'Done' : 'Due'}: ${m.activity}`,
     [`Status: ${SM(effectiveStatus(m)).label}`, `Owner: ${ownersOf(m).join(', ') || 'Unassigned'}`, m.market ? `Market: ${m.market}` : '', m.functional_area ? `Team: ${m.functional_area}` : '', '', `Open in Growth Hub: ${taskLink(m.id)}`].filter((x, i) => x || i === 4).join('\n'), taskLink(m.id))));
+  if (mtg().next && mtg().time) { const d0 = (mtg().next + 'T' + mtg().time).replace(/[-:]/g, '') + '00'; L.push('BEGIN:VEVENT', `UID:mtg-${WS}@growth-hub`, `DTSTAMP:${stamp}`, `DTSTART:${d0}`, `DURATION:PT${Math.max(15, agendaItems().reduce((a, x) => a + (+x.mins || 0), 0))}M`, 'SUMMARY:Growth committee meeting', `DESCRIPTION:${icsEsc('Agenda: ' + location.origin + location.pathname + '#meetings')}`, `URL:${location.origin + location.pathname}#meetings`, 'END:VEVENT'); }
+  else if (mtg().next) L.push(...ev(`mtg-${WS}@growth-hub`, mtg().next, 'Growth committee meeting', 'Agenda: ' + location.origin + location.pathname + '#meetings', location.origin + location.pathname + '#meetings'));
   schools.filter(s => s.opening_date).forEach(s => L.push(...ev(`s-${s.id}@growth-hub`, s.opening_date, `Opens: ${[s.market, s.display_label].filter(Boolean).join(' ')}`, 'School opening', location.origin + location.pathname)));
   L.push('END:VCALENDAR');
   return L.map(icsFold).join('\r\n') + '\r\n';
 }
 function downloadIcs(scope) {
   const me = myOwnerName(), items = scope === 'mine' ? M().filter(m => ownsM(m, me)) : filtered();
+  if (!items.some(m => m.due_date && m.status !== 'complete')) return toast('No open milestones with due dates to add', 'warn');
   const txt = buildIcs(scope === 'mine' ? 'Growth Hub: my milestones' : 'Growth Hub milestones', items, state.data.schools || []);
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'text/calendar' }));
-  a.download = scope === 'mine' ? 'growth-hub-my-milestones.ics' : 'growth-hub-milestones.ics';
+  a.download = scope === 'mine' ? `growth-hub-${boardSlug()}-mine.ics` : `growth-hub-${boardSlug()}.ics`;
   document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   toast(`Downloaded ${items.filter(m => m.due_date).length} due dates. Open the file to add them to Outlook`, 'ok');
 }
@@ -3591,7 +3987,7 @@ function openCalendarSheet() {
   const body = `
     <section class="ag-sec"><h4>Subscribe in Outlook</h4><div id="calSub"><p class="muted">Getting your link</p></div></section>
     <section class="ag-sec"><h4>Or download a file</h4><p class="muted cal-note">One-time copy</p>
-      <div class="dw-btns">${me ? '<button type="button" class="btn" data-calfile="mine">My milestones</button>' : ''}<button type="button" class="btn" data-calfile="view">Milestones in the current view</button></div></section>`;
+      <div class="dw-btns">${me ? `<button type="button" class="btn" data-calfile="mine">My milestones (${M().filter(m => ownsM(m, me) && m.due_date && m.status !== 'complete').length})</button>` : ''}<button type="button" class="btn" data-calfile="view">Current view (${filtered().filter(m => m.due_date && m.status !== 'complete').length})</button></div></section>`;
   const w = openSheet('Add deadlines to Outlook', body, '<button class="btn btn-filled" data-sheet-close>Done</button>');
   w.addEventListener('click', e => {
     const f = e.target.closest('[data-calfile]'); if (f) return downloadIcs(f.dataset.calfile);
@@ -3633,7 +4029,25 @@ async function intCall(fn, args, okMsg) {
 
 /* ---------- ?m=<id> opens a milestone (links in Slack, email and calendars) ---------- */
 function openDeepLink() {
-  let id = null; try { id = new URLSearchParams(location.search).get('m'); } catch (e) {}
+  let id = null, q = ''; try { const sp = new URLSearchParams(location.search); id = sp.get('m'); q = (sp.get('q') || '').trim().slice(0, 80); } catch (e) {}
+  let fl = null; try { fl = new URLSearchParams(location.search).get('f'); } catch (e) {}
+  if (fl && applyViewLink(fl)) {
+    try { const u = new URL(location.href); u.searchParams.delete('f'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } catch (e) {}
+    state.viewLinkApplied = true; rerender();
+  }
+  if (q) {   // ?q=<text> from the home search: open Milestones filtered to it
+    try { const u = new URL(location.href); u.searchParams.delete('q'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } catch (e) {}
+    state.filters.search = q; setView('plan'); rerender();
+  }
+  let sid = null; try { sid = new URLSearchParams(location.search).get('s'); } catch (e) {}
+  if (sid) {   // ?s=<id> opens a school opening
+    let st = 0;
+    const goS = () => {
+      if (schoolById(sid)) { try { const u = new URL(location.href); u.searchParams.delete('s'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } catch (e) {} return openSchoolModal(sid); }
+      if (++st < (sbLoaded ? 3 : 30)) setTimeout(goS, 500); else toast("That school opening wasn't found", 'warn');
+    };
+    setTimeout(goS, 300);
+  }
   if (!id) return;
   let tries = 0;
   const go = () => {
@@ -3651,7 +4065,7 @@ function openDeepLink() {
 function wireCollab() {
   const mb = $('#modalBody');
   // Don't jump to another milestone with unsaved edits
-  mb.addEventListener('click', e => { if (e.target.closest('.dep-name, .ag-link') && modalDirty) { e.stopPropagation(); e.preventDefault(); toast('Save or cancel your changes first', 'warn'); } }, true);
+  mb.addEventListener('click', e => { if (e.target.closest('.dep-name, .ag-link') && modalDirty) { e.stopPropagation(); e.preventDefault(); toast('Save or discard your changes first', 'warn'); } }, true);
   mb.addEventListener('click', e => {
     const mo = e.target.closest('[data-mail-owners]'); if (mo) return emailOwners(mo.dataset.mailOwners);
     if (e.target.closest('.dep-x')) { e.target.closest('.dep-row').remove(); modalDirty = true; return; }
@@ -3682,6 +4096,7 @@ function wireCollab() {
     const id = e.target.id;
     if (id === 'intSave') {
       const v = ($('#intUrl').value || '').trim(); if (!v) return flagEmpty($('#intUrl'));
+      if (!/^https:\/\/hooks\.slack\.com\/services\//.test(v)) return markInvalid($('#intUrl'), 'Paste the webhook link from Slack. It starts with https://hooks.slack.com/services/');
       const st = await intCall('growth_integrations_set', { p_slack_webhook: v }, 'Slack connected'); if (st) loadIntegrations(st);
     } else if (id === 'intTest') intCall('growth_slack_test', {}, 'Test message sent');
     else if (id === 'intDigestNow') intCall('growth_slack_digest_now', {}, 'Digest sent to Slack');
@@ -3693,3 +4108,336 @@ function wireCollab() {
     if (st) loadIntegrations(st); else loadIntegrations();
   });
 }
+
+/* ============================================================
+   MEETINGS (Nov 2026): build the agenda, run the meeting, keep minutes.
+   Decision: admins build and run meetings. A committee has one chair, and
+   shared settings are already admin-written, so no new permissions are
+   needed. Everyone signed in can read the agenda, the live item and minutes.
+   Stored per board in meta().meetBook (settings row "meetbook@<board>").
+   ============================================================ */
+function mbook() {
+  const m = meta(); m.meetBook = m.meetBook || {}; const b = m.meetBook;
+  b.topics = b.topics || []; b.minutes = b.minutes || []; b.mins = b.mins || {};
+  b.include = Object.assign({ actions: true, since: true, issues: true, updates: true }, b.include || {});
+  return b;
+}
+function nextMeetingAfter(iso) { const e = mtg().every || 'month'; return e === 'month' ? offsetDateISO(iso, 1) : (() => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + (e === '2weeks' ? 14 : 7)); return d.toISOString().slice(0, 10); })(); }
+function topicDialog(tp) {
+  closeConfirm();
+  const w = document.createElement('div'); w.className = 'confirm-backdrop'; w.id = 'confirmBackdrop';
+  w.innerHTML = `<div class="confirm-box" role="dialog" aria-modal="true" aria-labelledby="tdH"><h3 id="tdH">Edit topic</h3>
+    <div class="field"><label for="tdTitle">Topic</label><input id="tdTitle" maxlength="140" value="${esc(tp.title)}"></div>
+    <div class="field"><label for="tdNote">Details or pre-read</label><textarea id="tdNote" rows="3" maxlength="600" placeholder="What to decide, links to read first">${esc(tp.note || '')}</textarea></div>
+    <div class="field"><label for="tdLead">Lead</label><select id="tdLead">${ownerOptions(tp.owner || '').replace('>Unassigned<', '>No lead<')}</select></div>
+    <div class="confirm-actions"><button class="btn btn-tonal" id="cfgCancel">Cancel</button><button class="btn btn-filled" id="cfgOk">Save</button></div></div>`;
+  document.body.appendChild(w);
+  const done = ok => { if (ok) { const t = $('#tdTitle').value.trim(); if (!t) return markInvalid($('#tdTitle'), 'Name the topic'); tp.title = t; tp.note = $('#tdNote').value.trim(); tp.owner = $('#tdLead').value; autosave(); } closeConfirm(); renderMeetings(); };
+  w.addEventListener('click', e => { if (e.target === w || e.target.id === 'cfgCancel') done(false); else if (e.target.id === 'cfgOk') done(true); });
+  w.addEventListener('keydown', e => { if (e.key === 'Escape') done(false); else if (e.key === 'Enter' && e.target.tagName === 'INPUT') done(true); });
+  setTimeout(() => $('#tdTitle').focus(), 30);
+}
+function fmtTime(hm) { const [h, m] = String(hm || '').split(':').map(Number); if (isNaN(h)) return ''; return `${(h % 12) || 12}:${String(m || 0).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`; }
+function addMins(hm, n) { const [h, m] = hm.split(':').map(Number), t = h * 60 + m + n; return `${String(Math.floor(t / 60) % 24).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`; }
+function meetingDateDialog() {
+  closeConfirm(); const mt = mtg();
+  const w = document.createElement('div'); w.className = 'confirm-backdrop'; w.id = 'confirmBackdrop';
+  w.innerHTML = `<div class="confirm-box" role="dialog" aria-modal="true" aria-labelledby="mdH"><h3 id="mdH">Next meeting</h3>
+    <div class="field-row"><div class="field"><label for="mdDate">Date</label><input id="mdDate" type="date" min="${todayISO()}" value="${esc(mt.next || nextMeetingAfter(todayISO()))}"></div>
+    <div class="field"><label for="mdTime">Start time</label><input id="mdTime" type="time" step="300" value="${esc(mt.time || '')}"></div></div>
+    <div class="confirm-actions"><button class="btn btn-tonal" id="cfgCancel">Cancel</button><button class="btn btn-filled" id="cfgOk">Save</button></div></div>`;
+  document.body.appendChild(w);
+  const done = ok => { if (ok) { const d = $('#mdDate').value; if (!d || d < todayISO()) return markInvalid($('#mdDate'), 'Pick today or a later date'); mtg().next = d; mtg().time = $('#mdTime').value || ''; autosave(); rerender(); toast(`Next meeting ${fmtDate(d)}${mtg().time ? ', ' + fmtTime(mtg().time) : ''}`, 'ok'); } closeConfirm(); };
+  w.addEventListener('click', e => { if (e.target === w || e.target.id === 'cfgCancel') done(false); else if (e.target.id === 'cfgOk') done(true); });
+  w.addEventListener('keydown', e => { if (e.key === 'Escape') done(false); else if (e.key === 'Enter') done(true); });
+  setTimeout(() => $('#mdDate').focus(), 30);
+}
+function relDays(iso) { const d = daysUntil(iso); return d === 0 ? 'today' : d === 1 ? 'tomorrow' : d > 0 ? `in ${d} days` : `${-d} day${d === -1 ? '' : 's'} ago`; }
+function fmtClock(ms) { const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0'); }
+function actionDone(a) { if (a.milestoneId) { const m = findM(a.milestoneId); if (m) return m.status === 'complete'; } return !!a.done; }
+function allActions() { return mbook().minutes.flatMap(mn => (mn.items || []).flatMap(it => (it.actions || []).map(a => Object.assign({ meeting: mn.date, item: it.title }, a)))); }
+function openActions() { const me = myOwnerName(); return allActions().filter(a => !actionDone(a)).sort((x, y) => ((y.owner && y.owner === me) - (x.owner && x.owner === me)) || (x.due || '9999').localeCompare(y.due || '9999')); }
+function findAction(id) { for (const mn of mbook().minutes) for (const it of (mn.items || [])) for (const a of (it.actions || [])) if (a.id === id) return a; const L = mbook().live; if (L) for (const it of L.items) for (const a of (it.actions || [])) if (a.id === id) return a; return null; }
+function meetingData() {
+  const list = M().filter(m => !m._draft), open = list.filter(m => m.status !== 'complete'), lm = lastMeetingISO(), since = new Date(lm + 'T23:59:59').getTime();
+  const after = t => t && new Date(t).getTime() > since;
+  const done = list.filter(m => m.status === 'complete' && after(m.completedAt));
+  const added = list.filter(m => after(m.createdAt));
+  const newly = open.filter(newlyOffTrack);
+  const moved = list.filter(m => (m.dateHistory || []).some(h => after(h.t)));
+  const blocked = open.filter(m => m.status === 'blocked'), behind = open.filter(m => m.status !== 'blocked' && effectiveStatus(m) === 'behind'), risk = open.filter(m => effectiveStatus(m) === 'at_risk');
+  const look = open.filter(m => !blocked.includes(m) && !behind.includes(m) && !risk.includes(m) && watermelonReasons(m).length);
+  const stale = open.filter(needsCheckin), byOwner = {};
+  stale.forEach(m => (ownersOf(m).length ? ownersOf(m) : ['Unassigned']).forEach(o => { byOwner[o] = (byOwner[o] || 0) + 1; }));
+  return { lm, done, added, newly, moved, blocked, behind, risk, look, stale, byOwner, acts: openActions() };
+}
+const MT_AUTO = { actions: ['Action items from last time', 5], since: ['Since the last meeting', 10], issues: ['Open issues', 15], updates: ['Updates missing', 5] };
+function agendaItems() {
+  const b = mbook(), d = meetingData(), items = [], mins = k => +b.mins[k] || MT_AUTO[k][1], ids = a => [...new Set(a.map(m => m.id))];
+  const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+  if (b.include.actions && d.acts.length) items.push({ key: 'actions', kind: 'Review', title: MT_AUTO.actions[0], mins: mins('actions'), sum: plural(d.acts.length, 'open action'), ids: [] });
+  if (b.include.since) items.push({ key: 'since', kind: 'Review', title: MT_AUTO.since[0], mins: mins('since'), sum: `${d.done.length} completed · ${d.newly.length} newly off track · ${plural(d.moved.length, 'deadline')} moved · ${d.added.length} added`, ids: ids([...d.newly, ...d.moved, ...d.done, ...d.added]) });
+  if (b.include.issues) items.push({ key: 'issues', kind: 'Review', title: MT_AUTO.issues[0], mins: mins('issues'), sum: `${d.blocked.length} blocked · ${d.behind.length} behind · ${d.risk.length} at risk · ${d.look.length} need a look`, ids: ids([...d.blocked, ...d.behind, ...d.risk, ...d.look]) });
+  b.topics.forEach(t => items.push({ key: 't:' + t.id, kind: 'Topic', title: t.title, mins: +t.mins || 10, owner: t.owner || '', sum: t.note || ((t.ids || []).length ? ((t.ids || []).map(findM).filter(Boolean).every(m => m.status === 'complete') ? 'Already complete' : 'Milestone review') : ''), topicId: t.id, ids: (t.ids || []).filter(findM) }));
+  if (b.include.updates && d.stale.length) items.push({ key: 'updates', kind: 'Review', title: MT_AUTO.updates[0], mins: mins('updates'), sum: ((e) => e.slice(0, 5).map(([o, n]) => `${o} ${n}`).join(' · ') + (e.length > 5 ? ` and ${e.length - 5} more` : ''))(Object.entries(d.byOwner).sort((x, y) => y[1] - x[1])), ids: ids(d.stale) });
+  if (!mtg().last) items.forEach(x => { if (x.key === 'since') x.title = 'In the last month'; });
+  const ord = b.order || [];   // the chair's order; new items keep their natural place
+  return items.map((x, i) => ({ x, i, o: ord.indexOf(x.key) })).sort((p, q) => (p.o < 0 && q.o < 0) ? p.i - q.i : (p.o < 0 ? 1e3 + p.i : p.o) - (q.o < 0 ? 1e3 + q.i : q.o)).map(z => z.x);
+}
+function moveAgendaItem(key, dir) {
+  const b = mbook(), keys = agendaItems().map(x => x.key), i = keys.indexOf(key), j = i + dir;
+  if (i < 0 || j < 0 || j >= keys.length) return;
+  [keys[i], keys[j]] = [keys[j], keys[i]]; b.order = keys; autosave(); renderMeetings();
+  setTimeout(() => { const btn = document.querySelector(`[data-mt-${dir < 0 ? 'up' : 'down'}="${key}"]`); if (btn) btn.focus(); }, 0);
+}
+function agendaText(items) {
+  const mt = mtg();
+  return `Committee meeting agenda${mt.next ? ', ' + fmtDate(mt.next) : ''}${mt.time ? ', ' + fmtTime(mt.time) : ''}\n` + items.map((x, i) => `${i + 1}. ${x.title} (${x.mins} min)${x.owner ? ' · ' + x.owner : ''}${x.sum ? '\n   ' + x.sum : ''}`).join('\n')
+    + `\n\nTotal ${items.reduce((s, x) => s + (+x.mins || 0), 0)} min\n${location.origin}${location.pathname}#meetings`;
+}
+function minutesText(rec) {
+  const lines = [`${WS_SEED[WS] ? WS_SEED[WS].title : 'Growth Readiness'} committee minutes, ${fmtDate(rec.date)}`];
+  const decs = (rec.items || []).filter(x => x.decision); if (decs.length) lines.push('', 'Decisions', ...decs.map(x => `- ${x.decision}`));
+  const acts = (rec.items || []).flatMap(x => x.actions || []); if (acts.length) lines.push('', 'Action items', ...acts.map(a => `- ${a.text}${a.owner ? ', ' + a.owner : ''}${a.due ? ', due ' + fmtDate(a.due) : ''}`));
+  if (decs.length || acts.length) lines.push('', 'Discussion');
+  if (rec.attendees) lines.push(`Attending: ${rec.attendees}`);
+  if (rec.startedAt && rec.endedAt) { const mins = Math.max(1, Math.round((new Date(rec.endedAt) - new Date(rec.startedAt)) / 60000)); lines.push(`${mins} minute${mins === 1 ? '' : 's'}`); }
+  (rec.items || []).forEach((it, i) => {
+    lines.push('', `${i + 1}. ${it.title}${it.done ? '' : ' (not reached)'}`);
+    if (it.decision) lines.push(`   Decision: ${it.decision}`);
+    if (it.notes) lines.push(...it.notes.split('\n').map(l => '   ' + l));
+    (it.actions || []).forEach(a => lines.push(`   Action: ${a.text}${a.owner ? ', ' + a.owner : ''}${a.due ? ', due ' + fmtDate(a.due) : ''}`));
+  });
+  if (rec.next) lines.push('', `Next meeting: ${fmtDate(rec.next)}`);
+  lines.push(`${location.origin}${location.pathname}#meetings`);
+  return lines.join('\n');
+}
+function mtMsList(ids, max) {
+  const ms = ids.map(findM).filter(Boolean); if (!ms.length) return '<p class="mt-empty">Nothing here</p>';
+  const show = ms.slice(0, max || 12);
+  return `<ul class="mt-ms">${show.map(m => `<li><button type="button" class="ag-link" data-expand="${esc(m.id)}">${esc(m.activity)}</button><span class="mt-ms-meta">${canEdit() ? `<button type="button" class="kc-status mt-qs" data-qstatus="${esc(m.id)}" title="Change status">${statusDot(effectiveStatus(m))}${esc(SM(effectiveStatus(m)).label)}</button>` : statusDot(effectiveStatus(m)) + esc(SM(effectiveStatus(m)).label)} · ${esc(ownersOf(m).join(' / ') || 'Unassigned')}${m.due_date ? ' · due ' + esc(fmtDate(m.due_date)) : ''}</span></li>`).join('')}</ul>${ms.length > show.length ? `<p class="mt-empty">and ${ms.length - show.length} more</p>` : ''}`;
+}
+function actionRow(a, editable) {
+  const m = a.milestoneId && findM(a.milestoneId), done = actionDone(a);
+  return `<li class="mt-act ${done ? 'is-done' : ''}">
+    ${editable && !m ? `<input type="checkbox" data-mt-actdone="${esc(a.id)}" ${done ? 'checked' : ''} aria-label="Done">` : `<span class="mt-act-dot">${done ? CI('check') : ''}</span>`}
+    <div class="mt-act-main"><div class="mt-act-t">${a.owner && a.owner === myOwnerName() ? '<span class="mt-tag mt-tag-blue">Yours</span> ' : ''}${m ? `<button type="button" class="ag-link" data-expand="${esc(m.id)}">${esc(a.text)}</button>` : esc(a.text)}</div>
+      <div class="mt-act-m ${!done && a.due && a.due < todayISO() ? 'is-late' : ''}">${esc([a.owner || 'Unassigned', a.due ? (!done && a.due < todayISO() ? 'overdue, was due ' : 'due ') + fmtDate(a.due) : '', a.meeting ? 'from ' + fmtDate(a.meeting) : '', m ? SM(effectiveStatus(m)).label : ''].filter(Boolean).join(' · '))}</div></div>
+    ${editable && !m && !done ? `<button type="button" class="btn btn-ghost btn-sm" data-mt-tomilestone="${esc(a.id)}">Make it a milestone</button>` : ''}${editable && a.live ? `<button type="button" class="icon-btn" data-mt-actdel="${esc(a.id)}" aria-label="Remove action ${esc(a.text)}" title="Remove">${CI('close')}</button>` : ''}
+  </li>`;
+}
+
+let mtTimer = null;
+function stopMtTimer() { clearInterval(mtTimer); mtTimer = null; }
+function tickMt() {
+  const L = mbook().live, c = $('#mtClock'); if (!L || !c) return stopMtTimer();
+  c.textContent = fmtClock(Date.now() - new Date(L.startedAt));
+  const cur = L.items[L.idx], ic = $('#mtItemClock');
+  if (cur && ic) { const spent = (cur.spent || 0) + (Date.now() - (L.itemStart || Date.now())); ic.textContent = fmtClock(spent); ic.classList.toggle('over', spent > (cur.mins || 10) * 60000); if (spent > (cur.mins || 10) * 60000 && !cur._warned) { cur._warned = true; const a = $('#mtAnnounce'); if (a) a.textContent = `Over the ${cur.mins} minutes planned for this item`; } }
+  const pl = $('#mtPlan'); if (pl) { const planned = L.items.slice(0, L.idx + 1).reduce((a, x) => a + (+x.mins || 0), 0) * 60000, diff = Math.round((Date.now() - new Date(L.startedAt) - planned) / 60000); pl.textContent = diff > 0 ? `${diff} min behind plan` : ''; }
+}
+
+function renderMeetings() {
+  const sec = $('#view-meetings'); if (!sec) return;
+  setTimeout(renderCtxBar, 0);
+  const b = mbook(), admin = isAdmin(), mt = mtg();
+  const mine = !b.live || !b.live.by || b.live.by === currentDisplayName() || state.mtTookOver;
+  if (b.live && ((admin && mine && state.mtRun !== false) || ((!admin || !mine) && state.mtFollow))) return renderMeetingRun(sec);
+  stopMtTimer();
+  if (state.mtFollow && !b.live) { state.mtFollow = false; if (b.minutes[0]) state.mtJustEnded = b.minutes[0].id; setTimeout(() => toast('The meeting ended. The minutes are under Past meetings', 'ok'), 0); }
+  const d = meetingData(), items = agendaItems(), total = items.reduce((s, x) => s + (+x.mins || 0), 0);
+  const tile = (n, label, drill, tone) => `<button type="button" aria-label="${n} ${label}" class="mt-tile ${tone && n ? 'tone-' + tone : ''}" ${drill ? `data-drilldim="flag" data-drillval="${drill}"` : 'data-mt="actions"'}><span class="mt-tile-n">${n}</span><span class="mt-tile-l">${label}</span></button>`;
+  const stale = b.live && Date.now() - new Date(b.live.startedAt) > 12 * 3600000;
+  const live = b.live ? `<div class="mt-live-note ${stale ? 'mt-warn' : ''}" role="status">${stale ? `<b>Started ${esc(fmtDate(b.live.startedAt.slice(0, 10)))} and never ended.</b>${admin ? ' End it to save the minutes, or discard it.' : ''}` : ''}<span class="mt-pulse"></span><b>Meeting in progress</b><span>Item ${Math.min(b.live.idx, b.live.items.length - 1) + 1} of ${b.live.items.length}: ${esc((b.live.items[b.live.idx] || {}).title || '')}</span>${b.live.by && b.live.by !== currentDisplayName() ? `<span class="muted">Run by ${esc(b.live.by)}</span>` : ''}${admin && mine ? '<button class="btn btn-filled btn-sm" data-mt="resume">Resume meeting</button>' : `<button class="btn btn-tonal btn-sm" data-mt="follow">Follow along</button>${admin ? '<button class="btn btn-ghost btn-sm" data-mt="takeover">Take over</button>' : ''}`}</div>` : '';
+  let clock = mt.time || '';
+  const row = (x, i) => { const at = clock; if (clock) clock = addMins(clock, +x.mins || 0); return `<li class="mt-item" data-mtkey="${esc(x.key)}">
+      <span class="mt-num">${i + 1}${at ? `<small>${esc(fmtTime(at).replace(' AM', '').replace(' PM', ''))}</small>` : ''}</span>
+      <div class="mt-item-main"><div class="mt-item-t">${esc(x.title)} <span class="mt-tag ${x.kind === 'Topic' ? 'mt-tag-blue' : ''}">${x.kind}</span></div>
+        ${x.sum || x.owner ? `<div class="mt-item-s">${esc([x.owner, x.sum].filter(Boolean).join(' · '))}</div>` : ''}
+        ${admin && x.key === 'updates' ? '<button type="button" class="btn btn-ghost btn-sm mt-inline" data-mt="remind">Email reminders</button>' : ''}${x.ids && x.ids.length ? `<details class="mt-peek"><summary>Show ${x.ids.length} milestone${x.ids.length === 1 ? '' : 's'}</summary>${mtMsList(x.ids, 10)}</details>` : ''}</div>
+      ${admin ? `<label class="mt-mins-in"><input type="number" min="1" max="120" value="${x.mins}" data-mt-mins="${esc(x.key)}" aria-label="Minutes for ${esc(x.title)}"> min</label>` : `<span class="mt-mins">${x.mins} min</span>`}
+      ${admin ? `<span class="mt-item-acts"><button type="button" class="icon-btn" data-mt-up="${esc(x.key)}" aria-label="Move ${esc(x.title)} up" title="Move up" ${i === 0 ? 'disabled' : ''}>${CI('arrow-up')}</button><button type="button" class="icon-btn" data-mt-down="${esc(x.key)}" aria-label="Move ${esc(x.title)} down" title="Move down" ${i === items.length - 1 ? 'disabled' : ''}>${CI('arrow-down')}</button>${x.topicId ? `<button type="button" class="icon-btn" data-mt-edit="${esc(x.topicId)}" aria-label="Edit ${esc(x.title)}" title="Edit">${CI('edit')}</button><button type="button" class="icon-btn" data-mt-del="${esc(x.topicId)}" aria-label="Remove ${esc(x.title)}" title="Remove topic">${CI('close')}</button>` : `<button type="button" class="icon-btn" data-mt-hide="${esc(x.key)}" aria-label="Leave ${esc(x.title)} out" title="Leave out">${CI('close')}</button>`}</span>` : ''}
+    </li>`; };
+  const hidden = Object.keys(MT_AUTO).filter(k => !b.include[k]);
+  const builder = admin ? `<form class="mt-add" data-mt-form>
+      <div class="mt-add-row"><div class="field"><label for="mtTopic">Add a topic</label><input id="mtTopic" name="title" maxlength="140" placeholder="For example: Broward site decision" required></div>
+      <div class="field"><label for="mtTopicOwner">Lead</label><select id="mtTopicOwner" name="owner">${ownerOptions('').replace('>Unassigned<', '>No lead<')}</select></div>
+      <div class="field mt-add-min"><label for="mtTopicMin">Minutes</label><input id="mtTopicMin" name="mins" type="number" min="1" max="120" value="10"></div>
+      <button class="btn btn-tonal" type="submit">Add topic</button></div>
+      ${hidden.length ? `<div class="mt-restore">Left out: ${hidden.map(k => `<button type="button" class="btn btn-text btn-sm" data-mt-show="${k}">${esc(MT_AUTO[k][0])}</button>`).join('')}</div>` : ''}
+    </form>` : '';
+  const acts = state.mtAllActs ? d.acts : d.acts.slice(0, 10);
+  const past = b.minutes.slice(0, 8).map(rec => `<details class="mt-past" ${rec.id === state.mtJustEnded ? 'open' : ''}><summary><span>${esc(fmtDate(rec.date))}</span><span class="muted">${rec.edited ? 'edited · ' : ''}${rec.startedAt && rec.endedAt ? Math.max(1, Math.round((new Date(rec.endedAt) - new Date(rec.startedAt)) / 60000)) + ' min · ' : ''}${(rec.items || []).filter(x => x.done).length} of ${(rec.items || []).length} items · ${((all) => all.length ? `${all.filter(actionDone).length} of ${all.length} action${all.length === 1 ? '' : 's'} done` : 'no actions')((rec.items || []).flatMap(x => x.actions || []))}${rec.by ? ' · run by ' + esc(rec.by) : ''}</span></summary>
+      <pre class="mt-minutes">${esc(minutesText(rec))}</pre>${admin ? `<button type="button" class="btn btn-ghost btn-sm" data-mt-editmin="${esc(rec.id)}">Edit</button>` : ''}<button type="button" class="btn btn-ghost btn-sm" data-mt-copymin="${esc(rec.id)}">Copy minutes</button><button type="button" class="btn btn-ghost btn-sm" data-mt-printmin="${esc(rec.id)}">Print</button>${admin && (rec.items || []).some(x => (x.actions || []).some(a => !a.milestoneId && !actionDone(a))) ? `<button type="button" class="btn btn-ghost btn-sm" data-mt-allms="${esc(rec.id)}">Make actions into milestones</button>` : ''}<button type="button" class="btn btn-ghost btn-sm" data-mt-mailmin="${esc(rec.id)}">Email minutes</button>${admin ? `<button type="button" class="btn btn-ghost btn-sm mt-del-min" data-mt-delmin="${esc(rec.id)}">Delete</button>` : ''}</details>`).join('');
+  sec.innerHTML = `<div class="mt-page">
+    <header class="mt-head">
+      <div><h2 class="mt-h">Meetings</h2>
+        <p class="mt-sub">Next meeting: <b>${mt.next ? esc(fmtDate(mt.next)) + (mt.time ? ', ' + esc(fmtTime(mt.time)) : '') : 'not scheduled'}</b>${mt.next ? ` <span class="muted">· ${relDays(mt.next)}</span>` : ''}${mt.last ? ` <span class="muted">· last held ${esc(fmtDate(mt.last))}</span>` : ''} <span class="muted">· meets ${({ month: 'monthly', '2weeks': 'every 2 weeks', week: 'weekly' })[mt.every || 'month']}</span></p></div>
+      <div class="mt-head-acts">${admin ? `<button class="btn btn-ghost" data-mt="date">${mt.next ? 'Change date' : 'Set date'}</button>` : ''}<button class="btn btn-ghost" data-mt="copy">Copy agenda</button>${admin ? '<button class="btn btn-ghost" data-mt="mailagenda">Email agenda</button>' : ''}<button class="btn btn-ghost" data-mt="print">Print</button>${admin && !b.live ? '<button class="btn btn-filled" data-mt="start">Start meeting</button>' : ''}</div>
+    </header>
+    ${live}${!b.live && mt.next && mt.next < todayISO() ? `<div class="mt-live-note mt-warn" role="status"><b>The scheduled date has passed.</b><span>${admin ? 'Start the meeting or set a new date.' : 'The chair will set a new date.'}</span></div>` : ''}
+    <div class="mt-tiles" aria-label="Progress since the last meeting">
+      ${tile(d.done.length, 'Completed since last meeting', 'completed_recent', '')}${tile(d.newly.length, 'Newly off track', 'newly_off', 'bad')}${tile(d.moved.length, 'Deadlines moved', 'slipped', 'warn')}${tile(d.stale.length, 'Updates missing', 'stale', 'warn')}${tile(d.acts.length, 'Open action items', '', '')}
+    </div>
+    <div class="mt-grid">
+      <section class="mt-card mt-agenda"><div class="mt-card-head"><h3>Agenda</h3><span class="muted">${items.length} item${items.length === 1 ? '' : 's'} · ${total} min${mt.time ? ` · ${esc(fmtTime(mt.time))} to ${esc(fmtTime(addMins(mt.time, total)))}` : ''}${total > 90 ? ' · <span class="mt-long">over 90 minutes</span>' : ''}</span></div>
+        ${items.length ? `<ol class="mt-list">${items.map(row).join('')}</ol>` : `<p class="mt-empty">Nothing on the agenda yet.${admin ? ' Add a topic below or bring back a section.' : ''}</p>`}
+        ${builder}
+        ${admin ? '' : '<p class="mt-note">The committee chair builds and runs the agenda.</p><button type="button" class="btn btn-ghost btn-sm" data-mt="suggest">Suggest a topic</button>'}
+      </section>
+      <div class="mt-side">
+        <section class="mt-card" id="mtActions"><div class="mt-card-head"><h3>Action items</h3><span class="muted">${d.acts.length} open</span></div>
+          ${acts.length ? `<ul class="mt-acts">${acts.map(a => actionRow(a, admin)).join('')}</ul>${d.acts.length > acts.length ? `<button type="button" class="btn btn-ghost btn-sm" data-mt="allacts">Show all ${d.acts.length}</button>` : ''}` : '<p class="mt-empty">No open action items. They come from meeting minutes.</p>'}
+        </section>
+        <section class="mt-card"><div class="mt-card-head"><h3>Past meetings</h3><span class="muted">${b.minutes.length}</span></div>
+          ${past || '<p class="mt-empty">Minutes appear here after a meeting is run from this page.</p>'}
+        </section>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderMeetingRun(sec) {
+  const ro = !isAdmin() || !(!mbook().live.by || mbook().live.by === currentDisplayName() || state.mtTookOver), b = mbook(), L = b.live, n = L.items.length; L.idx = Math.max(0, Math.min(L.idx || 0, n - 1));
+  const cur = L.items[L.idx], doneN = L.items.filter(x => x.done).length, pctDone = Math.round(100 * doneN / Math.max(1, n));
+  const steps = L.items.map((x, i) => `<li class="mt-step ${x.done ? 'is-done' : ''} ${i === L.idx ? 'is-cur' : ''}"><button type="button" ${ro ? 'disabled' : `data-mt-go="${i}"`} ${i === L.idx ? 'aria-current="step"' : ''}><span class="mt-step-ic">${x.done ? CI('check') : ''}</span><span class="mt-step-t">${esc(x.title)}<span class="sr-only">${x.done ? ', discussed' : i === L.idx ? ', current' : ''}</span></span><span class="mt-step-m">${x.mins} min</span></button></li>`).join('');
+  let detail = '';
+  if (cur.key === 'actions') detail = `<ul class="mt-acts">${openActions().map(a => actionRow(a, !ro)).join('') || '<li class="mt-empty">No open action items</li>'}</ul>`;
+  else if (cur.key === 'updates') { const d = meetingData(); detail = `<ul class="mt-owners">${Object.entries(d.byOwner).sort((x, y) => y[1] - x[1]).map(([o, k]) => `<li><b>${esc(o)}</b><span class="muted">${k} milestone${k === 1 ? '' : 's'}</span></li>`).join('')}</ul><button type="button" class="btn btn-ghost btn-sm" data-mt="remind">Email reminders</button>`; }
+  else if (cur.ids && cur.ids.length) detail = mtMsList(cur.ids, 15) + (cur.key === 'issues' ? '<button type="button" class="btn btn-ghost btn-sm" data-mt="openissues">Open all in Milestones</button>' : '');
+  else if (cur.kind === 'Review') detail = '<p class="mt-empty">Nothing to review here</p>';
+  const acts = (cur.actions || []).map(a => actionRow(Object.assign({ live: true }, a), !ro)).join('');
+  sec.innerHTML = `<div class="mt-page mt-run"><div class="sr-only" id="mtAnnounce" aria-live="polite"></div>
+    <header class="mt-runbar">
+      <div class="mt-runbar-l"><span class="mt-pulse"></span><b>Meeting in progress</b><span class="muted">Started ${Date.now() - new Date(L.startedAt) > 12 * 3600000 ? esc(fmtDate(L.startedAt.slice(0, 10))) + ', ' : ''}${esc(new Date(L.startedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }))}</span><span class="mt-clock" id="mtClock" role="timer" aria-label="Time elapsed">0:00</span><span class="mt-plan" id="mtPlan"></span></div>
+      <div class="mt-runbar-r">${ro ? '<span class="mt-tag">View only</span><button class="btn btn-ghost" data-mt="unfollow">Back to agenda</button>' : `<button class="btn btn-ghost" data-mt="pause">Back to agenda</button><button class="btn btn-ghost" data-mt="discard">Discard</button><button class="btn btn-danger" data-mt="end">End meeting</button>`}</div>
+    </header>
+    <div class="mt-prog" role="progressbar" aria-valuemin="0" aria-valuemax="${n}" aria-valuenow="${doneN}" aria-label="Items discussed"><div class="mt-prog-l"><span>${doneN} of ${n} discussed</span><span>${pctDone}%</span></div><div class="mt-prog-track"><span style="width:${pctDone}%"></span></div></div>
+    ${ro ? (L.attendees ? `<p class="mt-attend-ro">Attending: ${esc(L.attendees)}</p>` : '') : `<div class="field mt-attend"><label for="mtAttend">Attending</label><input id="mtAttend" data-mt-attend value="${esc(L.attendees || '')}" placeholder="Names, separated by commas"></div>`}
+    <div class="mt-run-grid">
+      <nav class="mt-steps" aria-label="Agenda"><ol>${steps}</ol>${ro ? '' : '<button type="button" class="btn btn-ghost btn-sm mt-add-live" data-mt="addlive">+ Add an item</button>'}</nav>
+      <section class="mt-card mt-cur">
+        <div class="mt-cur-head"><div><div class="mt-cur-n">Item ${L.idx + 1} of ${n} <span class="mt-tag ${cur.kind === 'Topic' ? 'mt-tag-blue' : ''}">${cur.kind}</span></div><h3 class="mt-cur-t" id="mtCurT" tabindex="-1">${esc(cur.title)}</h3>${cur.owner || cur.sum ? `<p class="mt-item-s">${esc([cur.owner ? 'Lead: ' + cur.owner : '', cur.key === 'updates' || cur.key === 'actions' ? '' : cur.sum].filter(Boolean).join(' · '))}</p>` : ''}</div>
+          <div class="mt-cur-time"><span class="mt-item-clock" id="mtItemClock" role="timer" aria-label="Time on this item">0:00</span><span class="muted">of ${cur.mins} min</span></div></div>
+        <div class="mt-cur-detail">${detail}</div>
+        <div class="field"><label for="mtDecision">Decision</label><input id="mtDecision" data-mt-decision maxlength="300" placeholder="What was decided, in one line" value="${esc(cur.decision || '')}" ${ro ? 'readonly' : ''}></div>
+        <div class="field"><label for="mtNotes">Notes <span class="mt-saved" id="mtNotesSaved" aria-live="polite"></span></label><textarea id="mtNotes" rows="4" data-mt-notes placeholder="Discussion, context, open questions" ${ro ? 'readonly' : ''}>${esc(cur.notes || '')}</textarea></div>
+        <div class="mt-cur-acts"><h4>Action items</h4>${acts ? `<ul class="mt-acts">${acts}</ul>` : ''}
+          ${ro ? '' : `<form class="mt-add-row" data-mt-actform><div class="field"><label for="mtActText">Action</label><input id="mtActText" name="text" maxlength="200" placeholder="What needs to happen" required></div>
+            <div class="field"><label for="mtActOwner">Owner</label><select id="mtActOwner" name="owner">${ownerOptions(cur.owner || '')}</select></div>
+            <div class="field"><label for="mtActDue">Due</label><input id="mtActDue" name="due" type="date" min="${todayISO()}" value="${esc(mtg().next && mtg().next > todayISO() ? mtg().next : nextMeetingAfter(todayISO()))}"></div>
+            <button class="btn btn-tonal" type="submit">Add action</button></form>`}</div>
+        ${L.idx < n - 1 ? `<p class="mt-nextup">Next up: <b>${esc(L.items[L.idx + 1].title)}</b></p>` : ''}
+        ${ro ? '' : `<div class="mt-cur-foot"><button class="btn btn-ghost" data-mt="prev" ${L.idx === 0 ? 'disabled' : ''}>Previous</button>
+          <span class="mt-foot-r">${!cur.done && L.idx < n - 1 ? '<button class="btn btn-ghost" data-mt="skip">Skip for now</button>' : ''}${doneN === n ? '<button class="btn btn-filled" data-mt="end">End meeting</button>' : `<button class="btn btn-filled" data-mt="next">${cur.done ? (L.idx === n - 1 ? 'Discussed' : 'Next item') : (L.idx === n - 1 ? 'Done' : 'Done, next item')}</button>`}</span></div>`}
+      </section>
+    </div>
+  </div>`;
+  tickMt(); if (!mtTimer) mtTimer = setInterval(tickMt, 1000);
+  renderCtxBar();
+}
+function mtSwitch(i) { const L = mbook().live; if (!L) return; const cur = L.items[L.idx]; if (cur) cur.spent = (cur.spent || 0) + (Date.now() - (L.itemStart || Date.now())); L.idx = i; L.itemStart = Date.now(); autosave(); renderMeetings(); window.scrollTo({ top: 0 });
+  const h = $('#mtCurT'); if (h) h.focus({ preventScroll: true }); const a = $('#mtAnnounce'); if (a) a.textContent = `Item ${i + 1} of ${L.items.length}: ${L.items[i].title}`; }
+function startMeeting(sure) {
+  if (!guardAdmin()) return;
+  const nx = mtg().next; if (!sure && nx && daysUntil(nx) > 1) return confirmDialog({ title: 'Start the meeting now?', message: `The next meeting is set for ${esc(fmtDate(nx))}`, confirmLabel: 'Start now', onConfirm: () => startMeeting(true) });
+  const b = mbook(), items = agendaItems(); if (!items.length) return toast('Add a topic or include a section first', 'warn');
+  b.live = { by: currentDisplayName() || '', startedAt: new Date().toISOString(), idx: 0, itemStart: Date.now(), items: items.map(x => ({ key: x.key, kind: x.kind, title: x.title, mins: x.mins, sum: x.sum, owner: x.owner || '', ids: x.ids || [], topicId: x.topicId || null, notes: '', actions: [], done: false, spent: 0 })) };
+  state.mtRun = true; logActivity('edit', 'Started the committee meeting'); autosave(); renderMeetings(); renderNavCounts();
+}
+function endMeeting() {
+  const b = mbook(), L = b.live; if (!L || !guardAdmin()) return;
+  const left = L.items.filter(x => !x.done).length;
+  confirmDialog({ title: 'End the meeting?', message: `Saves the minutes and marks the meeting held.${left ? ` ${left} item${left === 1 ? ' is' : 's are'} not marked discussed. Topics not discussed move to the next agenda.` : ''}`, confirmLabel: 'End meeting', onConfirm: () => {
+    const before = clone(b), mtBefore = clone(mtg()), cur = L.items[L.idx];
+    if (cur) cur.spent = (cur.spent || 0) + (Date.now() - (L.itemStart || Date.now()));
+    const rec = { id: uid(), date: todayISO(), by: L.by || '', attendees: (L.attendees || '').trim(), startedAt: L.startedAt, endedAt: new Date().toISOString(), items: L.items.map(x => ({ title: x.title, kind: x.kind, done: !!x.done, decision: (x.decision || '').trim(), notes: (x.notes || '').trim(), actions: x.actions || [], spent: x.spent || 0 })) };
+    b.minutes.unshift(rec); b.minutes = b.minutes.slice(0, 24);
+    const discussed = new Set(L.items.filter(x => x.done && x.topicId).map(x => x.topicId)); b.topics = b.topics.filter(t => !discussed.has(t.id));
+    b.live = null; state.mtRun = false; state.mtJustEnded = rec.id; stopMtTimer();
+    const mt = mtg(); mt.last = todayISO(); if (!(mt.next && mt.next > mt.last)) mt.next = nextMeetingAfter(mt.last); rec.next = mt.next;
+    logActivity('edit', `Held the committee meeting (${rec.items.filter(x => x.done).length} of ${rec.items.length} items)`);
+    autosave(); rerender(); renderNavCounts();
+    toastAction(`Minutes saved. Next meeting ${fmtDate(mt.next)}`, 'Undo', () => { meta().meetBook = before; meta().meeting = mtBefore; state.mtRun = true; autosave(); rerender(); renderNavCounts(); });
+  } });
+}
+function actionToMilestone(id, quiet) {
+  const a = findAction(id); if (!a || a.milestoneId || !guardEdit()) return;
+  const dm = state.filters.markets.size === 1 ? [...state.filters.markets][0] : '', tally = {};
+  M().filter(x => a.owner && ownsM(x, a.owner)).forEach(x => { tally[x.functional_area] = (tally[x.functional_area] || 0) + 1; });
+  const dt = Object.keys(tally).sort((x, y) => tally[y] - tally[x])[0] || defaultTeam();   // the owner's usual team
+  const m = { id: uid(), state: stateOfMarket(dm) || '', market: dm, team: dt, functional_area: dt, workstream: 'General', activity: a.text, schools: [], schoolIds: [], targetFY: currentFY(), targetQuarter: '', openingFY: null, due_date: a.due || null, owner: a.owner || '', coOwners: [], status: 'not_started', progress_percent: 0, priority: 'medium', stage: 'to_do', notes: `From the ${fmtDate(a.meeting || todayISO())} committee meeting`, dependency: '', createdAt: new Date().toISOString() };
+  snapshotForUndo('Milestone from action: ' + a.text.slice(0, 30));
+  M().push(m); syncFiscal(m); touch(m); a.milestoneId = m.id;
+  logActivity('create', `Added "${m.activity}" from a meeting action`, { itemId: m.id }); if (quiet) return;
+  autosave(); renderMeetings(); toastAction('Added as a milestone', 'Open', () => openModal(m.id));
+}
+let mtNotesT = 0;
+['pagehide', 'visibilitychange'].forEach(ev => window.addEventListener(ev, () => { if (mtNotesT && (ev === 'pagehide' || document.visibilityState === 'hidden')) { clearTimeout(mtNotesT); mtNotesT = 0; autosaveWriteLocal(); if (state.sb && state.sb.connected) sbPush(); } }));
+document.addEventListener('keydown', e => {
+  if (e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft') && $('.mt-run') && !$('.mt-run [data-mt-go][disabled]') && mbook().live) { const L = mbook().live, j = L.idx + (e.key === 'ArrowRight' ? 1 : -1); if (j >= 0 && j < L.items.length) { e.preventDefault(); mtSwitch(j); } return; }
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && e.target.matches && e.target.matches('[data-mt-notes]') && isAdmin()) { e.preventDefault(); const n = $('[data-mt="next"]'); if (n) n.click(); }
+});
+document.addEventListener('input', e => {
+  if (e.target.matches && e.target.matches('[data-mt-decision]')) { const L = mbook().live; if (L && isAdmin()) { L.items[L.idx].decision = e.target.value; clearTimeout(mtNotesT); mtNotesT = setTimeout(autosave, 600); } return; }
+  if (e.target.matches && e.target.matches('[data-mt-attend]')) { const L = mbook().live; if (L && isAdmin()) { L.attendees = e.target.value.slice(0, 400); clearTimeout(mtNotesT); mtNotesT = setTimeout(autosave, 600); } return; }
+  if (!e.target.matches || !e.target.matches('[data-mt-notes]')) return;
+  const L = mbook().live; if (!L || !isAdmin()) return;
+  L.items[L.idx].notes = e.target.value; clearTimeout(mtNotesT); const st = $('#mtNotesSaved'); if (st) st.textContent = 'Saving';
+  mtNotesT = setTimeout(() => { autosave(); const s2 = $('#mtNotesSaved'); if (s2) s2.textContent = 'Saved'; }, 600);
+});
+document.addEventListener('change', e => {
+  const t = e.target; if (!t.dataset) return;
+  if (t.dataset.mtMins) { if (!guardAdmin()) return; const v = Math.max(1, Math.min(120, Math.round(+t.value) || 10)), k = t.dataset.mtMins, b = mbook(); if (k.startsWith('t:')) { const tp = b.topics.find(x => 't:' + x.id === k); if (tp) tp.mins = v; } else b.mins[k] = v; autosave(); renderMeetings(); const again = document.querySelector(`[data-mt-mins="${k}"]`); if (again) again.focus(); }
+  if (t.dataset.mtActdone) { if (!guardAdmin()) return; const a = findAction(t.dataset.mtActdone); if (a) { a.done = t.checked; autosave(); renderMeetings(); } }
+});
+document.addEventListener('submit', e => {
+  const f = e.target;
+  if (f.matches('[data-mt-form]')) { e.preventDefault(); if (!guardAdmin()) return; const title = f.title.value.trim(); if (!title) return markInvalid(f.title, 'Name the topic'); mbook().topics.push({ id: uid(), title, owner: f.owner.value, mins: Math.max(1, Math.min(120, +f.mins.value || 10)) }); autosave(); renderMeetings(); toast('Topic added', 'ok'); setTimeout(() => { const i = $('#mtTopic'); if (i) i.focus(); }, 0); }
+  if (f.matches('[data-mt-actform]')) { e.preventDefault(); const L = mbook().live; if (!L || !guardAdmin()) return; const text = f.text.value.trim(); if (!text) return markInvalid(f.text, 'Say what needs to happen'); const cur = L.items[L.idx]; (cur.actions = cur.actions || []).push({ id: uid(), text, owner: f.owner.value, due: f.due.value || '', done: false }); autosave(); renderMeetings(); setTimeout(() => { const i = $('#mtActText'); if (i) i.focus(); }, 0); }
+});
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-mt],[data-mt-go],[data-mt-up],[data-mt-down],[data-mt-del],[data-mt-edit],[data-mt-hide],[data-mt-show],[data-mt-copymin],[data-mt-mailmin],[data-mt-delmin],[data-mt-actdel],[data-mt-editmin],[data-mt-printmin],[data-mt-allms],[data-mt-tomilestone]'); if (!t) return;
+  const b = mbook(), ds = t.dataset, move = (id, dir) => { const i = b.topics.findIndex(x => x.id === id), j = i + dir; if (i < 0 || j < 0 || j >= b.topics.length) return; [b.topics[i], b.topics[j]] = [b.topics[j], b.topics[i]]; autosave(); renderMeetings(); };
+  if (ds.mtGo != null) return mtSwitch(+ds.mtGo);
+  if (ds.mtUp) return guardAdmin() && moveAgendaItem(ds.mtUp, -1);
+  if (ds.mtDown) return guardAdmin() && moveAgendaItem(ds.mtDown, 1);
+  if (ds.mtDel) { if (!guardAdmin()) return; const tp = b.topics.find(x => x.id === ds.mtDel), i = b.topics.indexOf(tp); b.topics.splice(i, 1); autosave(); renderMeetings(); return toastAction('Topic removed', 'Undo', () => { b.topics.splice(i, 0, tp); autosave(); renderMeetings(); }); }
+  if (ds.mtEdit) { if (!guardAdmin()) return; const tp = b.topics.find(x => x.id === ds.mtEdit); if (!tp) return; return topicDialog(tp); }
+  if (ds.mtHide) { if (!guardAdmin()) return; const k = ds.mtHide; b.include[k] = false; autosave(); renderMeetings(); return toastAction(`${MT_AUTO[k][0]} left out`, 'Undo', () => { b.include[k] = true; autosave(); renderMeetings(); }); }
+  if (ds.mtShow) { if (!guardAdmin()) return; const k = ds.mtShow; b.include[k] = true; autosave(); renderMeetings(); const row = document.querySelector(`.mt-item[data-mtkey="${k}"]`); if (row) { row.scrollIntoView({ block: 'nearest' }); const bt = row.querySelector('button'); if (bt) bt.focus(); } return; }
+  if (ds.mtDelmin) { if (!guardAdmin()) return; const i = b.minutes.findIndex(x => x.id === ds.mtDelmin); if (i < 0) return; const rec = b.minutes[i]; return confirmDialog({ title: `Delete the ${fmtDate(rec.date)} minutes?`, message: 'Their action items go too', confirmLabel: 'Delete', danger: true, onConfirm: () => { b.minutes.splice(i, 1); autosave(); renderMeetings(); toastAction('Minutes deleted', 'Undo', () => { b.minutes.splice(i, 0, rec); autosave(); renderMeetings(); }); } }); }
+  if (ds.mtEditmin) { if (!guardAdmin()) return; const rec = b.minutes.find(x => x.id === ds.mtEditmin); if (!rec) return;
+    const w = openSheet(`Edit minutes, ${fmtDate(rec.date)}`, `<div class="field"><label for="emAtt">Attending</label><input id="emAtt" value="${esc(rec.attendees || '')}"></div>` + (rec.items || []).map((it, i) => `<fieldset class="em-item"><legend>${i + 1}. ${esc(it.title)}</legend><div class="field"><label for="emD${i}">Decision</label><input id="emD${i}" maxlength="300" value="${esc(it.decision || '')}"></div><div class="field"><label for="emN${i}">Notes</label><textarea id="emN${i}" rows="3">${esc(it.notes || '')}</textarea></div></fieldset>`).join(''), '<button class="btn btn-text" data-sheet-close>Cancel</button><button class="btn btn-filled" id="emSave">Save minutes</button>');
+    return $('#emSave').addEventListener('click', () => { const before = clone(rec); rec.attendees = $('#emAtt').value.trim(); (rec.items || []).forEach((it, i) => { it.decision = $('#emD' + i).value.trim(); it.notes = $('#emN' + i).value.trim(); }); rec.edited = new Date().toISOString(); closeSheet(); autosave(); renderMeetings(); toastAction('Minutes updated', 'Undo', () => { Object.assign(rec, before); autosave(); renderMeetings(); }); }); }
+  if (ds.mtPrintmin) { const rec = b.minutes.find(x => x.id === ds.mtPrintmin); if (!rec) return; const wnd = window.open('', '_blank'); if (!wnd) return toast('Allow pop-ups to print minutes', 'warn'); wnd.document.write(`<!doctype html><title>Minutes ${esc(fmtDate(rec.date))}</title><style>body{font:14px/20px 'IBM Plex Sans',Arial,sans-serif;margin:40px;color:#161616}pre{white-space:pre-wrap;font:inherit}</style><pre>${esc(minutesText(rec))}</pre>`); wnd.document.close(); wnd.focus(); wnd.print(); return; }
+  if (ds.mtAllms) { if (!guardAdmin()) return; const rec = b.minutes.find(x => x.id === ds.mtAllms); if (!rec) return; const todo = (rec.items || []).flatMap(x => x.actions || []).filter(a => !a.milestoneId && !actionDone(a)); return confirmDialog({ title: `Make ${todo.length} action${todo.length === 1 ? '' : 's'} into milestones?`, message: 'Each gets its owner and due date, and shows up on the board', confirmLabel: 'Make milestones', onConfirm: () => { todo.forEach(a => actionToMilestone(a.id, true)); autosave(); renderMeetings(); toast(`${todo.length} milestone${todo.length === 1 ? '' : 's'} added`, 'ok'); } }); }
+  if (ds.mtMailmin) { const rec = b.minutes.find(x => x.id === ds.mtMailmin); if (!rec) return; const to = [...new Set([...(rec.items || []).flatMap(x => (x.actions || []).map(a => a.owner)), ...rosterNames()])].map(ownerEmail).filter(Boolean); return openMail(to, `Committee meeting minutes, ${fmtDate(rec.date)}`, minutesText(rec)); }
+  if (ds.mtCopymin) { const rec = b.minutes.find(x => x.id === ds.mtCopymin); return rec && copyText(minutesText(rec), 'Minutes copied'); }
+  if (ds.mtTomilestone) return actionToMilestone(ds.mtTomilestone);
+  if (ds.mtActdel) { const L2 = b.live; if (!L2 || !guardAdmin()) return; const it = L2.items[L2.idx], k = (it.actions || []).findIndex(a => a.id === ds.mtActdel); if (k < 0) return; const gone = it.actions.splice(k, 1)[0]; autosave(); renderMeetings(); return toastAction('Action removed', 'Undo', () => { it.actions.splice(k, 0, gone); autosave(); renderMeetings(); }); }
+  const L = b.live;
+  switch (ds.mt) {
+    case 'start': return startMeeting();
+    case 'openissues': state.mtRun = false; clearFilters(); state.planFocus = true; return setView('plan');
+    case 'mailagenda': { const it = agendaItems(); if (!it.length) return toast('The agenda is empty', 'warn'); return openMail(rosterNames().map(ownerEmail).filter(Boolean), `Committee meeting agenda${mtg().next ? ', ' + fmtDate(mtg().next) : ''}`, agendaText(it)); }
+    case 'suggest': return openMail([], 'Topic for the next committee meeting', `Topic:\n\nWhy it needs the committee:\n\nPre-read or link:\n\n${location.origin}${location.pathname}#meetings`);
+    case 'addlive': if (!guardAdmin() || !L) return; return inputDialog({ title: 'Add an item to this meeting', placeholder: 'For example: New business, Paterson budget' }, v => { L.items.push({ key: 'live:' + uid(), kind: 'Topic', title: v.slice(0, 140), mins: 5, sum: '', owner: '', ids: [], topicId: null, notes: '', actions: [], done: false, spent: 0 }); autosave(); mtSwitch(L.items.length - 1); });
+    case 'allacts': state.mtAllActs = true; return renderMeetings();
+    case 'resume': state.mtRun = true; return renderMeetings();
+    case 'pause': state.mtRun = false; return renderMeetings();
+    case 'follow': state.mtFollow = true; return renderMeetings();
+    case 'takeover': if (!guardAdmin() || !L) return; return confirmDialog({ title: 'Take over this meeting?', message: `${esc(L.by || 'Someone')} started it. You will run it from here`, confirmLabel: 'Take over', onConfirm: () => { L.by = currentDisplayName() || ''; state.mtTookOver = true; state.mtRun = true; autosave(); renderMeetings(); } });
+    case 'unfollow': state.mtFollow = false; return renderMeetings();
+    case 'end': return endMeeting();
+    case 'discard': if (!guardAdmin() || !L) return; return confirmDialog({ title: 'Discard this meeting?', message: 'Notes and action items from this run are not saved, and the meeting is not marked held', confirmLabel: 'Discard', danger: true, onConfirm: () => { const keep = clone(L); b.live = null; state.mtRun = false; stopMtTimer(); autosave(); renderMeetings(); renderNavCounts(); toastAction('Meeting discarded', 'Undo', () => { mbook().live = keep; state.mtRun = true; autosave(); renderMeetings(); renderNavCounts(); }); } });
+    case 'copy': { const it = agendaItems(); return it.length ? copyText(agendaText(it), 'Agenda copied') : toast('The agenda is empty', 'warn'); }
+    case 'print': document.body.classList.add('print-meeting'); window.addEventListener('afterprint', () => document.body.classList.remove('print-meeting'), { once: true }); return window.print();
+    case 'date': if (!guardAdmin()) return; return meetingDateDialog();
+    case 'actions': { const el = $('#mtActions'); return el && el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    case 'remind': { const st = meetingData().stale; return openMail([...new Set(st.flatMap(ownersOf))].map(ownerEmail).filter(Boolean), 'Growth Hub check-ins before our next meeting', reminderText(st)); }
+    case 'prev': return L && mtSwitch(L.idx - 1);
+    case 'skip': return L && mtSwitch(L.idx + 1);
+    case 'next': if (!L) return; L.items[L.idx].done = true; if (L.idx < L.items.length - 1) return mtSwitch(L.idx + 1); autosave(); renderMeetings(); return toast('All items discussed. End the meeting to save the minutes', 'ok');
+  }
+});
