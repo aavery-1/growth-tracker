@@ -51,15 +51,15 @@ const state = {
 };
 
 /* ---------- palette (spec colors) ---------- */
-const STATE_COLOR = { NJ: '#002D9C', FL: '#009D9A' }; // Carbon categorical: Blue 80, Teal 50
-// Brand: KIPP indigo #16357F (primary actions). Status: Atlassian semantic colors (see RAG). Categories: Carbon palette.
+const STATE_COLOR = { NJ: '#002D9C', FL: '#005D5D' }; // Carbon categorical: Blue 80, Teal 70
+// IBM Carbon throughout: Blue 60 for primary actions, support colors for status (see RAG), categorical palette for categories.
 // Market palette: distinct hues, deliberately non-overlapping with status colors
 // Category colors follow Carbon's data visualization palette (carbondesignsystem.com). Reds are skipped: red means "behind".
 const MARKET_COLOR = { Newark: '#6929C4', Paterson: '#1192E8', Camden: '#005D5D', Broward: '#9F1853', 'Miami-Dade': '#198038', Orange: '#002D9C', Orlando: '#002D9C' };
 const TYPE_COLOR = { ES: '#1192E8', MS: '#005D5D', HS: '#6929C4' };
-const mkColor = m => MARKET_COLOR[m] || '#6B6E76';
-const stColor = s => STATE_COLOR[s] || '#6B6E76';
-const PRIORITY = { high: { label: 'High', color: '#D62828' }, medium: { label: 'Medium', color: '#FFA500' }, low: { label: 'Low', color: '#6C757D' } };
+const mkColor = m => MARKET_COLOR[m] || '#6F6F6F';
+const stColor = s => STATE_COLOR[s] || '#6F6F6F';
+const PRIORITY = { high: { label: 'High', color: '#DA1E28' }, medium: { label: 'Medium', color: '#B28600' }, low: { label: 'Low', color: '#6F6F6F' } };
 
 /* ---------- utils ---------- */
 const $ = (s, el = document) => el.querySelector(s);
@@ -153,19 +153,22 @@ function notesSection(kind, id, log) {
   const items = (log || []).slice().sort((a, b) => a.t - b.t).map(noteItemHtml).join('') || '<div class="note-empty muted">No comments yet</div>';
   return `<div class="notes-field" data-notekind="${kind}" data-noteid="${esc(id)}"><label class="notes-label">Comments</label>
     <div class="note-thread">${items}</div>
-    <div class="note-add"><input id="noteAuthor" type="hidden" value="${esc(currentDisplayName())}"><input id="noteInput" class="note-input" placeholder="Add a comment. Type @ to mention someone" autocomplete="off" aria-label="Add a comment"><button class="btn btn-filled btn-sm" id="noteAdd">Post</button></div></div>`;
+    <div class="note-add"><input id="noteAuthor" type="hidden" value="${esc(currentDisplayName())}"><input id="noteInput" maxlength="4000" class="note-input" placeholder="Add a comment. Type @ to mention someone" autocomplete="off" aria-label="Add a comment"><button class="btn btn-filled btn-sm" id="noteAdd">Post</button></div></div>`;
 }
 
 /* ---------- status meta ---------- */
-// Display-time status colors: the original default colors map to Atlassian's semantic colors.
+// Display-time status colors: earlier default colors map to Carbon support colors.
 // A color someone customized in Settings is left as they set it. Stored data is not changed.
-const ADS_STATUS = { not_started: '#B7B9BE', on_track: '#357DE8', at_risk: '#E06C00', behind: '#C9372C', complete: '#6A9A23', blocked: '#AE2E24' };
-const LEGACY_STATUS = { not_started: '#C7CCD6', on_track: '#43B0E6', at_risk: '#F6A11C', behind: '#E63E2F', complete: ['#4A8C1F', '#79A81E'], blocked: '#B3261E' };
+const ADS_STATUS = { not_started: '#8D8D8D', on_track: '#0043CE', at_risk: '#B28600', behind: '#DA1E28', complete: '#24A148', blocked: '#A2191F' };
+const LEGACY_STATUS = { not_started: ['#C7CCD6', '#B7B9BE'], on_track: ['#43B0E6', '#357DE8'], at_risk: ['#F6A11C', '#E06C00'], behind: ['#E63E2F', '#C9372C'], complete: ['#4A8C1F', '#79A81E', '#6A9A23'], blocked: ['#B3261E', '#AE2E24'] };
 const SM = k => { const m = state.data.meta.statusMeta[k] || { label: k, color: '#ccc', text: '#000' }; const old = LEGACY_STATUS[k];
   return old && [].concat(old).includes(String(m.color).toUpperCase()) ? Object.assign({}, m, { color: ADS_STATUS[k] }) : m; };
-// Atlassian lozenge for the standard statuses; custom statuses keep their own color with readable text.
-function statusLozenge(k) { const m = SM(k); return ADS_STATUS[k] ? `<span class="stpill st-${k}"><i style="background:${m.color}"></i>${esc(m.label)}</span>` : `<span class="stpill" style="background:${m.color}22;color:var(--ds-text)"><i style="background:${m.color}"></i>${esc(m.label)}</span>`; }
-function statusDot(k) { return `<i class="stdot" style="background:${SM(k).color}"></i>`; }
+// Carbon status indicator (shape plus label) for the standard statuses; custom statuses keep their own color with readable text.
+/* Carbon glyphs used inside text and small controls */
+const CI = n => `<svg class="ci" viewBox="0 0 32 32" width="16" height="16" fill="currentColor" aria-hidden="true">${CI_PATHS[n]}</svg>`;
+const CI_PATHS = { close: '<path d="M17.4141 16L24 9.4141 22.5859 8 16 14.5859 9.4143 8 8 9.4141 14.5859 16 8 22.5859 9.4143 24 16 17.4141 22.5859 24 24 22.5859 17.4141 16z"/>', flag: '<path d="M6,30H4V2H28l-5.8,9L28,20H6ZM6,18H24.33L19.8,11l4.53-7H6Z"/>', arrow: '<path d="M18 6L16.57 7.393 24.15 15 4 15 4 17 24.15 17 16.57 24.573 18 26 28 16 18 6z"/>', check: '<path d="M13 24L4 15 5.414 13.586 13 21.171 26.586 7.586 28 9 13 24z"/>' };
+function statusLozenge(k) { const m = SM(k); return ADS_STATUS[k] ? `<span class="stpill st-${k}"><i></i>${esc(m.label)}</span>` : `<span class="stpill" style="background:${m.color}22;color:var(--cds-text-primary)"><i style="background:${m.color}"></i>${esc(m.label)}</span>`; }
+function statusDot(k) { return ADS_STATUS[k] ? `<i class="stdot st-${k}"></i>` : `<i class="stdot" style="background:${SM(k).color}"></i>`; }
 
 /* ---------- timing (live, date-driven urgency) ---------- */
 const SEV = { not_started: 0, on_track: 1, at_risk: 2, behind: 3, blocked: 4, complete: 9 };
@@ -197,7 +200,7 @@ function dueBadge(m) {
   const t = timingLevel(m), d = daysUntil(m.due_date);
   if (t === 'overdue') return `<span class="due-badge overdue">${Math.abs(d)} day${Math.abs(d) === 1 ? '' : 's'} overdue</span>`;
   if (t === 'this_month') return `<span class="due-badge month">Due ${d === 0 ? 'today' : d === 1 ? 'tomorrow' : 'in ' + d + ' days'}</span>`;
-  if (t === 'soon') return `<span class="due-badge soon">Due in ${d} days</span>`;
+  if (t === 'soon') return `<span class="due-badge soon">${d === 0 ? "Due today" : `Due in ${d} day${d === 1 ? "" : "s"}`}</span>`;
   return '';
 }
 
@@ -265,7 +268,7 @@ function normalizeData(data) {
 async function loadData() {
   let base;
   if (window.__EMBEDDED_DATA__) base = JSON.parse(JSON.stringify(window.__EMBEDDED_DATA__));
-  else { try { base = await (await fetch('data.json', { cache: 'no-store' })).json(); } catch (e) { $('.container').innerHTML = '<div class="empty-state">Could not load <span class="mono">data.json</span>. Run a local server (see README).</div>'; return null; } }
+  else { try { base = await (await fetch('data.json', { cache: 'no-store' })).json(); } catch (e) { $('.container').innerHTML = '<div class="empty-state">We couldn\'t load the board<button class="btn btn-tonal btn-sm" onclick="location.reload()">Refresh</button></div>'; return null; } }
   if (WS !== 'readiness') {   // another board: shared schools/owners/statuses, its own tasks and teams
     const cfg = WS_SEED[WS] || {};
     let seed = null;
@@ -302,7 +305,7 @@ async function loadData() {
   return normalizeData(base);
 }
 let saveTimer = null;
-function autosaveWriteLocal() { stampWs(); try { const c = JSON.parse(JSON.stringify(state.data)); c.__baseVersion = state.data.meta && state.data.meta.version; lsSet(LS.data, JSON.stringify(c)); return true; } catch (e) { return false; } }
+function autosaveWriteLocal() { stampWs(); try { const c = JSON.parse(JSON.stringify(state.data)); c.milestones = (c.milestones || []).filter(m => !m._draft); c.__baseVersion = state.data.meta && state.data.meta.version; lsSet(LS.data, JSON.stringify(c)); return true; } catch (e) { return false; } }
 function autosave() {
   const b = $('#saveState'), live = state.sb && state.sb.connected;
   if (b) { b.textContent = live ? 'Syncing…' : 'Saving…'; b.className = 'save-state saving'; }
@@ -340,9 +343,8 @@ function passFilters(m) {
   if (f.search) { const q = f.search.toLowerCase(); if (!`${m.activity} ${m.workstream} ${m.functional_area} ${m.market} ${ownersOf(m).join(' ')} ${(m.tags || []).join(' ')}`.toLowerCase().includes(q)) return false; }
   return true;
 }
-function filtered() { return M().filter(passFilters); }
+function filtered() { return M().filter(m => !m._draft && passFilters(m)); }
 function pct(list) { return list.length ? Math.round(100 * list.filter(m => m.status === 'complete').length / list.length) : 0; }
-function progressAvg(list) { return list.length ? Math.round(list.reduce((a, m) => a + (m.progress_percent || 0), 0) / list.length) : 0; }
 
 /* school rollup status (worst-of) for timeline/health */
 function avgProgress(list) {
@@ -391,9 +393,6 @@ function ganttSchools() {
     .filter(s => !f.markets.size || f.markets.has(s.market))
     .filter(s => !f.fys.size || f.fys.has(s.openingFY))
     .filter(s => oyShown(s.openingFY));
-}
-function chipRow(label, items) {
-  return `<div class="chiprow"><span class="chiprow-label">${esc(label)}</span>${items}</div>`;
 }
 function fchip(key, val, label, color) {
   const on = state.filters[key].has(val);
@@ -456,18 +455,13 @@ function fbValueLabel(k, v) {
 function filterBar(menus, opts = {}) {
   // #fSearch removed - #cbSearch in the header content-bar is the single, wired search across every view
   const search = '';
-  const btns = menus.map(k => { const n = state.filters[k].size; const show = k === 'owners' && mineOn() ? 0 : n, val = show ? fbValueLabel(k) : ''; return `<button class="fb-menu ${n ? 'on' : ''}" data-fmenu="${k}"${val ? ` title="${esc(FILTER_LABEL[k] + ': ' + [...state.filters[k]].map(v => fbValueLabel(k, v)).join(', '))}"` : ''}><span class="fb-name">${FILTER_LABEL[k]}</span>${val ? `<span class="fb-val">${esc(val)}</span>` : ''}${show > 1 ? `<span class="fb-count">+${show - 1}</span>` : ''}<svg class="fb-chev" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button>`; }).join('');
+  const btns = menus.map(k => { const n = state.filters[k].size; const show = k === 'owners' && mineOn() ? 0 : n, val = show ? fbValueLabel(k) : ''; return `<button class="fb-menu ${show ? 'on' : ''}" data-fmenu="${k}"${val ? ` title="${esc(FILTER_LABEL[k] + ': ' + [...state.filters[k]].map(v => fbValueLabel(k, v)).join(', '))}"` : ''}><span class="fb-name">${FILTER_LABEL[k]}</span>${val ? `<span class="fb-val">${esc(val)}</span>` : ''}${show > 1 ? `<span class="fb-count">+${show - 1}</span>` : ''}<svg class="fb-chev" viewBox="0 0 32 32" fill="currentColor" width="13" height="13"><path d="M16 22L6 12 7.4 10.6 16 19.2 24.6 10.6 26 12z"/></svg></button>`; }).join('');
   const school = opts.school ? `<select id="dashSchool" class="fb-select"><option value="">All schools</option>${state.data.schools.filter(s => s.openingFY && schoolFacetPass(s, null) && (!state.filters.fys.size || state.filters.fys.has(s.openingFY))).sort((a, b) => (a.openingFY - b.openingFY) || a.market.localeCompare(b.market)).map(s => `<option value="${s.id}" ${state.filters.schoolId === s.id ? 'selected' : ''}>${esc(s.market)} · ${esc(s.display_label)}</option>`).join('')}</select>` : '';
   const me = menus.includes('owners') ? myOwnerName() : '';
-  const mine = me ? `<button class="fb-mine ${mineOn() ? 'on' : ''}" id="mineToggle" aria-pressed="${mineOn()}" title="Show only milestones owned by ${esc(me)}">${mineOn() ? '✓ ' : ''}Assigned to you</button>` : '';
+  const mine = me ? `<button class="fb-mine ${mineOn() ? 'on' : ''}" id="mineToggle" aria-pressed="${mineOn()}" title="Show only milestones owned by ${esc(me)}">${mineOn() ? CI('check') : ''}Assigned to you</button>` : '';
   return `<div class="filterbar" id="filterbar"><span class="fb-label">Filters</span>${search}${mine}${btns}${school}<button class="fb-clear ${activeCount() ? '' : 'is-empty'}" id="clearFilters"${activeCount() ? '' : ' disabled'}>Clear all</button><span class="fb-spacer"></span>${opts.right || ''}</div>`;
 }
 /* toggle chips to show / hide opening-year cohorts */
-function openingYearBar() {
-  const ys = openingYears(); if (ys.length <= 1) return '';
-  const allOn = !state.filters.openingFYs.size;
-  return `<div class="oybar"><span class="oy-label">Show openings</span>${ys.map(fy => `<button class="oychip ${oyShown(fy) ? 'on' : ''}" data-oyear="${fy}">Fall ${fy - 1}</button>`).join('')}<button class="oychip oy-all ${allOn ? 'on' : ''}" data-oyall="1">All</button></div>`;
-}
 function openFilterMenu(anchor, key) {
   const set = state.filters[key];
   const html = `<div class="pop-title">${FILTER_LABEL[key]}</div><div class="pop-list pop-checks">${filterOpts(key).map(([v, l, color]) => { const on = set.has(key === 'fys' || key === 'openingFYs' ? Number(v) : v); return `<label class="pop-check"><input type="checkbox" data-fkey="${key}" data-fval="${esc(v)}" ${on ? 'checked' : ''}>${color ? `<i class="fdot" style="background:${color}"></i>` : ''}${esc(l)}</label>`; }).join('')}</div>`;
@@ -488,7 +482,7 @@ function updateMenuBadge(key) {
   if (btn) { const n = state.filters[key].size; btn.classList.toggle('on', !!n); let c = btn.querySelector('.fb-count'); if (n) { if (!c) { c = document.createElement('span'); c.className = 'fb-count'; btn.insertBefore(c, btn.querySelector('.fb-chev')); } c.textContent = n; } else if (c) c.remove(); }
   const cl = $('#clearFilters'); if (cl) cl.classList.toggle('hide', !activeCount());
 }
-function refreshBody() { const sec = $('#view-' + state.view); const b = sec ? sec.querySelector('#viewBody') : $('#viewBody'); if (!b) return rerender(); if (state.view === 'progress') b.innerHTML = progressBodyHtml(); else if (state.view === 'timeline') b.innerHTML = ganttBodyHtml(); else b.innerHTML = planBodyHtml(); if (typeof paintAvatars === 'function') requestAnimationFrame(() => paintAvatars(b)); if (typeof updateFilterBubble === 'function') updateFilterBubble(); }
+function refreshBody() { const kb0 = document.querySelector('.kanban'), kbX = kb0 ? kb0.scrollLeft : 0; if (kbX) requestAnimationFrame(() => { const k = document.querySelector('.kanban'); if (k) k.scrollLeft = kbX; }); const sec = $('#view-' + state.view); const b = sec ? sec.querySelector('#viewBody') : $('#viewBody'); if (!b) return rerender(); if (state.view === 'progress') b.innerHTML = progressBodyHtml(); else if (state.view === 'timeline') b.innerHTML = ganttBodyHtml(); else b.innerHTML = planBodyHtml(); if (typeof paintAvatars === 'function') requestAnimationFrame(() => paintAvatars(b)); if (typeof updateFilterBubble === 'function') updateFilterBubble(); }
 function otCard(s) {
   const sm = schoolMs(s), r = ragReady(sm), n = sm.length;
   const done = sm.filter(m => effectiveStatus(m) === 'complete').length;
@@ -498,23 +492,27 @@ function otCard(s) {
   const mo = opens ? Math.max(0, monthsBetween(today(), opens)) : null;
   // Group header already announces "Fall YYYY · N months out" - only surface a card-level date when unscheduled.
   const when = s.openingFY ? '' : 'Opening not scheduled';
+  const openDue = sm.filter(m => m.due_date && effectiveStatus(m) !== 'complete'), late = openDue.filter(m => daysUntil(m.due_date) < 0).length;
+  const nextDue = openDue.map(m => m.due_date).sort()[0];
+  const nextLbl = nextDue ? parseDate(nextDue).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
   const statusLbl = n === 0 ? 'Not yet scoped' : r.label.split(' · ')[0];   // "On track" / "At risk" / "Behind" / "Complete" / "Not started"
   return `<article class="ot-card" data-drillschool="${esc(s.id)}" style="--mk:${mk}">
       <div class="ot-card-top">
         <span class="ot-mkt"><i style="background:${mk}"></i>${esc(s.market)}</span>
-        ${n ? statusLozenge(rollupStatus(sm)) : `<span class="stpill st-not_started"><i style="background:${ADS_STATUS.not_started}"></i>Not yet scoped</span>`}
+        ${n ? statusLozenge(rollupStatus(sm)) : `<span class="stpill st-not_started"><i></i>Not yet scoped</span>`}
       </div>
-      <h4 class="ot-title">${esc(s.display_label)}</h4>
+      <h4 class="ot-title">${esc(s.display_label)}<small>${esc(s.market)}, ${esc(s.state)}</small></h4>
       ${when ? `<p class="ot-when">${esc(when)}</p>` : ''}
       ${n ? `<div class="ot-prog">
-        <div class="ot-prog-bar"><span style="width:${pct}%;background:${r.color}"></span></div>
-        <div class="ot-prog-lbl"><b>${done}/${n}</b> milestones clear<span class="muted"> · ${pct}% progress</span></div>
+        <div class="ot-prog-lbl"><b>${done} of ${n}</b> milestones clear<span class="ot-prog-pct">${pct}%</span></div>
+        <div class="ot-prog-bar"><span style="width:${pct}%"></span></div>
+        ${late ? `<div class="ot-late">${late} past due</div>` : nextLbl ? `<div class="ot-next">Next: ${esc(nextLbl)}</div>` : ''}
       </div>` : `<div class="ot-prog"><div class="ot-prog-empty">No milestones yet</div></div>`}
     </article>`;
 }
 function ganttBodyHtml() {
   const list = ganttSchools();
-  if (!list.length) return '<div class="empty-state">No openings match these filters<button class="btn btn-tonal btn-sm" data-clearfilters>Clear filters</button></div>';
+  if (!list.length) return S().length ? '<div class="empty-state">No openings match these filters<button class="btn btn-tonal btn-sm" data-clearfilters>Clear filters</button></div>' : '<div class="empty-state">No school openings yet</div>';
   const now = Date.now();
   const terms = [...new Set(list.map(s => s.openingFY))].filter(Boolean).sort((a, b) => a - b);
   const body = terms.map(fy => {
@@ -536,7 +534,7 @@ function renderTimeline() {
   // No H2 - sidebar already indicates active page. Action button floats right.
   const el = $('#view-timeline'); if (el) el.innerHTML = `
     <div class="view-actions">
-      <button class="btn btn-filled" id="addSchool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>Add school opening</button>
+      <button class="btn btn-filled" id="addSchool"><svg viewBox="0 0 32 32" fill="currentColor" width="16" height="16"><path d="M17 15L17 8 15 8 15 15 8 15 8 17 15 17 15 24 17 24 17 17 24 17 24 15z"/></svg>Add school opening</button>
     </div>
     ${filterBar(['openingFYs', 'states', 'markets', 'types'])}
     <div id="viewBody">${ganttBodyHtml()}</div>`;
@@ -548,8 +546,7 @@ function renderTimeline() {
 /* ============================================================
    TAB 2 - PROGRESS MONITORING (collapsible)
    ============================================================ */
-function isExp(k) { return !!state.expanded[k]; }
-function chev(open) { return `<svg class="chev ${open ? 'open' : ''}" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>`; }
+function chev(open) { return `<svg class="chev ${open ? 'open' : ''}" viewBox="0 0 32 32" fill="currentColor" width="16" height="16"><path d="M22 16L12 26 10.6 24.6 19.2 16 10.6 7.4 12 6z"/></svg>`; }
 
 const URANK = { overdue: 0, this_month: 1, soon: 2, ok: 3, none: 4, done: 5 };
 function bySortUrgency(a, b) { return (URANK[timingLevel(a)] - URANK[timingLevel(b)]) || ((a.targetFY || 9999) - (b.targetFY || 9999)); }
@@ -559,20 +556,20 @@ function progressBodyHtml() {
   return dashboardHtml(filtered());   // Dashboard is the only status view; drill-downs jump to the Project Plan
 }
 function renderProgress() {
-  const printBtn = `<button class="btn btn-ghost btn-sm" id="dashPrint" title="Print report"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg><span class="pr-l">Print report</span></button>`;
+  const printBtn = `<button class="btn btn-ghost btn-sm" id="dashPrint" title="Print report"><svg viewBox="0 0 32 32" fill="currentColor" width="16" height="16"><path d="M28,9H25V3H7V9H4a2,2,0,0,0-2,2V21a2,2,0,0,0,2,2H7v6H25V23h3a2,2,0,0,0,2-2V11A2,2,0,0,0,28,9ZM9,5H23V9H9ZM23,27H9V17H23Zm5-6H25V15H7v6H4V11H28Z"/></svg><span class="pr-l">Print report</span></button>`;
   // Filter bar is always visible on the dashboard: it's a primary scoping control, not an occasional detour.
   // Menus kept to what changes the STATUS picture: State, Market, Workstream. Opening year lives on the cohort strip;
   // status/priority filters belong to the Project Plan (the dashboard IS the status/priority view).
   $('#view-progress').innerHTML = `
-    <div class="dash-filters" id="dashFilters">${filterBar(['openingFYs', 'states', 'markets', 'areas', 'owners'], { right: appliedFilterChips({ hiddenOnly: true }) + printBtn })}</div>
-    <div class="mast-status" id="mastStatus"><div class="ms-l"><div class="ms-greet" id="msGreet"></div><div class="cb-brief" id="cbBrief" aria-label="Today at a glance"></div></div><div class="cb-quarter" id="cbQuarter"></div></div>
+    <div class="dash-filters" id="dashFilters">${filterBar(hasSchoolWork() ? ['openingFYs', 'states', 'markets', 'areas', 'owners'] : ['states', 'markets', 'areas', 'owners'], { right: appliedFilterChips({ hiddenOnly: true }) + printBtn })}</div>
+    <div class="mast-status" id="mastStatus"><div class="ms-l"><div class="ms-greet" id="msGreet" role="heading" aria-level="1"></div><div class="cb-brief" id="cbBrief" aria-label="Today at a glance"></div></div><div class="cb-quarter" id="cbQuarter"></div></div>
     <div id="viewBody">${progressBodyHtml()}</div>`;
 }
 /* Applied-filter chips: shown inline in the filter bar so the current scope is visible at a glance
    and individually removable (no "open the panel to see what's on" hunt). */
 function appliedFilterChips(opts = {}) {
   const f = state.filters, chips = [];
-  const push = (label, onRemove) => chips.push(`<button class="af-chip" data-afclear="${onRemove}" title="Remove filter"><span>${esc(label)}</span><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>`);
+  const push = (label, onRemove) => chips.push(`<button class="af-chip" data-afclear="${onRemove}" title="Remove filter"><span>${esc(label)}</span><svg viewBox="0 0 32 32" fill="currentColor" width="12" height="12"><path d="M17.4141 16L24 9.4141 22.5859 8 16 14.5859 9.4143 8 8 9.4141 14.5859 16 8 22.5859 9.4143 24 16 17.4141 22.5859 24 24 22.5859 17.4141 16z"/></svg></button>`);
   if (!opts.hiddenOnly) f.states.forEach(v => push('State: ' + v, 'states:' + v));
   if (!opts.hiddenOnly) f.markets.forEach(v => push(v, 'markets:' + v));
   if (!opts.hiddenOnly) f.areas.forEach(v => push(v, 'areas:' + v));
@@ -618,13 +615,13 @@ function planCard(m, opts = {}) {
   if (!schoolNames.length && Array.isArray(m.schools)) schoolNames = m.schools.filter(Boolean);
   const schoolLbl = schoolNames.length === 0 ? '' : schoolNames.length <= 2 ? schoolNames.join(', ') : `${schoolNames.length} schools`;
   const place = [m.market, schoolLbl].filter(Boolean).join(' · ');
-  const flag = m.priority === 'high' ? '<span class="kc-flag kc-flag-high" title="High priority">⚑</span>'
-    : m.priority === 'low' ? '<span class="kc-flag kc-flag-low" title="Low priority">⚑</span>' : '';
+  const flag = m.priority === 'high' ? '<span class="kc-flag kc-flag-high" title="High priority">' + CI('flag') + '</span>'
+    : m.priority === 'low' ? '<span class="kc-flag kc-flag-low" title="Low priority">' + CI('flag') + '</span>' : '';
   // Plain due date (no overdue / due-soon status badge) sharing the context row, pushed right.
-  const dueEl = m.due_date ? `<span class="kc-due"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>${esc(fmtDate(m.due_date))}</span>` : '';
+  const dueEl = m.due_date ? `<span class="kc-due"><svg viewBox="0 0 32 32" fill="currentColor" width="12" height="12"><path d="M16,30A14,14,0,1,1,30,16,14,14,0,0,1,16,30ZM16,4A12,12,0,1,0,28,16,12,12,0,0,0,16,4Z"/><path d="M20.59 22L15 16.41 15 7 17 7 17 15.58 22 20.59 20.59 22z"/></svg>${esc(fmtDate(m.due_date))}</span>` : '';
   const pct = Math.max(0, Math.min(100, m.progress_percent || 0));
   const prog = pct === 0 ? '' : `<div class="kc-prog"><div class="kc-prog-top"><span>Progress</span><b>${pct}%</b></div><div class="kc-prog-bar"><span style="width:${pct}%;background:${scol}"></span></div></div>`;
-  const notes = nc ? `<span class="kc-notes" title="${nc} comment${nc === 1 ? '' : 's'}"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${nc}</span>` : '';
+  const notes = nc ? `<span class="kc-notes" title="${nc} comment${nc === 1 ? '' : 's'}"><svg viewBox="0 0 32 32" fill="currentColor" width="13" height="13"><path d="M17.74,30,16,29l4-7h6a2,2,0,0,0,2-2V8a2,2,0,0,0-2-2H6A2,2,0,0,0,4,8V20a2,2,0,0,0,2,2h9v2H6a4,4,0,0,1-4-4V8A4,4,0,0,1,6,4H26a4,4,0,0,1,4,4V20a4,4,0,0,1-4,4H21.16Z"/><path d="M8 10H24V12H8zM8 16H18V18H8z"/></svg>${nc}</span>` : '';
   // Material card anatomy: headline · subhead · supporting line · action row (inset divider above actions)
   const sub = [place, showTeam ? m.functional_area : ''].filter(Boolean).join(' · ');
   const p = curProgress(m), reasons = watermelonReasons(m), stale = needsCheckin(m), hist = m.dateHistory || [];
@@ -635,12 +632,12 @@ function planCard(m, opts = {}) {
   const done = es === 'complete';
   const due = done ? `<span class="kc-due2">${m.completedAt ? 'Completed ' + esc(fmtDate(m.completedAt.slice(0, 10))) : 'Completed'}</span>` : m.due_date ? `<span class="kc-due2 ${hist.length ? 'moved' : ''}" ${slipTip ? `title="${esc(slipTip)}"` : ''}>Due ${esc(fmtDate(m.due_date))}</span>` : '<span class="kc-due2 muted">No due date</span>';
   const pctEl = !done && p > 0 ? `<span class="kc-pct" title="${p}% progress"><span class="kc-bar"><span style="width:${p}%;background:${scol}"></span></span>${p}%</span>` : '';
-  const stBtn = `<button class="kc-status" data-qstatus="${m.id}" title="Change status" style="--sc:${scol}"><i></i>${esc(SM(es).label)}<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 9 6 6 6-6"/></svg></button>`;
+  const stBtn = `<button class="kc-status" data-qstatus="${m.id}" title="Change status" style="--sc:${scol}"><i class="${ADS_STATUS[es] ? 'st-' + es : ''}"></i>${esc(SM(es).label)}<svg viewBox="0 0 32 32" fill="currentColor" width="12" height="12"><path d="M16 22L6 12 7.4 10.6 16 19.2 24.6 10.6 26 12z"/></svg></button>`;
   return `<div class="kcard kcard-v2 kcard-m3 ${urgent ? 'urgent' : ''} ${done ? 'is-done' : ''}" draggable="true" data-id="${m.id}" data-expand="${m.id}">
     <div class="kc-title" title="${esc(m.activity)}">${esc(m.activity)}</div>
     ${sub ? `<div class="kc-sub">${m.market ? `<span class="kc-mkdot" style="background:${mk}"></span>` : ''}<span>${esc(sub)}</span>${flag}</div>` : ''}
     <div class="kc-meta">${due}${pctEl}</div>
-    <div class="kc-actions">${stBtn}${marker}<span class="kc-actions-r">${linksBadge(m)}${notes}<span class="kc-owners">${ownersOf(m).length ? ownersOf(m).map(o => personChip(o)).join('') : personChip('')}</span></span></div>
+    <div class="kc-actions">${stBtn}${marker}<span class="kc-actions-r">${linksBadge(m)}${notes}<span class="kc-owners">${ownersOf(m).length ? ownersOf(m).slice(0, 4).map(o => personChip(o)).join('') + (ownersOf(m).length > 4 ? `<span class="kc-more" title="${esc(ownersOf(m).slice(4).join(', '))}">+${ownersOf(m).length - 4}</span>` : '') : personChip('')}</span></span></div>
   </div>`;
 }
 function planFocusHtml() {
@@ -672,7 +669,7 @@ function planListHtml() {
   };
   list.forEach(m => { const k = keyOf(m) || '-'; (g[k] = g[k] || []).push(m); });
   const keys = Object.keys(g).sort((a, b) => gb === 'year' ? (order[a] || 9999) - (order[b] || 9999) : gb === 'state' ? (order[a] ?? 9) - (order[b] ?? 9) : a.localeCompare(b));
-  if (!keys.length) return '<div class="empty-state">No milestones match these filters<button class="btn btn-tonal btn-sm" data-clearfilters>Clear filters</button></div>';
+  if (!keys.length) return (M().length ? '<div class="empty-state">No milestones match these filters<button class="btn btn-tonal btn-sm" data-clearfilters>Clear filters</button></div>' : '<div class="empty-state">No milestones yet</div>');
   state._planKeys = keys.map(k => 'pg:' + k);
   if (state._expandAllOnce) { state._planKeys.forEach(k => state.expanded[k] = true); state._expandAllOnce = false; }
   // groups default COLLAPSED so the page opens as a scannable outline, not 132 cards
@@ -690,15 +687,15 @@ function planBodyHtml() {
 function renderPlan() {
   const list = filtered();
   const focusN = list.filter(m => ['overdue', 'this_month'].includes(timingLevel(m)) || ['behind', 'at_risk'].includes(effectiveStatus(m))).length;
-  const focusBtn = `<button class="btn btn-focus ${state.planFocus ? 'on' : ''}" id="planFocus" title="Show only overdue, due-soon, and off-track milestones">Needs attention${focusN ? ` <span class="focus-n">${focusN}</span>` : ''}</button>`;
+  const focusBtn = `<button class="btn btn-focus ${state.planFocus ? 'on' : ''}" id="planFocus">Needs attention${focusN ? ` <span class="focus-n">${focusN}</span>` : ''}</button>`;
   const isBoard = state.planGroup === 'stage';
-  const viewToggle = `<div class="plan-view-toggle"><button class="pvt ${!isBoard ? 'on' : ''}" data-planview="list" title="List view" aria-label="List view"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M3 14h4v-4H3v4zm0 5h4v-4H3v4zM3 9h4V5H3v4zm5 5h13v-4H8v4zm0 5h13v-4H8v4zM8 5v4h13V5H8z"/></svg><span class="pvt-l">List</span></button><button class="pvt ${isBoard ? 'on' : ''}" data-planview="board" title="Board view" aria-label="Board view"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M4 5v13h17V5H4zm4 11H6v-9h2v9zm4 0h-2v-9h2v9zm4 0h-2v-9h2v9zm3 0h-1v-9h1v9z"/></svg><span class="pvt-l">Board</span></button></div>`;
+  const viewToggle = `<div class="plan-view-toggle"><button class="pvt ${!isBoard ? 'on' : ''}" data-planview="list" title="List view" aria-label="List view"><svg viewBox="0 0 32 32" fill="currentColor" width="18" height="18"><circle cx="7" cy="9" r="3"/><circle cx="7" cy="23" r="3"/><path d="M16 22H30V24H16zM16 8H30V10H16z"/></svg><span class="pvt-l">List</span></button><button class="pvt ${isBoard ? 'on' : ''}" data-planview="board" title="Board view" aria-label="Board view"><svg viewBox="0 0 32 32" fill="currentColor" width="18" height="18"><path d="M24 4H26V28H24zM18 6V26H14V6h4m0-2H14a2 2 0 00-2 2V26a2 2 0 002 2h4a2 2 0 002-2V6a2 2 0 00-2-2zM6 4H8V28H6z"/></svg><span class="pvt-l">Board</span></button></div>`;
   const viewSel = isBoard ? '' : `<label class="tb-group ${state.planFocus ? 'is-dim' : ''}">Group by
     <select id="planGroupSel" ${state.planFocus ? 'disabled' : ''}>${[['team', 'Team'], ['state', 'State, Florida first'], ['school', 'School opening'], ['market', 'Market'], ['year', 'Due year']].map(([v, l]) => `<option value="${v}" ${state.planGroup === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`;
   const allOpen = (state._planKeys || []).length > 0 && state._planKeys.every(k => state.expanded[k]);
   const expandBtns = (!state.planFocus && !isBoard) ? `<button class="btn btn-ghost btn-sm" id="planToggleAll">${allOpen ? 'Collapse all' : 'Expand all'}</button>` : '';
-  const csvBtn = `<button class="btn btn-ghost btn-sm" id="planCsv" title="Download the milestones shown as a spreadsheet">Export CSV</button>`;
-  const right = `${appliedFilterChips({ hiddenOnly: true })}${viewToggle}${focusBtn}${viewSel}${expandBtns}${csvBtn}<button class="btn btn-filled" id="newItem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>New milestone</button>`;
+  const csvBtn = `<button class="btn btn-ghost btn-sm" id="planCsv" >Export CSV</button>`;
+  const right = `${appliedFilterChips({ hiddenOnly: true })}${viewToggle}${focusBtn}${viewSel}${expandBtns}${csvBtn}<button class="btn btn-filled" id="newItem"><svg viewBox="0 0 32 32" fill="currentColor" width="16" height="16"><path d="M17 15L17 8 15 8 15 15 8 15 8 17 15 17 15 24 17 24 17 17 24 17 24 15z"/></svg>New milestone</button>`;
   // No H2 - all actions live in the filter bar's right slot.
   $('#view-plan').innerHTML = `
     ${filterBar(['states', 'markets', 'fys', 'areas', 'owners'], { school: true, right })}
@@ -708,7 +705,8 @@ function renderPlan() {
 /* ============================================================
    EDIT ENGINE + cross-tab
    ============================================================ */
-function rerender() { requestAnimationFrame(() => { if (typeof updateSticky === 'function') updateSticky(); }); if (state.view === 'progress') renderProgress(); else if (state.view === 'timeline') renderTimeline(); else renderPlan(); requestAnimationFrame(() => paintAvatars()); if (typeof updateFilterBubble === 'function') updateFilterBubble(); }
+function hasSchoolWork() { return WS === 'readiness' || M().some(m => (m.schoolIds || []).length); }   // Enabling Work is network-wide, so school views stay hidden until a task names a school
+function rerender() { const kb0 = document.querySelector('.kanban'), kbX = kb0 ? kb0.scrollLeft : 0; if (kbX) requestAnimationFrame(() => { const k = document.querySelector('.kanban'); if (k) k.scrollLeft = kbX; }); document.body.classList.toggle('no-school-work', !hasSchoolWork()); requestAnimationFrame(() => { if (typeof updateSticky === 'function') updateSticky(); }); if (state.view === 'progress') renderProgress(); else if (state.view === 'timeline') renderTimeline(); else renderPlan(); requestAnimationFrame(() => paintAvatars()); if (typeof updateFilterBubble === 'function') updateFilterBubble(); }
 
 /* ============================================================
    TAB 0 - EXECUTIVE SUMMARY (board / chiefs readout, print-ready)
@@ -727,8 +725,8 @@ function fmtMoney(n) { n = +n || 0; const a = Math.abs(n), sg = n < 0 ? '-' : ''
 /* greenlight/gating status per domain - deliberately distinct from market brand colors.
    grey = not started · blue = in progress · green = cleared (gate met) · amber/red = off-track */
 // status palette drawn from the KIPP brand: green=complete, sky=on track, orange=at risk, red=behind
-// Atlassian semantic icon colors (3:1+ on white). Must match --status-* in styles.css.
-const RAG = { green: '#6A9A23', blue: '#357DE8', yellow: '#E06C00', red: '#C9372C', none: '#B7B9BE' };
+// Carbon support colors. Must match --status-* in styles.css.
+const RAG = { green: '#24A148', blue: '#0043CE', yellow: '#B28600', red: '#DA1E28', none: '#8D8D8D' };
 /* readiness = are we ON SCHEDULE (timing-aware), with % complete kept in the tooltip */
 function ragReady(list) {
   if (!list.length) return { key: 'none', color: RAG.none, label: 'Not started' };
@@ -753,20 +751,19 @@ function captureTrend() {
    DASHBOARD building blocks (overview layout)
    ============================================================ */
 const EH_IC = {
-  table:    '<path d="M3 5h18M3 12h18M3 19h18"/>',
-  warning:  '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/>',
-  check:    '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
-  people:   '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
-  flag:     '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>'
+  table:    '<circle cx="7" cy="9" r="3"/><circle cx="7" cy="23" r="3"/><path d="M16 22H30V24H16zM16 8H30V10H16z"/>',
+  warning:  '<path d="M16 23a1.5 1.5 0 101.5 1.5A1.5 1.5 0 0016 23zM15 12H17V21H15z"/><path d="M29,30H3a1,1,0,0,1-.8872-1.4614l13-25a1,1,0,0,1,1.7744,0l13,25A1,1,0,0,1,29,30ZM4.6507,28H27.3493l.002-.0033L16.002,6.1714h-.004L4.6487,27.9967Z"/>',
+  check:    '<path d="M16 22H30V24H16zM14 19.4L12.6 18 6 24.6 3.4 22 2 23.4 6 27.4zM16 8H30V10H16zM14 5.4L12.6 4 6 10.6 3.4 8 2 9.4 6 13.4z"/>',
+  people:   '<path d="M26 14H24v2h2a3.0033 3.0033 0 013 3v4h2V19A5.0058 5.0058 0 0026 14zM24 4a3 3 0 11-3 3 3 3 0 013-3m0-2a5 5 0 105 5A5 5 0 0024 2zM23 30H21V28a3.0033 3.0033 0 00-3-3H14a3.0033 3.0033 0 00-3 3v2H9V28a5.0059 5.0059 0 015-5h4a5.0059 5.0059 0 015 5zM16 13a3 3 0 11-3 3 3 3 0 013-3m0-2a5 5 0 105 5A5 5 0 0016 11zM8 14H6a5.0059 5.0059 0 00-5 5v4H3V19a3.0033 3.0033 0 013-3H8zM8 4A3 3 0 115 7 3 3 0 018 4M8 2a5 5 0 105 5A5 5 0 008 2z"/>',
+  flag:     '<path d="M6,30H4V2H28l-5.8,9L28,20H6ZM6,18H24.33L19.8,11l4.53-7H6Z"/>'
 };
-function ehIc(k) { return `<svg class="eh-ic" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${EH_IC[k] || ''}</svg>`; }
+function ehIc(k) { return `<svg class="eh-ic" viewBox="0 0 32 32" fill="currentColor" width="17" height="17">${EH_IC[k] || ''}</svg>`; }
 const RAG_SEV = { red: 4, yellow: 3, blue: 2, none: 1, green: 0 };
 
 /* ---- Progress monitoring by opening year (cohort) + by workstream ---- */
 // The focused opening year = the single value in the openingFYs filter (null = all years).
 // Focusing scopes the whole app (passFilters/schoolsInView/ganttSchools all honor openingFYs),
 // so a drill from here into the Plan or Timeline stays on the same cohort.
-function focusCohort() { return state.filters.openingFYs.size === 1 ? [...state.filters.openingFYs][0] : null; }
 function setDashCohort(v) {
   if (v === 'all') state.filters.openingFYs.clear();
   else {
@@ -796,12 +793,6 @@ function wsBreakdownRows(list) {
     </button>`).join('')}</div>`;
 }
 // Breakdown card with a By workstream / By school toggle.
-function breakdownCard(list, schools) {
-  const focus = focusCohort();
-  const scope = focus ? `Fall ${focus - 1}` : 'all openings';
-  // Progress by team is the one portfolio-health cut; per-school progress lives on the Openings page.
-  return `<section class="ex-card bd-card"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('table')}<h3>Progress by team${focus ? ` · ${esc(scope)}` : ''}</h3></div></div>${wsBreakdownRows(list)}</section>`;
-}
 
 
 // Growth-capital priority strip. Surface, don't hide — the charter names capital as one of
@@ -829,37 +820,6 @@ function capitalPriorityStrip() {
 // Owners with slipping work — the charter frames commitments per owner (attend YOUR block,
 // speak for YOUR function), and Aden's between-meetings job is to chase follow-ups. This card
 // answers "who do I need to unblock?" — the primary question at a biweekly stand-up.
-function ownersCard(list) {
-  const slip = list.filter(m => effectiveStatus(m) !== 'complete' && (['overdue', 'this_month'].includes(timingLevel(m)) || ['behind', 'at_risk', 'blocked'].includes(effectiveStatus(m))));
-  const byOwner = {};
-  slip.forEach(m => { const os = ownersOf(m); (os.length ? os : ['Unassigned']).forEach(o => (byOwner[o] = byOwner[o] || []).push(m)); });
-  const rank = m => timingLevel(m) === 'overdue' ? 0 : (['behind', 'blocked'].includes(effectiveStatus(m)) ? 1 : 2);
-  const rows = Object.entries(byOwner).map(([owner, items]) => ({
-    owner, items,
-    worst: Math.min(...items.map(rank))
-  })).sort((a, b) => a.worst - b.worst || b.items.length - a.items.length);
-  if (!rows.length) return '';
-  const top = rows.slice(0, 6);
-  const html = top.map(({ owner, items }) => {
-    const areas = [...new Set(items.map(m => m.functional_area).filter(Boolean))].slice(0, 2).join(' · ');
-    const topItem = items.slice().sort(bySortUrgency)[0];
-    const attr = owner === 'Unassigned' ? '' : `data-drillowner="${esc(owner)}"`;
-    return `<button class="own-row" ${attr} title="${owner === 'Unassigned' ? 'Unassigned items' : "See " + esc(owner) + "'s items needing attention"}">
-      ${personChip(owner === 'Unassigned' ? '' : owner)}
-      <div class="own-main">
-        <div class="own-name">${esc(owner)}${areas ? `<span class="own-area muted"> · ${esc(areas)}</span>` : ''}</div>
-        <div class="own-top muted">${esc(topItem.activity)}</div>
-      </div>
-      <span class="own-n">${items.length}</span>
-    </button>`;
-  }).join('');
-  const foot = rows.length > top.length || slip.length ? `<button class="card-more" data-drilldim="riskbehind" data-drillval="">See all ${slip.length} item${slip.length === 1 ? '' : 's'} needing attention →</button>` : '';
-  return `<section class="ex-card own-card">
-    <div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('people')}<h3>Needs attention by owner</h3></div></div>
-    <div class="own-body">${top.length ? html : '<div class="muted ex-empty">Everyone is caught up</div>'}</div>
-    ${foot}
-  </section>`;
-}
 
 function dashboardHtml(list) {
   // Dashboard = the questions people bring: what do I do before the meeting (chair), how is each
@@ -874,7 +834,7 @@ function dashboardHtml(list) {
     ${isAdmin() ? committeeCard() : ''}
     ${greetBanner(list)}
     ${mentionsCard()}
-    ${openingsTable(schools, sMs)}
+    ${hasSchoolWork() ? openingsTable(schools, sMs) : ''}
     <div class="dash-pair">${attentionCard(list)}${comingUpCard(list)}</div>
     <div class="dash-pair dash-pair-wide">${teamsCard(list)}${capitalPriorityStrip()}</div>
   </div>`;
@@ -890,7 +850,7 @@ function whereLabel(m) {
   const sc = (m.schoolIds || []).map(schoolById).filter(Boolean);
   return sc.length ? (sc.length <= 2 ? sc.map(x => `${x.market} ${x.display_label}`).join(', ') : `${sc.length} openings`) : (m.market || 'Network-wide');
 }
-function statusPill(label, color) { return `<span class="dt-status"><i style="background:${color}"></i>${esc(label)}</span>`; }
+function statusPill(label, color) { const k = { [RAG.green]: "complete", [RAG.blue]: "on_track", [RAG.yellow]: "at_risk", [RAG.red]: "behind", [RAG.none]: "not_started", [ADS_STATUS.blocked]: "blocked" }[color]; return `<span class="dt-status">${k ? `<i class="stdot st-${k}"></i>` : `<i style="background:${color}"></i>`}${esc(label)}</span>`; }
 function openingsTable(schools, sMs) {
   if (!schools.length) return '';
   const t = todayISO();
@@ -898,7 +858,7 @@ function openingsTable(schools, sMs) {
     const ms = sMs(s), r = ragReady(ms), open = ms.filter(m => m.status !== 'complete'), p = avgProgress(ms);
     const off = open.filter(m => ['behind', 'blocked'].includes(effectiveStatus(m))).length, risk = open.filter(m => effectiveStatus(m) === 'at_risk').length;
     const next = open.filter(m => m.due_date && m.due_date >= t).sort((a, b) => a.due_date < b.due_date ? -1 : 1)[0];
-    const issues = off || risk ? [off ? `<span class="dt-bad">${off} off track</span>` : '', risk ? `<span class="dt-warn">${risk} at risk</span>` : ''].filter(Boolean).join(' · ') : '<span class="muted">None</span>';
+    const issues = off || risk ? [off ? `<span class="dt-bad">${off} behind</span>` : '', risk ? `<span class="dt-warn">${risk} at risk</span>` : ''].filter(Boolean).join(' · ') : '<span class="muted">None</span>';
     return `<tr data-drillschool="${esc(s.id)}" title="Open ${esc(s.market)} ${esc(s.display_label)}">
       <td><span class="dt-dot" style="background:${mkColor(s.market)}"></span><b>${esc(s.market)} ${esc(s.display_label)}</b></td>
       <td>Fall ${s.openingFY - 1}</td>
@@ -932,7 +892,7 @@ function comingUpCard(list) {
   const att = new Set(attentionItems(list).map(m => m.id));
   const items = list.filter(m => dueWithin30(m) && !att.has(m.id)).sort((a, b) => a.due_date < b.due_date ? -1 : 1), show = items.slice(0, 6);
   return `<section class="ex-card al-card"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('check')}<h3>Due in the next 30 days</h3></div><span class="dt-sum">${items.length}</span></div>
-    ${show.length ? `<div class="al-list">${show.map(listRow).join('')}</div>` : '<p class="muted ex-empty">Nothing else due in the next 30 days</p>'}
+    ${show.length ? `<div class="al-list">${show.map(listRow).join('')}</div>` : `<p class="muted ex-empty">Nothing ${list.some(dueWithin30) ? 'else ' : ''}due in the next 30 days</p>`}
     ${items.length > show.length ? `<button class="card-more" data-drilldim="timing" data-drillval="due30">View all ${items.length} in Milestones</button>` : ''}</section>`;
 }
 function teamsCard(list) {
@@ -945,7 +905,7 @@ function teamsCard(list) {
     return `<tr data-drilldim="team" data-drillval="${esc(t)}" title="Open ${esc(t)} in Milestones"><td><b>${esc(t)}</b></td><td class="num">${open.length}</td><td class="num ${off ? 'dt-bad' : ''}">${z(off)}</td><td class="num ${risk ? 'dt-warn' : ''}">${z(risk)}</td><td class="num">${z(stale)}</td><td class="num">${avgProgress(ms)}%</td>${showCal ? `<td class="num">${cal.n ? Math.round(100 * cal.k / cal.n) + '%' : '<span class="muted">0 of 0</span>'}</td>` : ''}</tr>`;
   }).join('');
   return `<section class="ex-card dt-card"><div class="ex-card-head"><div class="ex-cardhead-l">${ehIc('people')}<h3>Teams</h3></div></div>
-    <div class="dt-wrap"><table class="dt"><thead><tr><th>Team</th><th class="num">Open</th><th class="num">Off track</th><th class="num">At risk</th><th class="num">Updates missing</th><th class="num">Progress</th>${showCal ? '<th class="num">Forecast accuracy</th>' : ''}</tr></thead><tbody>${rows}</tbody></table></div></section>`;
+    <div class="dt-wrap"><table class="dt"><thead><tr><th>Team</th><th class="num">Open</th><th class="num">Behind</th><th class="num">At risk</th><th class="num">Updates missing</th><th class="num">Progress</th>${showCal ? '<th class="num">Forecast accuracy</th>' : ''}</tr></thead><tbody>${rows}</tbody></table></div></section>`;
 }
 
 /* The full greeting moved to the top content bar (updateGreeting).
@@ -991,14 +951,20 @@ function addItem(stage) {
 }
 
 /* popovers */
-function closePopover() { const p = $('#popover'); if (p) p.remove(); document.removeEventListener('mousedown', outsidePop, true); }
+let popAnchor = null;
+function closePopover() { const p = $('#popover'); if (p) { const back = p.contains(document.activeElement) ? popAnchor : null; p.remove(); if (back && document.contains(back)) back.focus({ preventScroll: true }); } document.removeEventListener('mousedown', outsidePop, true); }
 function outsidePop(e) { if (!e.target.closest('#popover')) closePopover(); }
 function openPopover(anchor, html) {
   closePopover();
   const p = document.createElement('div'); p.className = 'popover'; p.id = 'popover'; p.innerHTML = html; document.body.appendChild(p);
   const r = anchor.getBoundingClientRect();
-  p.style.top = (window.scrollY + r.bottom + 6) + 'px';
+  const below = window.innerHeight - r.bottom - 12, above = r.top - 60;
+  if (p.offsetHeight > below && above > below) p.style.top = (window.scrollY + Math.max(56, r.top - p.offsetHeight - 6)) + 'px';
+  else p.style.top = (window.scrollY + r.bottom + 6) + 'px';
+  p.style.maxHeight = Math.max(160, Math.max(below, above)) + 'px'; p.style.overflowY = 'auto';
   p.style.left = Math.max(8, Math.min(window.scrollX + r.left, window.scrollX + window.innerWidth - p.offsetWidth - 12)) + 'px';
+  popAnchor = anchor;
+  const firstCtl = p.querySelector('input, button, a[href]'); if (firstCtl) firstCtl.focus({ preventScroll: true });
   setTimeout(() => document.addEventListener('mousedown', outsidePop, true), 0);
   return p;
 }
@@ -1023,17 +989,18 @@ function lockModalIfReadOnly() {
 }
 function openModal(id) {
   modalMode = 'task'; modalId = id; modalDirty = false; const m = findM(id); if (!m) return;
-  modalOpenDoc = clone(m);
-  $('#modalTitle').textContent = 'Milestone details';
+  modalOpenDoc = clone(m); requestAnimationFrame(() => { const b = $('#modalBody'); if (b) b.scrollTop = 0; });
+  $('#modalTitle').textContent = m._draft ? 'New milestone' : 'Milestone details';
+  $('#modalDelete').style.display = m._draft ? 'none' : '';
   const opt = (arr, val) => arr.map(x => Array.isArray(x) ? `<option value="${x[0]}" ${x[0] === val ? 'selected' : ''}>${esc(x[1])}</option>` : `<option ${x === val ? 'selected' : ''}>${esc(x)}</option>`).join('');
   const schoolChecks = state.data.schools.filter(s => s.market === m.market).map(s => `<label class="field-check"><input type="checkbox" class="m-school" value="${esc(s.id)}" ${(m.schoolIds || []).includes(s.id) ? 'checked' : ''}> ${esc(s.display_label)} <span class="muted">${esc(fyLabel(s.openingFY))}</span></label>`).join('') || '<span class="muted">No schools in this market</span>';
   const linked = (m.schoolIds || []).map(id => schoolById(id)).filter(Boolean);
-  const schoolLinks = linked.length ? `<div class="sm-school-links">Linked schools: ${linked.map(s => `<button class="sm-school-link" data-openschool="${esc(s.id)}" title="Open ${esc(s.display_label)}">${esc(s.market)} · ${esc(s.display_label)} →</button>`).join('')}</div>` : '';
+  const schoolLinks = linked.length ? `<div class="sm-school-links">Linked schools: ${linked.map(s => `<button class="sm-school-link" data-openschool="${esc(s.id)}" title="Open ${esc(s.display_label)}">${esc(s.market)} · ${esc(s.display_label)} ${CI('arrow')}</button>`).join('')}</div>` : '';
   const soSec = `
     <div class="m-sec-h">School openings</div>
     <div class="field"><div class="so-pick" id="mSchools">${schoolPicker(m)}</div>
-      <div class="help-text">Leave blank for market-wide or network-wide work</div></div>
-    <div class="so-derived" id="mMarketDerived" ${(m.schoolIds || []).length ? '' : 'hidden'}>Market: <b id="mMarketName">${esc(m.market || '')}</b>, from the selected openings</div>
+      <div class="help-text">Optional</div></div>
+    <div class="so-derived" id="mMarketDerived" ${(m.schoolIds || []).length ? '' : 'hidden'}>Market: <b id="mMarketName">${esc(m.market || '')}</b></div>
     <div class="field" id="mMarketWrap" ${(m.schoolIds || []).length ? 'hidden' : ''}><label>Market</label><select id="mMarket">${opt([['', 'Network-wide'], ...markets().map(x => [x, x])], (m.schoolIds || []).length ? '' : (m.market || ''))}</select></div>
 `;
   $('#modalBody').innerHTML = `
@@ -1042,15 +1009,15 @@ function openModal(id) {
     ${m._draft ? soSec : checkinBlock(m)}
     <div class="field-row"><div class="field"><label>Status</label><select id="mStatus">${opt(meta().statuses.map(s => [s, SM(s).label]), m.status)}</select></div>
       <div class="field"><label>Progress</label><div class="prog-input"><input id="mProg" type="number" min="0" max="100" step="5" value="${m.progress_percent || 0}"><span>%</span></div></div></div>
-    <div class="help-text field-help">Updates automatically when overdue or due within 2 weeks</div>
+    <div class="help-text field-help">Updates when overdue or due soon</div>
     <div class="block-flag ${m.status === 'blocked' ? 'on' : ''}" id="mBlockWrap">
-      <div class="block-flag-row"><button type="button" class="btn-block" id="mBlockBtn" aria-pressed="${m.status === 'blocked'}">⚑ <span>${m.status === 'blocked' ? 'Blocked' : 'Flag as blocked'}</span></button>
-      <span class="block-hint">${m.status === 'blocked' ? 'Click again to clear' : 'Flags it on the Dashboard'}</span></div>
+      <div class="block-flag-row"><button type="button" class="btn-block" id="mBlockBtn" aria-pressed="${m.status === 'blocked'}">${CI('flag')} <span>${m.status === 'blocked' ? 'Blocked' : 'Flag as blocked'}</span></button>
+      <span class="block-hint">${m.status === 'blocked' ? 'Click again to clear' : ''}</span></div>
       <div class="field block-reason"><label for="mBlockWhy">What's blocking it?</label><input id="mBlockWhy" value="${esc(m.dependency)}" ></div>
     </div>
     <div class="m-sec-h">Owner and timing</div>
     <div class="field-row"><div class="field"><label>Owner</label><select id="mOwner">${ownerOptions(m.owner)}</select>${m._draft ? '' : emailOwnersLink(m)}</div><div class="field"><label>Due date</label><input id="mDue" type="date" value="${esc(m.due_date || '')}"></div></div>
-    <div class="field"><label>Co-owners</label>${coOwnerPicker(m)}${isAdmin() ? '<div class="help-text">Missing someone? Add them in Settings</div>' : ''}</div>
+    <div class="field"><label>Co-owners</label>${coOwnerPicker(m)}</div>
     <div class="field"><label>Team</label><select id="mTeam">${opt(teams(), m.functional_area)}</select></div>
     ${checkpointsBlock(m)}
     ${linksDepsBlock(m)}
@@ -1061,8 +1028,8 @@ function openModal(id) {
       <div class="field"><label>Detail / sub-workstream</label><input id="mWs" value="${esc(m.workstream)}"></div>
       <div class="field-row"><div class="field"><label>Priority</label><select id="mPri">${opt([['high', 'High'], ['medium', 'Medium'], ['low', 'Low']], m.priority)}</select></div></div>
       <div class="field-row"><div class="field"><label>Target fiscal year</label><select id="mFy" ${m.due_date ? 'disabled title="Set from the due date"' : ''}><option value="">-</option>${fyList().map(fy => `<option value="${fy}" ${m.targetFY === fy ? 'selected' : ''}>${fyLabel(fy)}</option>`).join('')}</select></div><div class="field"><label>Quarter</label><select id="mQ" ${m.due_date ? 'disabled title="Set from the due date"' : ''}>${opt(['', 'Q1', 'Q2', 'Q3', 'Q4'], m.targetQuarter)}</select></div></div>
-      <div class="field"><label>Start date</label><input type="date" id="mStart" value="${esc(m.startDate || '')}"><div class="help-text">For the pace check</div></div>
-      <div class="field"><label>Stage (Kanban)</label><select id="mStage">${opt(meta().stages, m.stage || 'to_do')}</select></div>
+      <div class="field"><label>Start date</label><input type="date" id="mStart" value="${esc(m.startDate || '')}"></div>
+      <div class="field"><label>Board column</label><select id="mStage">${opt(meta().stages, m.stage || 'to_do')}</select></div>
       <div class="field"><label>Dependency / blockers</label><input id="mDep" value="${esc(m.dependency)}"></div>
       <div class="field-row"><label class="field-check"><input type="checkbox" id="mKey" ${m.keyMilestone ? 'checked' : ''}> Key milestone</label><label class="field-check"><input type="checkbox" id="mTrans" ${m.transition ? 'checked' : ''}> Transition to Regional Ops</label></div>
     </details>
@@ -1099,8 +1066,10 @@ function openModal(id) {
 function saveModal() {
   if (!guardEdit()) return;
   if (modalMode === 'school') return saveSchool();
-  const m = findM(modalId); if (!m) return;
-  if (!$('#mAct').value.trim() && !m.activity) { toast('Add a milestone name first', 'err'); $('#mAct').focus(); return; }
+  const m = findM(modalId); if (!m) { closeModal(); toast('A teammate removed this milestone, so your edits were not saved', 'warn'); return; }
+  if (!$('#mAct').value.trim() && !m.activity) { markInvalid($('#mAct'), 'Add a milestone name'); return; }
+  const startV = ($('#mStart') || {}).value, dueV0 = $('#mDue').value;
+  if (startV && dueV0 && startV > dueV0) { const dt = $('#mStart').closest('details'); if (dt) dt.open = true; markInvalid($('#mStart'), 'Start date must be on or before the due date'); return; }
   const wasDraft = !!m._draft;
   const fx = readForecastUI(m); if (fx === false) return;
   snapshotForUndo((wasDraft ? 'Create milestone: ' : 'Edit milestone: ') + ($('#mAct').value.trim() || m.activity || '').slice(0, 40));
@@ -1180,8 +1149,7 @@ function confirmDialog(opts) {
   const w = document.createElement('div'); w.className = 'confirm-backdrop'; w.id = 'confirmBackdrop';
   const typedBlock = opts.requireTyped ? `<div class="confirm-typed"><label>Type <span class="mono">${esc(opts.requireTyped)}</span> to confirm</label><input id="cfgTyped" class="mono" autocomplete="off" placeholder="${esc(opts.requireTyped)}"></div>` : '';
   w.innerHTML = `<div class="confirm-box">
-    <div class="confirm-ic ${opts.danger ? 'danger' : ''}">${opts.danger ? '⚠' : '?'}</div>
-    <h3>${esc(opts.title)}</h3>
+        <h3>${esc(opts.title)}</h3>
     <div class="confirm-msg">${opts.message}</div>
     ${opts.danger ? `<div class="confirm-shared">${shared ? 'This removes it for everyone on the shared board. You can undo right after' : 'You can undo right after'}</div>` : ''}
     ${typedBlock}
@@ -1202,7 +1170,6 @@ function confirmDialog(opts) {
    SCHOOL MANAGEMENT - add / edit / remove openings + their tasks
    ============================================================ */
 function schoolById(id) { return state.data.schools.find(s => s.id === id); }
-function typeFromCode(code) { const m = /^([A-Za-z]+)(\d+)?/.exec(code || ''); const t = (m ? m[1] : '').toUpperCase(); return t === 'HS' ? 'HS' : t === 'ES' ? 'ES' : 'MS'; }
 function openSchoolModal(id) {
   if (!id && !guardEdit()) return;
   modalMode = 'school'; schoolId = id; modalDirty = false;
@@ -1216,13 +1183,13 @@ function openSchoolModal(id) {
   const taskList = sm.length ? sm.slice().sort(bySortUrgency).map(m => `<div class="sm-task" data-expand="${m.id}">${statusDot(effectiveStatus(m))}<span class="sm-t-title">${esc(m.activity)}</span><span class="sm-t-team">${esc(m.functional_area || '')}</span><span class="sm-t-due">${dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : '-')}</span></div>`).join('') : '<div class="muted" style="font-size:14px">No milestones yet</div>';
   const summary = isNew ? '' : `<div class="sm-summary">
     <span><span class="state-badge sm" style="background:${stColor(s.state)}">${esc(s.state)}</span> <b>${esc(s.market)}</b> · Fall ${s.openingFY - 1}</span>
-    <span class="sm-summary-r"><span class="muted">${sm.length} milestone${sm.length === 1 ? '' : 's'}</span>${sm.length ? `<button class="btn btn-text btn-sm sm-openplan" data-openplanschool="${esc(s.id)}" title="See this school's milestones">Open in Milestones →</button>` : ''}</span></div>`;
+    <span class="sm-summary-r"><span class="muted">${sm.length} milestone${sm.length === 1 ? '' : 's'}</span>${sm.length ? `<button class="btn btn-text btn-sm sm-openplan" data-openplanschool="${esc(s.id)}" >Open in Milestones ${CI('arrow')}</button>` : ''}</span></div>`;
   // plain calendar year - a school with openingFY=2028 opens in August 2027, so we show "2027"
-  const fyField = `<div class="field"><label>Opens <span class="req">*</span></label><select id="sFy">${fyList().map(fy => `<option value="${fy}" ${s.openingFY === fy ? 'selected' : ''}>Fall ${fy - 1} (${fyLabel(fy)})</option>`).join('')}</select><div class="help-text">Schools open in August</div></div>`;
+  const fyField = `<div class="field"><label>Opens <span class="req">*</span></label><select id="sFy">${fyList().map(fy => `<option value="${fy}" ${s.openingFY === fy ? 'selected' : ''}>Fall ${fy - 1} (${fyLabel(fy)})</option>`).join('')}</select></div>`;
   const qField = `<input type="hidden" id="sQ" value="${esc(s.openingQuarter || 'Q1')}">`;   // every opening is in August; quarter kept for old data
   const marketOnly = `<div class="field"><label>Market / location <span class="req">*</span></label><select id="sMarket">${opt(markets(), s.market)}</select></div>`;
-  const labelField = `<div class="field-row"><div class="field"><label>Label <span class="req">*</span></label><input id="sLabel" value="${esc(s.display_label || s.code || '')}" placeholder="ES4"><div class="help-text">For example, ES4 or MS2</div></div><div class="field"><label>School type</label><select id="sType">${opt([['ES', 'Elementary (ES)'], ['MS', 'Middle (MS)'], ['HS', 'High (HS)']], s.school_type)}</select></div></div>`;
-  const marketField = `<div class="field-row"><div class="field"><label>Market / location</label><select id="sMarket">${opt(markets(), s.market)}</select></div><div class="field"><label>Pod #</label><input id="sPod" type="number" min="1" value="${s.pod_number || ''}" placeholder="4"></div></div>`;
+  const labelField = `<div class="field-row"><div class="field"><label>Label <span class="req">*</span></label><input id="sLabel" value="${esc(s.display_label || s.code || '')}" placeholder="ES4"></div><div class="field"><label>School type</label><select id="sType">${opt([['ES', 'Elementary (ES)'], ['MS', 'Middle (MS)'], ['HS', 'High (HS)']], s.school_type)}</select></div></div>`;
+  const marketField = `<div class="field-row"><div class="field"><label>Market / location</label><select id="sMarket">${opt(markets(), s.market)}</select></div><div class="field"><label>Pod</label><input id="sPod" type="number" min="1" value="${s.pod_number || ''}" placeholder="4"></div></div>`;
   const confField = `<label class="field-check"><input type="checkbox" id="sConf" ${s.confirmed !== false ? 'checked' : ''}> Opening confirmed</label>`;
   $('#modalBody').innerHTML = isNew ? `
     ${labelField}
@@ -1230,7 +1197,7 @@ function openSchoolModal(id) {
     ${fyField}
     <div class="field-row">${confField}</div>
     <details class="sm-details"><summary>More details</summary>
-      <div class="field-row"><div class="field"><label>Pod #</label><input id="sPod" type="number" min="1" value="${s.pod_number || ''}" placeholder="4"></div></div>${qField}
+      <div class="field-row"><div class="field"><label>Pod</label><input id="sPod" type="number" min="1" value="${s.pod_number || ''}" placeholder="4"></div></div>${qField}
     </details>`
     : `
     ${summary}
@@ -1263,7 +1230,7 @@ function saveSchool() {
   const s = isNew ? { id: schoolId || uid() } : schoolById(schoolId);
   const old = { code: s.code, market: s.market, openingFY: s.openingFY }, current = isNew ? null : clone(s);
   const label = $('#sLabel').value.trim().toUpperCase().replace(/\s+/g, '');
-  if (!label) { toast('Add a label, like ES4', 'err'); $('#sLabel').focus(); return; }
+  if (!label) { markInvalid($('#sLabel'), 'Add a label, like ES4'); return; }
   const dup = state.data.schools.find(x => x.id !== s.id && x.market === $('#sMarket').value && (x.display_label || '').toUpperCase() === label);
   if (dup) { toast(`${$('#sMarket').value} already has ${label}. Pick a different label.`, 'err'); $('#sLabel').focus(); return; }
   snapshotForUndo((isNew ? 'Add school ' : 'Edit school ') + label);
@@ -1294,13 +1261,13 @@ function saveSchool() {
   }
   autosave(); const nid = s.id;
   logActivity(isNew ? 'create' : 'edit', (isNew ? 'Added school ' : 'Updated school ') + s.market + ' ' + label);
-  if (isNew) { closeModal(); rerender(); toast('School added. Now add its milestones.', 'ok'); setTimeout(() => openSchoolModal(nid), 60); }
+  if (isNew) { closeModal(); rerender(); toast('School added', 'ok'); setTimeout(() => openSchoolModal(nid), 60); }
   else { closeModal(); rerender(); if (shift) toastAction(`Opening moved ${Math.abs(shift)} year${Math.abs(shift) === 1 ? '' : 's'} ${shift > 0 ? 'later' : 'earlier'}. ${moved} deadline${moved === 1 ? '' : 's'} moved.`, 'Undo', undo); else toast('School saved', 'ok'); }
 }
 function deleteSchool() {
   if (!guardEdit()) return;
   const s = schoolById(schoolId); if (!s) return; const tasks = schoolMs(s), sid = s.id, mk = s.market, ofy = s.openingFY, cd = s.code;
-  confirmDialog({ title: `Remove ${esc(s.market)} ${esc(s.display_label)}?`, message: `This removes it from the opening schedule.` + (tasks.length ? ` Milestones that belong only to this school (up to <b>${tasks.length}</b>) are removed too.` : ''), confirmLabel: 'Remove school', danger: true, onConfirm: () => {
+  confirmDialog({ title: `Remove ${esc(s.market)} ${esc(s.display_label)}?`, message: `This removes it from the opening schedule` + (tasks.length ? ` Milestones that belong only to this school (up to <b>${tasks.length}</b>) are removed too.` : ''), confirmLabel: 'Remove school', danger: true, onConfirm: () => {
     snapshotForUndo('Remove school ' + s.display_label); logActivity('delete', 'Removed school ' + s.market + ' ' + s.display_label);
     state.data.schools = state.data.schools.filter(x => x.id !== sid);
     // unlink this school from its tasks; drop a task only if it belonged to no other school
@@ -1316,7 +1283,7 @@ function deleteSchool() {
 function milestoneTemplates() { return (meta().milestoneTemplates || []); }
 function templatesButton(s) {
   const tpls = milestoneTemplates(); if (!tpls.length) return '';
-  return `<button class="btn btn-tonal btn-sm" id="tplToggle" title="Add one or more standard pre-opening milestones">+ Load starter milestones (${tpls.length})</button>`;
+  return `<button class="btn btn-tonal btn-sm" id="tplToggle" >+ Load starter milestones (${tpls.length})</button>`;
 }
 function templatesPanel(s) {
   const tpls = milestoneTemplates(); if (!tpls.length) return '';
@@ -1329,7 +1296,7 @@ function templatesPanel(s) {
       ${byWs[ws].map(t => {
         const dup = already.has(t.activity.trim().toLowerCase());
         const due = s.openingFY ? offsetDateISO(`${s.openingFY - 1}-08-01`, -(t.monthsBefore || 0)) : '';
-        const flags = [t.keyMilestone && '★', t.greenlight && '◆', t.transition && '⇄'].filter(Boolean).join(' ');
+        const flags = [t.keyMilestone && 'Key', t.greenlight && 'Greenlight', t.transition && 'Transition'].filter(Boolean).join(' ');
         return `<label class="tpl-item ${dup ? 'is-dup' : ''}" title="${dup ? 'A milestone with this name already exists on this school' : `Due ${due} (${t.monthsBefore} mo before opening)`}">
           <input type="checkbox" class="tpl-check" data-tplid="${esc(t.id)}" ${dup ? 'disabled' : ''}>
           <span class="tpl-act">${esc(t.activity)}${flags ? ` <span class="tpl-flags">${flags}</span>` : ''}</span>
@@ -1422,7 +1389,7 @@ function schoolPicker(m) {
   state.data.schools.filter(x => x.openingFY).sort((a, b) => (a.market || '').localeCompare(b.market || '') || a.openingFY - b.openingFY || (a.display_label || '').localeCompare(b.display_label || ''))
     .forEach(x => (groups[x.market] = groups[x.market] || []).push(x));
   const html = Object.entries(groups).map(([mk, list]) => `<div class="so-group"><div class="so-mk"><i style="background:${mkColor(mk)}"></i>${esc(mk)}</div><div class="so-opts">${list.map(x => `<label class="so-opt ${sel.has(x.id) ? 'on' : ''}"><input type="checkbox" class="m-school" value="${esc(x.id)}" ${sel.has(x.id) ? 'checked' : ''}><span class="so-name">${esc(x.display_label)}</span><span class="so-when">Fall ${x.openingFY - 1}</span></label>`).join('')}</div></div>`).join('');
-  return html || '<p class="muted">No school openings yet. Add one on the Openings page</p>';
+  return html || '<p class="muted">No school openings yet</p>';
 }
 function derivedMarket(ids) {
   const cnt = {}; (ids || []).forEach(id => { const x = schoolById(id); if (x && x.market) cnt[x.market] = (cnt[x.market] || 0) + 1; });
@@ -1480,14 +1447,14 @@ async function sbConnect(url, key, silent) {
     try { await bootstrapAuth(client); } catch (e) { console.warn('bootstrapAuth failed:', e); }
     // With no session, skip data ops - they'd fail the row rules. Data loads after sign-in.
     if (!state.auth.user) {
-      if (s && !silent) s.innerHTML = '<div class="status-note ok">✓ Connected. Sign in to load the board.</div>';
+      if (s && !silent) s.innerHTML = '<div class="status-note ok">Connected. Sign in to load the board</div>';
       renderDrawer(); return true;
     }
     // A failed data load (expired session, network blip) must not drop the client, or sign-in breaks too
     try { await sbLoadData(client); }
     catch (e) { console.error('Supabase data load failed:', e); state.sb.lastError = e.message || String(e); toast("Couldn't load the board: " + state.sb.lastError, 'err'); renderDrawer(); return true; }
     setSaveBadge('Synced • live', 'saved');
-    if (s) s.innerHTML = '<div class="status-note ok">✓ Connected. Changes save for everyone.</div>'; renderDrawer(); return true;
+    if (s) s.innerHTML = '<div class="status-note ok">Connected. Changes save for everyone</div>'; renderDrawer(); return true;
   } catch (e) { console.error('Supabase connect failed:', e); state.sb = { connected: false, client: null, lastError: e.message || String(e) }; if (s) s.innerHTML = `<div class="status-note err">Couldn't connect: ${esc(e.message || e)}. Check your internet connection and try again.</div>`; return false; }
 }
 function setSaveBadge(text, cls) { const b = $('#saveState'); if (b) { b.textContent = text; b.className = 'save-state ' + cls; } }
@@ -1624,6 +1591,7 @@ function sbOnRemote(p) {
       const id = p.old && p.old.id; if (!id) return;
       const na = arr.filter(x => x.id !== id); if (isSchool) state.data.schools = na; else state.data.milestones = na;
       last.delete(id); applyRemoteToUndo(kind, id, null, null);
+      if (!isSchool && modalMode === 'task' && modalId === id && $('#modalBackdrop').classList.contains('open')) { modalDirty = false; modalId = null; $('#modalBackdrop').classList.remove('open'); toast('A teammate removed this milestone', 'warn'); }
     } else {
       const doc = p.new && p.new.doc; if (!doc) return; const j = JSON.stringify(doc); if (last.get(doc.id) === j) return;
       const base = last.has(doc.id) ? JSON.parse(last.get(doc.id)) : null;
@@ -1663,10 +1631,25 @@ async function sbPushTable(client, table, list, last, allowDelete) {
 }
 function syncErrorText(e) {
   const msg = (e && (e.message || e.details)) || String(e);
-  if (e && (e.code === 'PGRST202' || /growth_patch|growth_add_note/.test(msg))) return 'the database needs the team-sync update (supabase-team-sync.sql)';
+  if (e && (e.code === 'PGRST202' || /growth_patch|growth_add_note/.test(msg))) return 'the shared board needs an update. Contact your Growth Hub admin';
   if (e && (e.code === '42501' || /row-level security|permission/i.test(msg))) return 'your account does not have permission to make that change';
   return msg;
 }
+// A failed save stays on screen, retries by itself, and retries as soon as the connection returns.
+let syncRetry = 0;
+function setSyncAlert(reason) {
+  clearTimeout(syncRetry); let a = $('#syncAlert');
+  if (!reason) { if (a) a.remove(); return; }
+  if (!a) {
+    a = document.createElement('div'); a.id = 'syncAlert'; a.className = 'sync-alert'; a.setAttribute('role', 'alert');
+    a.innerHTML = '<span class="sync-msg"></span><button type="button" class="btn btn-ghost btn-sm" id="syncRetryBtn">Retry now</button>';
+    document.body.appendChild(a); a.querySelector('#syncRetryBtn').addEventListener('click', () => sbPush());
+  }
+  a.querySelector('.sync-msg').textContent = "Your changes aren't on the shared board yet: " + reason + '. Keep this page open while we retry';
+  syncRetry = setTimeout(() => sbPush(), 30000);
+}
+window.addEventListener('online', () => { if ($('#syncAlert')) sbPush(); });
+window.addEventListener('beforeunload', e => { if ($('#syncAlert')) { e.preventDefault(); e.returnValue = ''; } });
 async function sbPush() {
   if (!(state.sb && state.sb.connected) || !sbLoaded || !state.auth.user) return;
   const client = state.sb.client;
@@ -1675,14 +1658,14 @@ async function sbPush() {
   sbPushing = true;
   try {
     stampWs();
-    await sbPushTable(client, SB_TABLE.m, M(), sbLastPushed, true);
+    await sbPushTable(client, SB_TABLE.m, M().filter(m => !m._draft), sbLastPushed, true);
     await sbPushTable(client, SB_TABLE.s, S(), sbLastSchools, true);
     if (sbSettingsReady && isAdmin()) await sbPushTable(client, SB_TABLE.settings, settingsDocs(), sbLastSettings, false);
     autosaveWriteLocal();
-    setSaveBadge('Synced • live', 'saved');
+    setSaveBadge('Synced • live', 'saved'); setSyncAlert(null);
   } catch (e) {
     console.error(e); setSaveBadge('Saved locally · sync error', 'err');
-    toast("Couldn't save to the shared board: " + syncErrorText(e), 'err');
+    setSyncAlert(syncErrorText(e));
   } finally {
     sbPushing = false;
     if (sbPushAgain) { sbPushAgain = false; sbPushDebounced(); }
@@ -1708,7 +1691,7 @@ function renderDrawer() {
     <section class="dw-sec">
       <div class="dw-h">${num()}<h4>Your account</h4></div>
       ${who ? `<div class="status-note ok">Signed in as <b>${esc(who)}</b><span class="dw-role">${esc((r => r.charAt(0).toUpperCase() + r.slice(1))(currentRole() || 'viewer'))}</span></div>` : ''}
-      <p class="dw-help">${connected ? 'Connected. Changes save for everyone.' : "Not connected. Changes won't reach your team."}</p>
+      ${connected ? '' : '<p class="dw-help">Not connected. Changes won\'t reach your team</p>'}
       ${canEdit() ? '' : '<p class="dw-help">You have view-only access. Ask an admin to make you an editor.</p>'}
       ${connected ? '' : '<div class="dw-btns"><button class="btn btn-filled" id="sbReconnect">Reconnect</button></div>'}
       <div id="sbStatus"></div>
@@ -1717,8 +1700,8 @@ function renderDrawer() {
     ${admin ? meetingSettingsHtml() : ''}
     ${admin ? integrationsSettingsHtml() : ''}
     ${admin ? `<details class="dw-sec dw-fold"><summary>${num()}Customize markets, teams, and owners</summary>
-      <p class="dw-help">Shared with everyone. Items in use can't be removed.</p>
-      ${sbSettingsReady ? '' : '<div class="status-note warn">Shared settings are not set up yet. Run supabase-team-sync.sql in Supabase, then reload. Until then, changes here stay on this device.</div>'}
+      
+      ${sbSettingsReady ? '' : '<div class="status-note warn">These settings are not shared yet. Changes stay on this device</div>'}
       ${czSection('State', 'markets', statesMeta().flatMap(s => s.markets.map(mk => ({ mk, st: s.code }))))}
       ${czSection('Team', 'teams', teams().map(t => ({ mk: t })))}
       ${czOwners()}
@@ -1728,7 +1711,7 @@ function renderDrawer() {
       ${schoolsPanel()}
       <div class="ms-bulk">
         <div class="ms-bulk-warn">Bulk delete removes every school opening <b>and</b> every milestone tied to those schools. Milestones with no school attached remain untouched.</div>
-        <button class="btn btn-danger-solid" id="msDeleteAll" ${state.data.schools.length ? '' : 'disabled'}>Delete ALL school openings</button>
+        <button class="btn btn-danger-solid" id="msDeleteAll" ${state.data.schools.length ? '' : 'disabled'}>Delete all school openings</button>
       </div>
     </details>` : ''}
 
@@ -1743,7 +1726,7 @@ function renderDrawer() {
 /* ---------- schools management panel (drawer section 4) ---------- */
 function schoolsPanel() {
   const schools = state.data.schools.slice().sort((a, b) => (a.openingFY || 0) - (b.openingFY || 0) || a.market.localeCompare(b.market) || a.display_label.localeCompare(b.display_label));
-  if (!schools.length) return '<div class="ms-empty">No school openings yet. Add one from the Openings tab.</div>';
+  if (!schools.length) return '<div class="ms-empty">No school openings yet</div>';
   const rows = schools.map(s => {
     const taskCount = schoolMs(s).length;
     return `<div class="ms-row">
@@ -1764,7 +1747,7 @@ function bulkDeleteAllSchools() {
   confirmDialog({
     title: 'Delete every school opening?',
     danger: true,
-    confirmLabel: 'Delete ALL',
+    confirmLabel: 'Delete all',
     requireTyped: 'DELETE ALL',
     message: `This removes <b>${n} school opening${n === 1 ? '' : 's'}</b> and every milestone tied to them (roughly <b>${nTasks} milestone${nTasks === 1 ? '' : 's'}</b>). Milestones with no school attached remain.`,
     onConfirm: () => {
@@ -1786,11 +1769,11 @@ function bulkDeleteAllSchools() {
 
 /* ---------- customize (markets / teams / owners) ---------- */
 function czSection(label, type, rows) {
-  const stOpts = statesMeta().map(s => `<option value="${s.code}">${esc(s.code)}</option>`).join('');
+  const stOpts = statesMeta().map(s => `<option value="${esc(s.code)}">${esc(s.code)}</option>`).join('');
   const list = rows.map(r => `<div class="cz-row">
     <input class="cz-name" data-cztype="${type}" data-czold="${esc(r.mk)}" value="${esc(r.mk)}">
-    ${type === 'markets' ? `<select class="cz-state" data-czmarket="${esc(r.mk)}">${statesMeta().map(s => `<option value="${s.code}" ${s.code === r.st ? 'selected' : ''}>${esc(s.code)}</option>`).join('')}</select>` : ''}
-    <button class="cz-del" data-cztype="${type}" data-czval="${esc(r.mk)}" title="Remove">✕</button></div>`).join('');
+    ${type === 'markets' ? `<select class="cz-state" data-czmarket="${esc(r.mk)}">${statesMeta().map(s => `<option value="${esc(s.code)}" ${s.code === r.st ? 'selected' : ''}>${esc(s.code)}</option>`).join('')}</select>` : ''}
+    <button class="cz-del" data-cztype="${type}" data-czval="${esc(r.mk)}" title="Remove" aria-label="Remove">${CI('close')}</button></div>`).join('');
   return `<div class="cz-block"><div class="cz-add">
       <input class="cz-new" id="czNew-${type}" placeholder="Add a ${esc(label === 'State' ? 'market' : 'team')}">
       ${type === 'markets' ? `<select id="czNewState">${stOpts}</select>` : ''}
@@ -1798,8 +1781,8 @@ function czSection(label, type, rows) {
     </div>${list}</div>`;
 }
 function czOwners() {
-  const rows = (meta().owners || []).map(o => `<div class="cz-row"><input class="cz-name" data-cztype="owner" data-czold="${esc(o.name)}" value="${esc(o.name)}"><input class="cz-role" data-czowner="${esc(o.name)}" value="${esc(o.role || '')}" placeholder="role"><input class="cz-email" type="email" data-czowner="${esc(o.name)}" value="${esc(o.email || '')}" placeholder="email" aria-label="Email for ${esc(o.name)}"><button class="cz-del" data-cztype="owner" data-czval="${esc(o.name)}" title="Remove">✕</button></div>`).join('');
-  return `<div class="cz-block"><h4 style="margin-top:14px">Owners</h4><div class="cz-add"><input class="cz-new" id="czNew-owner" placeholder="Add a person"><input class="cz-new" id="czNewRole" placeholder="role (optional)"><input class="cz-new" id="czNewEmail" type="email" placeholder="email (optional)"><button class="btn btn-tonal btn-sm" data-czadd="owner">Add</button></div>${rows}</div>`;
+  const rows = (meta().owners || []).map(o => `<div class="cz-row"><input class="cz-name" data-cztype="owner" data-czold="${esc(o.name)}" value="${esc(o.name)}"><input class="cz-role" data-czowner="${esc(o.name)}" value="${esc(o.role || '')}" placeholder="Role"><input class="cz-email" type="email" data-czowner="${esc(o.name)}" value="${esc(o.email || '')}" placeholder="email" aria-label="Email for ${esc(o.name)}"><button class="cz-del" data-cztype="owner" data-czval="${esc(o.name)}" title="Remove" aria-label="Remove">${CI('close')}</button></div>`).join('');
+  return `<div class="cz-block"><h4 style="margin-top:14px">Owners</h4><div class="cz-add"><input class="cz-new" id="czNew-owner" placeholder="Add a person"><input class="cz-new" id="czNewRole" placeholder="Role, optional"><input class="cz-new" id="czNewEmail" type="email" placeholder="Email, optional"><button class="btn btn-tonal btn-sm" data-czadd="owner">Add</button></div>${rows}</div>`;
 }
 function czInUse(type, val) { if (type === 'owner') return M().filter(m => ownersOf(m).includes(val)).length; return type === 'markets' ? M().filter(m => m.market === val).length + state.data.schools.filter(s => s.market === val).length : M().filter(m => m.functional_area === val).length; }
 function czRename(type, oldV, newV) {
@@ -1837,7 +1820,7 @@ function czRemove(type, val) {
 function czAdd(type) {
   if (!guardAdmin()) return;
   const v = ($('#czNew-' + type) || {}).value ? $('#czNew-' + type).value.trim() : '';
-  if (!v) return;
+  if (!v) return flagEmpty($('#czNew-' + type));
   if (type === 'markets') { if (markets().includes(v)) return toast('Already on the list', 'err'); const st = $('#czNewState').value; markets().push(v); const s = statesMeta().find(x => x.code === st); if (s) s.markets.push(v); }
   else if (type === 'teams') { if (teams().includes(v)) return toast('Already on the list', 'err'); teams().push(v); meta().functionalAreas = teams(); }
   else if (type === 'owner') { (meta().owners = meta().owners || []).push({ name: v, role: ($('#czNewRole') || {}).value || '', email: (($('#czNewEmail') || {}).value || '').trim() }); }
@@ -1846,7 +1829,7 @@ function czAdd(type) {
 function exportJson() { const b = new Blob([JSON.stringify(state.data, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `growth-hub-backup-${todayISO()}.json`; a.click(); URL.revokeObjectURL(a.href); toast('Backup downloaded', 'ok'); }
 // Spreadsheet export of what's on screen (current filters), for Excel and Google Sheets users
 function exportCsv() {
-  const list = filtered(), q = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+  const list = filtered(), q = v => { let t = String(v == null ? '' : v); if (/^[=+\-@\t\r]/.test(t)) t = "'" + t; return `"${t.replace(/"/g, '""')}"`; };
   const head = ['Milestone', 'Status', 'Progress %', 'Due date', 'Owner', 'Co-owners', 'Team', 'Market', 'Schools', 'Priority', 'Blocked by', 'Notes', 'Last updated', 'Updated by'];
   const rows = list.map(m => [m.activity, SM(effectiveStatus(m)).label, m.progress_percent || 0, m.due_date || '', m.owner || '', (m.coOwners || []).join('; '), m.functional_area || '', m.market || '',
     (m.schoolIds || []).map(id => (schoolById(id) || {}).display_label).filter(Boolean).join('; '), (PRIORITY[m.priority] || {}).label || '', m.status === 'blocked' ? (m.dependency || '') : '', m.notes || '',
@@ -1861,12 +1844,12 @@ function importJson(file) {
   if (!guardAdmin()) return;
   const r = new FileReader();
   r.onload = () => {
-    let d; try { d = JSON.parse(r.result); if (!Array.isArray(d.milestones)) throw 0; } catch (e) { return toast("That file isn't a Growth Hub backup. Choose a file from Download backup.", 'err'); }
+    let d; try { d = JSON.parse(r.result); if (!Array.isArray(d.milestones)) throw 0; } catch (e) { return toast("That file isn't a Growth Hub backup", 'err'); }
     const ms = d.milestones.filter(x => x && x.id), ss = (Array.isArray(d.schools) ? d.schools : []).filter(x => x && x.id);
     const newM = ms.filter(x => !findM(x.id)).length, newS = ss.filter(x => !schoolById(x.id)).length;
     confirmDialog({
       title: 'Import this file?',
-      message: `Adds <b>${newM}</b> and updates <b>${ms.length - newM}</b> milestones. Adds <b>${newS}</b> and updates <b>${ss.length - newS}</b> schools. Nothing else on the board is deleted or changed.`,
+      message: `Adds <b>${newM}</b> and updates <b>${ms.length - newM}</b> milestones. Adds <b>${newS}</b> and updates <b>${ss.length - newS}</b> schools. Nothing is deleted.`,
       confirmLabel: 'Import',
       onConfirm: () => {
         snapshotForUndo('Import from file');
@@ -1900,24 +1883,26 @@ function openStatusMenu(btn) {
   });
 }
 function toastAction(msg, label, fn) {
-  const w = $('#toastWrap'), t = document.createElement('div'); t.className = 'toast ok toast-act';
+  const w = $('#toastWrap'); capToasts(w); const t = document.createElement('div'); t.className = 'toast ok toast-act';
   t.innerHTML = `<span>${esc(msg)}</span><button class="toast-btn">${esc(label)}</button>`;
   t.querySelector('button').addEventListener('click', () => { t.remove(); fn(); });
   w.appendChild(t);
   setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .2s'; setTimeout(() => t.remove(), 200); }, 6000);
 }
-function toast(msg, kind) { const w = $('#toastWrap'), t = document.createElement('div'); t.className = 'toast' + (kind ? ' ' + kind : ''); t.textContent = msg; w.appendChild(t); setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 300); }, kind === 'warn' || kind === 'err' ? 6000 : 2400); }
-function applyTheme(mode) { document.documentElement.setAttribute('data-theme', mode); lsSet(LS.theme, mode); $('#themeIcon').innerHTML = mode === 'dark' ? '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>' : '<circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'; }
+function capToasts(w) { while (w.children.length > 2) w.firstChild.remove(); }
+function toast(msg, kind) { const w = $('#toastWrap'); capToasts(w); const t = document.createElement('div'); t.className = 'toast' + (kind ? ' ' + kind : ''); t.textContent = msg; w.appendChild(t); setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 300); }, kind === 'warn' || kind === 'err' ? 6000 : 2400); }
 const VIEWS = ['progress', 'timeline', 'plan'];
 function setView(v, fromPop) {
   if (!VIEWS.includes(v)) v = 'progress';
   if (v === 'reports') v = 'progress';
+  if (v === 'timeline' && !hasSchoolWork()) v = 'progress';
   state.view = v;
-  $$('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.view === v));
+  $$('.nav-tab').forEach(t => { const on = t.dataset.view === v; t.classList.toggle('active', on); if (on) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current'); });
+  document.title = ({ progress: 'Dashboard', timeline: 'Openings', plan: 'Milestones' }[v] || 'Dashboard') + ' · ' + (WS_SEED[WS] ? WS_SEED[WS].title : 'Growth Readiness') + ' · Growth Hub';
   const pg = $('#planGroup'); if (pg) pg.classList.toggle('expanded', v === 'plan');
   $$('.nav-subitem').forEach(x => x.classList.toggle('active', v === 'plan' && (x.dataset.plan === 'focus' ? state.planFocus : (!state.planFocus && state.planGroup === x.dataset.plan))));
   $$('.view').forEach(s => { const on = s.id === 'view-' + v; s.classList.toggle('active', on); if (!on) s.innerHTML = ''; });
-  const cbPage = $('#cbPage'); if (cbPage) cbPage.textContent = v === 'progress' ? 'Dashboard' : v === 'timeline' ? 'Openings' : 'Milestones';
+  
   document.body.dataset.view = v;
   if (typeof closeFilterPanel === 'function') closeFilterPanel();
   updateGreeting();
@@ -1940,7 +1925,7 @@ function wireEvents() {
       setView(t.dataset.view);
     }
   });
-  const nt = $('#navToggle'); if (nt) nt.addEventListener('click', () => { const on = document.body.classList.toggle('nav-collapsed'); lsSet('ngc_nav', on ? '1' : '0'); nt.title = on ? 'Expand menu' : 'Collapse menu'; const lbl = nt.querySelector('.nav-util-lbl'); if (lbl) lbl.textContent = on ? 'Expand' : 'Collapse'; });
+  const nt = $('#navToggle'); if (nt) nt.addEventListener('click', () => { const on = document.body.classList.toggle('nav-collapsed'); syncNavTitles(); lsSet('ngc_nav', on ? '1' : '0'); nt.title = on ? 'Expand menu' : 'Collapse menu'; const lbl = nt.querySelector('.nav-util-lbl'); if (lbl) lbl.textContent = on ? 'Expand' : 'Collapse'; });
   const showDrawer = () => { renderDrawer(); $('#drawer').classList.add('open'); $('#drawerBackdrop').classList.add('open'); };
   const openDrawer = () => {
     showDrawer();
@@ -1978,6 +1963,7 @@ function wireEvents() {
   document.addEventListener('dragleave', e => { const b = e.target.closest('.kcol-body'); if (b && !b.contains(e.relatedTarget)) b.classList.remove('over'); });
   document.addEventListener('drop', e => { const b = e.target.closest('.kcol-body'); if (b) { e.preventDefault(); b.classList.remove('over'); const m = findM(e.dataTransfer.getData('text/plain')); if (m && m.stage !== b.dataset.kstage && guardEdit()) { snapshotForUndo('Move milestone: ' + (m.activity || '').slice(0, 30)); logActivity('move', `Moved "${m.activity}" to ${b.dataset.kstage}`, { itemId: m.id }); const was = m.stage; m.stage = b.dataset.kstage; touch(m);
       if (m.stage === 'complete') { m.status = 'complete'; m.progress_percent = 100; }
+      else if (m.status === 'complete' && m.stage === 'to_do') { m.status = 'not_started'; m.progress_percent = 0; }
       else { if (m.status === 'complete') { m.status = 'on_track'; if (m.progress_percent === 100) m.progress_percent = 95; } if (m.status === 'not_started' && m.stage !== 'to_do') m.status = 'on_track'; }
       touch(m); autosave(); refreshResults(); const col = (meta().stageMeta && meta().stageMeta[m.stage] && meta().stageMeta[m.stage].label) || (m.stage.charAt(0).toUpperCase() + m.stage.slice(1)).replace(/_/g, ' '); toastAction(`Moved to ${col}`, 'Undo', undo); } } });
 
@@ -2078,7 +2064,7 @@ function currentRole() { const p = currentProfile(); return p ? p.role : null; }
 function isEditor() { const r = currentRole(); return r === 'editor' || r === 'admin'; }
 function isAdmin() { return currentRole() === 'admin'; }
 function canEdit() { return isEditor(); }
-function guardEdit() { if (canEdit()) return true; toast('You have view-only access. Ask an admin to make you an editor.', 'err'); return false; }
+function guardEdit() { if (canEdit()) return true; toast('You have view-only access', 'err'); return false; }
 function guardAdmin() { if (isAdmin()) return true; toast('Only admins can change shared settings', 'err'); return false; }
 // Hide edit controls for view-only accounts (CSS keys off body.read-only).
 function applyRoleUI() { document.body.classList.toggle('read-only', !!(state.auth && state.auth.user) && !canEdit()); }
@@ -2141,16 +2127,16 @@ function showAuthScreen(err, mode, info) {
   const logoSrc = (document.querySelector('.brand-logo') || {}).src || '';
   const intro = { signin: '', forgot: "We'll email you a reset link.", setpw: 'Choose a password.' }[mode];
   const fields = mode === 'signin' ? `
-        <input id="authEmail" type="email" placeholder="Work email" autocomplete="username" required>
-        <input id="authPw" type="password" placeholder="Password" autocomplete="current-password" required>
+        <div class="field"><label for="authEmail">Work email</label><input id="authEmail" type="email" autocomplete="username" required></div>
+        <div class="field"><label for="authPw">Password</label><input id="authPw" type="password" autocomplete="current-password" required></div>
         <button type="submit" class="btn btn-filled" id="authSubmit">Sign in</button>`
     : mode === 'forgot' ? `
-        <input id="authEmail" type="email" placeholder="Work email" autocomplete="username" required>
+        <div class="field"><label for="authEmail">Work email</label><input id="authEmail" type="email" autocomplete="username" required></div>
         <button type="submit" class="btn btn-filled" id="authSubmit">Send reset link</button>`
     : `
         <input type="email" autocomplete="username" value="${esc((state.auth.user && state.auth.user.email) || '')}" hidden>
-        <input id="authPw" type="password" placeholder="New password (12+ characters)" autocomplete="new-password" required minlength="12">
-        <input id="authPw2" type="password" placeholder="Confirm new password" autocomplete="new-password" required minlength="12">
+        <div class="field"><label for="authPw">New password</label><input id="authPw" type="password" autocomplete="new-password" required minlength="12"></div>
+        <div class="field"><label for="authPw2">Confirm new password</label><input id="authPw2" type="password" autocomplete="new-password" required minlength="12"></div>
         <button type="submit" class="btn btn-filled" id="authSubmit">Save password</button>`;
   const foot = mode === 'signin' ? '<button type="button" class="auth-link" data-authmode="forgot">Forgot password?</button><div>No account? Ask your admin.</div>'
     : mode === 'forgot' ? '<button type="button" class="auth-link" data-authmode="signin">Back to sign in</button>'
@@ -2160,8 +2146,8 @@ function showAuthScreen(err, mode, info) {
       <h1>${WS_SEED[WS] ? WS_SEED[WS].title : 'Growth Readiness'}</h1>
       ${intro ? `<p>${intro}</p>` : ''}
       <form id="authForm" autocomplete="on">${fields}</form>
-      ${err ? `<div class="gate-err">${esc(err)}</div>` : ''}
-      ${info ? `<div class="gate-info">${esc(info)}</div>` : ''}
+      ${err ? `<div class="gate-err" role="alert">${esc(err)}</div>` : ''}
+      ${info ? `<div class="gate-info" role="status">${esc(info)}</div>` : ''}
       <div class="auth-foot">${foot}</div>
     </div>`;
   g.querySelectorAll('[data-authmode]').forEach(b => b.addEventListener('click', () => showAuthScreen(null, b.dataset.authmode)));
@@ -2191,7 +2177,7 @@ function showAuthScreen(err, mode, info) {
       sub.disabled = false; sub.textContent = label;
       const email = $('#authEmail') ? $('#authEmail').value : '';
       showAuthScreen(ex.message || 'Something went wrong. Try again.', mode);
-      if (email && $('#authEmail')) $('#authEmail').value = email;
+      if (email && $('#authEmail')) { $('#authEmail').value = email; setTimeout(() => { const p = $('#authPw'); if (p) p.focus(); }, 40); }
     }
   });
   setTimeout(() => { const i = $(mode === 'setpw' ? '#authPw' : '#authEmail'); if (i && !i.value) i.focus(); }, 30);
@@ -2207,7 +2193,7 @@ async function sendPasswordReset(email) {
    Level-up polish (Aug 22 2026): avatar palette, greeting,
    personalized My-tasks + inline Activity, rich user chip
    ============================================================ */
-const _AVATAR_PAL = ['#16357F','#6929C4','#005D5D','#9F1853','#8A3800','#0072C3','#198038','#491D8B','#004144','#00539A','#012749','#002D9C'];
+const _AVATAR_PAL = ['#0043CE','#6929C4','#005D5D','#9F1853','#8A3800','#0072C3','#198038','#491D8B','#004144','#00539A','#012749','#002D9C'];
 function avatarColor(seed) { if (!seed) return '#75778B'; let h = 0; for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0; return _AVATAR_PAL[Math.abs(h) % _AVATAR_PAL.length]; }
 function paintAvatars(root) {
   (root || document).querySelectorAll('.owner-avatar:not(.unassigned):not(.painted), .dact-avatar:not(.painted), .cb-user-avatar:not(.painted)').forEach(el => {
@@ -2257,7 +2243,6 @@ function applyMyDefaults() {
   if (on) setMine(true);
 }
 function currentDisplayName() { const p = currentProfile(); return (p && (p.full_name || p.email)) || lsGet('ngc_author') || ''; }
-function currentRoleLabel() { const p = currentProfile(); if (p && p.role) return p.role; return 'Editor'; }
 
 function updateUserBadge() {
   applyRoleUI();
@@ -2273,8 +2258,8 @@ function updateUserBadge() {
       <b class="sp-name">${esc(name || 'Sign in')}</b>
       <small class="sp-sub">${esc(email || role || 'Set your name')}</small>
     </span>
-    <svg class="sp-chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>`;
-  btn.title = name ? `${name} · ${role}\nClick for menu` : 'Set your name';
+    <svg class="sp-chev" viewBox="0 0 32 32" fill="currentColor" width="16" height="16" aria-hidden="true"><path d="M22 16L12 26 10.6 24.6 19.2 16 10.6 7.4 12 6z"/></svg>`;
+  btn.title = name ? `${name} · ${role}` : 'Set your name';
   if (p) btn.dataset.authed = '1'; else delete btn.dataset.authed;
   paintAvatars(btn);
   // Mirror onto the floating pill's avatar (colored directly - it persists
@@ -2316,7 +2301,7 @@ function openUserMenu(anchor) {
   closePopover();
   const html = `<div class="user-menu">
       <div class="um-head"><div class="um-name">${esc(p.full_name || p.email)}</div><div class="um-email">${esc(p.email || '')}</div><div class="um-role">Role: <b>${esc(p.role || 'viewer')}</b></div>
-        ${myOwner() ? `<div class="um-role">Owner: <b>${esc(myOwner().name)}</b>${myOwner().role ? ` · ${esc(myOwner().role)}` : ''}</div>` : `<div class="um-unlinked">Not linked to an owner yet. Ask an admin to set your display name to match the owner list.</div>`}</div>
+        ${myOwner() ? `<div class="um-role">Owner: <b>${esc(myOwner().name)}</b>${myOwner().role ? ` · ${esc(myOwner().role)}` : ''}</div>` : `<div class="um-unlinked">Ask an admin to link you to an owner</div>`}</div>
       <div class="um-actions">
         <button class="um-item" id="umCalendar">Add deadlines to Outlook</button>
         <button class="um-item" id="umPassword">Change password</button>
@@ -2345,7 +2330,7 @@ function openPasswordDialog() {
   const wrap = document.createElement('div');
   wrap.className = 'modal-backdrop open'; wrap.id = 'pwBackdrop';
   wrap.innerHTML = `<div class="modal pw-modal" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
-    <div class="modal-head"><h3 id="pwTitle">Change password</h3><button class="icon-btn" data-pwclose aria-label="Close"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-head"><h3 id="pwTitle">Change password</h3><button class="icon-btn" data-pwclose aria-label="Close"><svg viewBox="0 0 32 32" fill="currentColor" width="20" height="20"><path d="M17.4141 16L24 9.4141 22.5859 8 16 14.5859 9.4143 8 8 9.4141 14.5859 16 8 22.5859 9.4143 24 16 17.4141 22.5859 24 24 22.5859 17.4141 16z"/></svg></button></div>
     <form class="modal-body" id="pwForm" novalidate>
       <input type="email" autocomplete="username" value="${esc(user.email || '')}" hidden>
       <div class="field"><label for="pwCur">Current password</label><input id="pwCur" type="password" autocomplete="current-password" required></div>
@@ -2513,10 +2498,8 @@ function logActivity(action, detail, extra) {
   updateActivityDot();
 }
 function updateActivityDot() {
-  const log = getActivityLog();
-  const seen = Number(lsGet('ngc_activity_seen') || 0);
-  const last = log.length ? log[log.length - 1].ts : 0;
-  const unseen = last > seen;
+  const seen = Number(lsGet('ngc_activity_seen') || 0), me = currentDisplayName() || '';
+  const unseen = activityEntries(50).some(e => e.ts > seen && e.author !== me);
   const dot = $('#cbActivityDot'); if (dot) dot.hidden = !unseen;
   const pillDot = $('#cbPillDot'); if (pillDot) pillDot.hidden = !unseen;
 }
@@ -2554,15 +2537,15 @@ function toggleFilterPanel() {
 /* Material-style single-color glyphs (outlined, 1.75 stroke, 14px). */
 function activityIcon(action) {
   const paths = {
-    edit:   '<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>',
-    create: '<path d="M12 5v14M5 12h14"/>',
-    delete: '<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"/>',
-    status: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>',
-    undo:   '<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-4"/>',
-    move:   '<path d="M5 12h14M12 5l7 7-7 7"/>'
+    edit:   '<path d="M2 26H30V28H2zM25.4 9c.8-.8.8-2 0-2.8 0 0 0 0 0 0l-3.6-3.6c-.8-.8-2-.8-2.8 0 0 0 0 0 0 0l-15 15V24h6.4L25.4 9zM20.4 4L24 7.6l-3 3L17.4 7 20.4 4zM6 22v-3.6l10-10 3.6 3.6-10 10H6z"/>',
+    create: '<path d="M17 15L17 8 15 8 15 15 8 15 8 17 15 17 15 24 17 24 17 17 24 17 24 15z"/>',
+    delete: '<path d="M12 12H14V24H12zM18 12H20V24H18z"/><path d="M4 6V8H6V28a2 2 0 002 2H24a2 2 0 002-2V8h2V6zM8 28V8H24V28zM12 2H20V4H12z"/>',
+    status: '<path d="M12 10H6.78A11 11 0 0127 16h2A13 13 0 006 7.68V4H4v8h8zM20 22h5.22A11 11 0 015 16H3a13 13 0 0023 8.32V28h2V20H20z"/>',
+    undo:   '<path d="M20,10H7.8149l3.5874-3.5859L10,5,4,11,10,17l1.4023-1.4146L7.8179,12H20a6,6,0,0,1,0,12H12v2h8a8,8,0,0,0,0-16Z"/>',
+    move:   '<path d="M18 6L16.57 7.393 24.15 15 4 15 4 17 24.15 17 16.57 24.573 18 26 28 16 18 6z"/>'
   };
-  const p = paths[action] || '<circle cx="12" cy="12" r="2"/>';
-  return `<svg class="act-ic" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+  const p = paths[action] || '<circle cx="16" cy="16" r="10"/><path d="M16,30A14,14,0,1,1,30,16,14.0158,14.0158,0,0,1,16,30ZM16,4A12,12,0,1,0,28,16,12.0137,12.0137,0,0,0,16,4Z"/>';
+  return `<svg class="act-ic" viewBox="0 0 32 32" fill="currentColor" width="14" height="14" aria-hidden="true">${p}</svg>`;
 }
 function renderActivityPanel() {
   const body = $('#activityBody'); if (!body) return;
@@ -2602,27 +2585,27 @@ function openCmdk() {
 function closeCmdk() { $('#cmdkBackdrop').classList.add('hide'); }
 function renderCmdkResults(q) {
   const body = $('#cmdkBody');
-  cmdkItems = buildCmdkItems(q);
+  cmdkItems = buildCmdkItems(q).filter(x => !x.hide);
   if (cmdkIdx >= cmdkItems.length) cmdkIdx = 0;
   body.innerHTML = cmdkItems.map((item, i) => `<div class="cmdk-item ${i === cmdkIdx ? 'active' : ''}" data-cmdk="${i}"><span class="cmdk-ic">${item.icon}</span><div class="cmdk-label"><span class="cmdk-name">${esc(item.name)}</span>${item.hint ? `<span class="cmdk-hint">${esc(item.hint)}</span>` : ''}</div>${item.kbd ? `<kbd class="cmdk-kbd">${item.kbd}</kbd>` : ''}</div>`).join('') || '<div class="cmdk-empty">No results</div>';
 }
 function buildCmdkItems(q) {
   // Uniform Material outlined SVG icons (1.75 stroke, 18px). No emojis.
-  const ic = (p) => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+  const ic = (p) => `<svg viewBox="0 0 32 32" fill="currentColor" width="18" height="18">${p}</svg>`;
   const items = [];
-  items.push({ icon: ic('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>'), name: 'Go to Dashboard', hint: '', kbd: '', action: () => setView('progress') });
-  items.push({ icon: ic('<rect x="3" y="3" width="5.5" height="18" rx="1.5"/><rect x="10.25" y="3" width="5.5" height="11" rx="1.5"/><rect x="17.5" y="3" width="3.5" height="15" rx="1.5"/>'), name: 'Go to Milestones', hint: '', kbd: '', action: () => setView('plan') });
-  items.push({ icon: ic('<rect x="3" y="4.5" width="18" height="17" rx="2"/><path d="M8 2.5v4M16 2.5v4M3 10h18"/>'), name: 'Go to Openings', hint: '', kbd: '', action: () => setView('timeline') });
-  items.push({ icon: ic('<path d="M12 5v14M5 12h14"/>'), name: 'New milestone', hint: '', kbd: 'N', action: () => addItem() });
-  items.push({ icon: ic('<path d="M3 21V9l9-7 9 7v12h-6v-6h-6v6H3z"/>'), name: 'Add school opening', hint: '', kbd: '', action: () => openSchoolModal(null) });
-  items.push({ icon: ic('<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-4"/>'), name: 'Undo last change', hint: undoStack.length ? undoStack[undoStack.length - 1].label : 'nothing to undo', kbd: '⌘Z', action: () => undo() });
-  items.push({ icon: ic('<path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/>'), name: 'Print report', hint: 'Dashboard', kbd: '', action: () => { setView('progress'); setTimeout(() => window.print(), 400); } });
-  items.push({ icon: ic('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'), name: 'Check in on my milestones', hint: 'Forecast', kbd: '', action: () => openCheckins() });
-  items.push({ icon: ic('<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>'), name: 'Meeting agenda', hint: 'What changed, off track, missing updates', kbd: '', action: () => openAgenda() });
-  items.push({ icon: ic('<rect x="3" y="4.5" width="18" height="17" rx="2"/><path d="M8 2.5v4M16 2.5v4M3 10h18M12 14v4M10 16h4"/>'), name: 'Add deadlines to Outlook', hint: 'Calendar', kbd: '', action: () => openCalendarSheet() });
-  items.push({ icon: ic('<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>'), name: 'Export milestones (CSV)', hint: 'Current filters', kbd: '', action: () => exportCsv() });
-  items.push({ icon: ic('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'), name: 'Open settings', hint: '', kbd: '', action: () => { const s = $('#settingsBtn'); if (s) s.click(); } });
-  items.push({ icon: ic('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>'), name: 'Activity log', hint: '', kbd: '⌃⇧A', action: () => toggleActivity() });
+  items.push({ icon: ic('<path d="M24 21H26V26H24zM20 16H22V26H20zM11 26a5.0059 5.0059 0 01-5-5H8a3 3 0 103-3V16a5 5 0 010 10z"/><path d="M28,2H4A2.002,2.002,0,0,0,2,4V28a2.0023,2.0023,0,0,0,2,2H28a2.0027,2.0027,0,0,0,2-2V4A2.0023,2.0023,0,0,0,28,2Zm0,9H14V4H28ZM12,4v7H4V4ZM4,28V13H28.0007l.0013,15Z"/>'), name: 'Go to Dashboard', hint: '', kbd: '', action: () => setView('progress') });
+  items.push({ icon: ic('<path d="M24 4H26V28H24zM18 6V26H14V6h4m0-2H14a2 2 0 00-2 2V26a2 2 0 002 2h4a2 2 0 002-2V6a2 2 0 00-2-2zM6 4H8V28H6z"/>'), name: 'Go to Milestones', hint: '', kbd: '', action: () => setView('plan') });
+  items.push({ icon: ic('<path d="M26,4h-4V2h-2v2h-8V2h-2v2H6C4.9,4,4,4.9,4,6v20c0,1.1,0.9,2,2,2h20c1.1,0,2-0.9,2-2V6C28,4.9,27.1,4,26,4z M26,26H6V12h20	V26z M26,10H6V6h4v2h2V6h8v2h2V6h4V10z"/>'), name: 'Go to Openings', hide: !hasSchoolWork(), hint: '', kbd: '', action: () => setView('timeline') });
+  items.push({ icon: ic('<path d="M17 15L17 8 15 8 15 15 8 15 8 17 15 17 15 24 17 24 17 17 24 17 24 15z"/>'), name: 'New milestone', hint: '', kbd: 'N', action: () => addItem() });
+  items.push({ icon: ic('<path d="M16.6123,2.2138a1.01,1.01,0,0,0-1.2427,0L1,13.4194l1.2427,1.5717L4,13.6209V26a2.0041,2.0041,0,0,0,2,2H26a2.0037,2.0037,0,0,0,2-2V13.63L29.7573,15,31,13.4282ZM18,26H14V18h4Zm2,0V18a2.0023,2.0023,0,0,0-2-2H14a2.002,2.002,0,0,0-2,2v8H6V12.0615l10-7.79,10,7.8005V26Z"/>'), name: 'Add school opening', hide: !hasSchoolWork(), hint: '', kbd: '', action: () => openSchoolModal(null) });
+  items.push({ icon: ic('<path d="M20,10H7.8149l3.5874-3.5859L10,5,4,11,10,17l1.4023-1.4146L7.8179,12H20a6,6,0,0,1,0,12H12v2h8a8,8,0,0,0,0-16Z"/>'), name: 'Undo last change', hint: undoStack.length ? undoStack[undoStack.length - 1].label : 'nothing to undo', kbd: '⌘Z', action: () => undo() });
+  items.push({ icon: ic('<path d="M28,9H25V3H7V9H4a2,2,0,0,0-2,2V21a2,2,0,0,0,2,2H7v6H25V23h3a2,2,0,0,0,2-2V11A2,2,0,0,0,28,9ZM9,5H23V9H9ZM23,27H9V17H23Zm5-6H25V15H7v6H4V11H28Z"/>'), name: 'Print report', hint: 'Dashboard', kbd: '', action: () => { setView('progress'); setTimeout(() => window.print(), 400); } });
+  items.push({ icon: ic('<path d="M16 22H30V24H16zM14 19.4L12.6 18 6 24.6 3.4 22 2 23.4 6 27.4zM16 8H30V10H16zM14 5.4L12.6 4 6 10.6 3.4 8 2 9.4 6 13.4z"/>'), name: 'Check in on my milestones', hint: 'Forecast', kbd: '', action: () => openCheckins() });
+  items.push({ icon: ic('<circle cx="7" cy="9" r="3"/><circle cx="7" cy="23" r="3"/><path d="M16 22H30V24H16zM16 8H30V10H16z"/>'), name: 'Meeting agenda', hint: 'What changed, off track, missing updates', kbd: '', action: () => openAgenda() });
+  items.push({ icon: ic('<path d="M26,4h-4V2h-2v2h-8V2h-2v2H6C4.9,4,4,4.9,4,6v20c0,1.1,0.9,2,2,2h20c1.1,0,2-0.9,2-2V6C28,4.9,27.1,4,26,4z M26,26H6V12h20	V26z M26,10H6V6h4v2h2V6h8v2h2V6h4V10z"/>'), name: 'Add deadlines to Outlook', hint: 'Calendar', kbd: '', action: () => openCalendarSheet() });
+  items.push({ icon: ic('<path d="M26 24v4H6V24H4v4H4a2 2 0 002 2H26a2 2 0 002-2h0V24zM26 14L24.59 12.59 17 20.17 17 2 15 2 15 20.17 7.41 12.59 6 14 16 24 26 14z"/>'), name: 'Export milestones (CSV)', hint: 'Current filters', kbd: '', action: () => exportCsv() });
+  items.push({ icon: ic('<path d="M27,16.76c0-.25,0-.5,0-.76s0-.51,0-.77l1.92-1.68A2,2,0,0,0,29.3,11L26.94,7a2,2,0,0,0-1.73-1,2,2,0,0,0-.64.1l-2.43.82a11.35,11.35,0,0,0-1.31-.75l-.51-2.52a2,2,0,0,0-2-1.61H13.64a2,2,0,0,0-2,1.61l-.51,2.52a11.48,11.48,0,0,0-1.32.75L7.43,6.06A2,2,0,0,0,6.79,6,2,2,0,0,0,5.06,7L2.7,11a2,2,0,0,0,.41,2.51L5,15.24c0,.25,0,.5,0,.76s0,.51,0,.77L3.11,18.45A2,2,0,0,0,2.7,21L5.06,25a2,2,0,0,0,1.73,1,2,2,0,0,0,.64-.1l2.43-.82a11.35,11.35,0,0,0,1.31.75l.51,2.52a2,2,0,0,0,2,1.61h4.72a2,2,0,0,0,2-1.61l.51-2.52a11.48,11.48,0,0,0,1.32-.75l2.42.82a2,2,0,0,0,.64.1,2,2,0,0,0,1.73-1L29.3,21a2,2,0,0,0-.41-2.51ZM25.21,24l-3.43-1.16a8.86,8.86,0,0,1-2.71,1.57L18.36,28H13.64l-.71-3.55a9.36,9.36,0,0,1-2.7-1.57L6.79,24,4.43,20l2.72-2.4a8.9,8.9,0,0,1,0-3.13L4.43,12,6.79,8l3.43,1.16a8.86,8.86,0,0,1,2.71-1.57L13.64,4h4.72l.71,3.55a9.36,9.36,0,0,1,2.7,1.57L25.21,8,27.57,12l-2.72,2.4a8.9,8.9,0,0,1,0,3.13L27.57,20Z"/><path d="M16,22a6,6,0,1,1,6-6A5.94,5.94,0,0,1,16,22Zm0-10a3.91,3.91,0,0,0-4,4,3.91,3.91,0,0,0,4,4,3.91,3.91,0,0,0,4-4A3.91,3.91,0,0,0,16,12Z"/>'), name: 'Open settings', hint: '', kbd: '', action: () => { const s = $('#settingsBtn'); if (s) s.click(); } });
+  items.push({ icon: ic('<path d="M28.7071,19.293,26,16.5859V13a10.0136,10.0136,0,0,0-9-9.9492V1H15V3.0508A10.0136,10.0136,0,0,0,6,13v3.5859L3.2929,19.293A1,1,0,0,0,3,20v3a1,1,0,0,0,1,1h7v.7768a5.152,5.152,0,0,0,4.5,5.1987A5.0057,5.0057,0,0,0,21,25V24h7a1,1,0,0,0,1-1V20A1,1,0,0,0,28.7071,19.293ZM19,25a3,3,0,0,1-6,0V24h6Zm8-3H5V20.4141L7.707,17.707A1,1,0,0,0,8,17V13a8,8,0,0,1,16,0v4a1,1,0,0,0,.293.707L27,20.4141Z"/>'), name: 'Activity log', hint: '', kbd: '⌃⇧A', action: () => toggleActivity() });
 
   // Nav/action commands filter on the query text; search results are matched separately.
   const ql = (q || '').toLowerCase();
@@ -2631,9 +2614,9 @@ function buildCmdkItems(q) {
 
   // ---- Universal search: milestones, school openings, and owners ----
   const results = [];
-  const mIc = ic('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>');
-  const sIc = ic('<path d="M3 21V9l9-7 9 7v12h-6v-6h-6v6H3z"/>');
-  const oIc = ic('<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 14 0v1"/>');
+  const mIc = ic('<path d="M16,30A14,14,0,1,1,30,16,14,14,0,0,1,16,30ZM16,4A12,12,0,1,0,28,16,12,12,0,0,0,16,4Z"/><path d="M20.59 22L15 16.41 15 7 17 7 17 15.58 22 20.59 20.59 22z"/>');
+  const sIc = ic('<path d="M16.6123,2.2138a1.01,1.01,0,0,0-1.2427,0L1,13.4194l1.2427,1.5717L4,13.6209V26a2.0041,2.0041,0,0,0,2,2H26a2.0037,2.0037,0,0,0,2-2V13.63L29.7573,15,31,13.4282ZM18,26H14V18h4Zm2,0V18a2.0023,2.0023,0,0,0-2-2H14a2.002,2.002,0,0,0-2,2v8H6V12.0615l10-7.79,10,7.8005V26Z"/>');
+  const oIc = ic('<path d="M16 4a5 5 0 11-5 5 5 5 0 015-5m0-2a7 7 0 107 7A7 7 0 0016 2zM26 30H24V25a5 5 0 00-5-5H13a5 5 0 00-5 5v5H6V25a7 7 0 017-7h6a7 7 0 017 7z"/>');
   const mils = (state.data.milestones ? M() : []);
   const words = ql.split(/\s+/).filter(Boolean), hit = txt => { const t = txt.toLowerCase(); return words.every(w => t.includes(w)); };
   (state.data.schools || []).filter(s => hit(`${s.display_label || ''} ${s.code || ''} ${s.market || ''} ${s.state || ''} fall ${s.openingFY - 1} ${fyLabel(s.openingFY)}`))
@@ -2686,12 +2669,84 @@ function wireKeyboard() {
    ============================================================ */
 const _origAutosave = autosave;
 let _lastSaveLabel = '';
-function autosaveWithUndo(label) {
-  if (label) { _lastSaveLabel = label; snapshotForUndo(label); logActivity('edit', label); }
-  _origAutosave();
-}
 
+function flagEmpty(el) { if (!el) return; el.setAttribute('aria-invalid', 'true'); el.focus(); el.addEventListener('input', () => el.removeAttribute('aria-invalid'), { once: true }); }
+function markInvalid(el, msg) {   // Carbon invalid state: red outline and a message under the field
+  if (!el) return; el.setAttribute('aria-invalid', 'true'); el.focus();
+  const wrap = el.closest('.field') || el.parentElement; let m = wrap.querySelector('.field-err');
+  if (!m) { m = document.createElement('div'); m.className = 'field-err'; m.id = (el.id || 'fld') + 'Err'; m.setAttribute('role', 'alert'); wrap.appendChild(m); el.setAttribute('aria-describedby', m.id); }
+  m.textContent = msg;
+  el.addEventListener('input', () => { el.removeAttribute('aria-invalid'); el.removeAttribute('aria-describedby'); m.remove(); }, { once: true });
+}
+function syncNavTitles() {   // labels are visible when the nav is open, so tooltips only help on the collapsed rail
+  const rail = document.body.classList.contains('nav-collapsed');
+  document.querySelectorAll('.nav-tab, .app-header .ws-home, #settingsBtn').forEach(el => { const t = (el.querySelector('span') || el).textContent.trim(); if (rail) el.title = t; else el.removeAttribute('title'); });
+}
+function initDialogFocus() {   // focus moves into a dialog, Tab stays inside it, and focus returns on close
+  const SEL = ['#confirmBackdrop .confirm-box', '.sheet-backdrop .sheet', '#cmdkBackdrop:not(.hide) .cmdk', '.modal-backdrop.open .modal', '#drawer.open'];
+  const top = () => { for (const s of SEL) { const all = document.querySelectorAll(s); if (all.length) return all[all.length - 1]; } return null; };
+  const items = r => [...r.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled])')].filter(e => e.offsetParent !== null);
+  let cur = null, ret = null, t = 0;
+  const sync = () => {
+    const d = top(); if (d === cur) return;
+    if (d && !cur) ret = document.activeElement;
+    cur = d;
+    if (d) {
+      if (d.contains(document.activeElement)) return;
+      const first = matchMedia('(pointer: coarse)').matches ? null : (items(d).find(e => e.matches('input, select, textarea')) || items(d)[0]);
+      if (first) first.focus({ preventScroll: true }); else { d.tabIndex = -1; d.focus({ preventScroll: true }); }
+    } else if (ret && document.contains(ret)) { ret.focus({ preventScroll: true }); ret = null; }
+  };
+  new MutationObserver(() => { clearTimeout(t); t = setTimeout(sync, 40); }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Tab') return; const d = top(); if (!d) return; const f = items(d); if (!f.length) return;
+    const i = f.indexOf(document.activeElement), last = f.length - 1;
+    if (i < 0) { e.preventDefault(); f[0].focus(); } else if (e.shiftKey && i === 0) { e.preventDefault(); f[last].focus(); } else if (!e.shiftKey && i === last) { e.preventDefault(); f[0].focus(); }
+  });
+}
+function initA11yLabels() {   // every control gets a programmatic name, including ones rendered later
+  let n = 0;
+  const NAMES = { 'cz-new': 'New entry', 'cz-name': 'Name', 'cz-role': 'Role', 'cz-email': 'Email', 'cz-state': 'State', 'fb-select': 'Filter' };
+  const run = root => {
+    root.querySelectorAll('.field > label, .field label:first-child').forEach(l => {
+      if (l.htmlFor) return; const c = l.parentElement.querySelector('input:not([type=checkbox]):not([type=radio]), select, textarea'); if (!c) return;
+      if (!c.id) c.id = 'ctl' + (++n); l.htmlFor = c.id;
+    });
+    root.querySelectorAll('input:not([type=checkbox]):not([type=radio]):not([type=hidden]), select, textarea').forEach(c => {
+      const lab = c.labels && c.labels[0]; if (lab && /\*\s*$/.test(lab.textContent)) c.setAttribute('aria-required', 'true');
+      if (c.getAttribute('aria-label') || (c.labels && c.labels.length)) return;
+      const k = Object.keys(NAMES).find(x => c.classList.contains(x));
+      const name = c.placeholder || c.title || (k && NAMES[k]) || c.name || (c.id === 'czNewState' ? 'State' : ''); if (name) c.setAttribute('aria-label', name);
+    });
+  };
+  const makeKeyboard = root => {
+    root.querySelectorAll('.kcard, .ot-card, .plan-group-head, .kcol-head, .al-row, tbody tr').forEach(el => {
+      if (el.matches('tr') && !Object.keys(el.dataset).length) return;
+      if (!el.hasAttribute('tabindex')) { el.tabIndex = 0; el.setAttribute('role', 'button'); el.dataset.kbd = '1'; }
+      if (el.matches('.plan-group-head')) el.setAttribute('aria-expanded', el.querySelector('.chev.open') ? 'true' : 'false');
+      if (el.matches('.kcol-head')) el.setAttribute('aria-expanded', el.parentElement.classList.contains('collapsed') ? 'false' : 'true');
+    });
+    root.querySelectorAll('.fb-menu, #cbUser, .kc-status').forEach(b => b.setAttribute('aria-haspopup', 'true'));
+  };
+  document.addEventListener('keydown', e => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.dataset && e.target.dataset.kbd) { e.preventDefault(); e.target.click(); }
+  });
+  run(document.body); makeKeyboard(document.body);
+  let t = 0; new MutationObserver(() => { clearTimeout(t); t = setTimeout(() => { run(document.body); makeKeyboard(document.body); }, 60); }).observe(document.body, { childList: true, subtree: true });
+}
+function initShellMenu() {   // Carbon UI shell: off-canvas side nav below 1056px
+  const skip = document.createElement('a'); skip.href = '#'; skip.className = 'skip-link'; skip.textContent = 'Skip to main content';
+  skip.addEventListener('click', e => { e.preventDefault(); const m = $('main.container'); m.tabIndex = -1; m.focus(); });
+  document.body.insertBefore(skip, document.body.firstChild);
+  const btn = $('#cdsMenu'), scrim = $('#cdsScrim'); if (!btn) return;
+  const set = open => { document.body.classList.toggle('nav-open', open); btn.setAttribute('aria-expanded', open ? 'true' : 'false'); btn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu'); };
+  btn.addEventListener('click', () => set(!document.body.classList.contains('nav-open')));
+  if (scrim) scrim.addEventListener('click', () => set(false));
+  $('#appNav').addEventListener('click', e => { if (e.target.closest('.nav-tab, a')) set(false); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') set(false); });
+}
 async function init() {
+  initShellMenu(); initA11yLabels(); initDialogFocus(); syncNavTitles();
   document.documentElement.setAttribute('data-theme', 'light');
   if (lsGet('ngc_nav') === '1') { document.body.classList.add('nav-collapsed'); const nt = $('#navToggle'); if (nt) { nt.title = 'Expand menu'; const lbl = nt.querySelector('.nav-util-lbl'); if (lbl) lbl.textContent = 'Expand'; } }
   const data = await loadData(); if (!data) return; state.data = data;
@@ -2721,6 +2776,7 @@ function initContentBar() {
       searchTimer = setTimeout(() => {
         if (state.filters.search === v) return;
         state.filters.search = v;
+        if (v && state.view !== 'plan') { setView('plan'); if (typeof updateFilterBubble === 'function') updateFilterBubble(); return; }   // results live on Milestones
         // Dashboard's applied-chip row and filter-bubble both depend on search state.
         state.view === 'progress' ? rerender() : refreshBody();
         if (typeof updateFilterBubble === 'function') updateFilterBubble();
@@ -2753,8 +2809,6 @@ function initContentBar() {
   const pillFilter = $('#cbPillFilter'); if (pillFilter) pillFilter.addEventListener('click', e => { e.stopPropagation(); toggleFilterPanel(); });
   const cbApp = document.querySelector('.cb-app');
   if (cbApp) { cbApp.style.cursor = 'pointer'; cbApp.title = 'Return to Dashboard (clears filters)'; cbApp.addEventListener('click', () => { clearFilters(); setView('progress'); }); }
-  const cbPage = $('#cbPage');
-  if (cbPage) { cbPage.style.cursor = 'pointer'; cbPage.title = 'Clear active filters on this view'; cbPage.addEventListener('click', () => { if (activeCount()) { clearFilters(); rerender(); toast('Filters cleared', 'ok'); } }); }
 }
 function bootApp() {
   // Personalize for whoever is signed in (drops any prior account's "Mine" scope first)
@@ -2766,13 +2820,12 @@ function bootApp() {
   wireKeyboard();
   wireCollab();
   initContentBar();
-  const ab = $('#activityBtn'); if (ab) ab.addEventListener('click', toggleActivity);
   const cbAb = $('#cbActivityBtn'); if (cbAb) cbAb.addEventListener('click', toggleActivity);
   updateGreeting();
   const ac = $('#activityClose'); if (ac) ac.addEventListener('click', toggleActivity);
   renderActivityPanel();
   updateActivityDot();
-  window.addEventListener('popstate', () => setView((location.hash || '').replace('#', '') || 'progress', true));
+  window.addEventListener('popstate', () => { closePopover(); if ($('#drawer.open')) closeDrawer(); if ($('#modalBackdrop').classList.contains('open')) attemptCloseModal(); setView((location.hash || '').replace('#', '') || 'progress', true); });
   // Direct hash edits and in-page #links fire 'hashchange', not 'popstate'. setView's own
   // pushState doesn't fire either, so this routes deep links without double-rendering.
   window.addEventListener('hashchange', () => { const v = (location.hash || '').replace('#', '') || 'progress'; if (v !== state.view) setView(v, true); });
@@ -2909,11 +2962,11 @@ function checkinBlock(m) {
   </div>`;
 }
 function cpRow(c) {
-  return `<div class="cp-row" data-cpid="${esc(c.id || uid())}"><input type="checkbox" class="cp-done" ${c.done ? 'checked' : ''} aria-label="Done"><input class="cp-title" value="${esc(c.title || '')}" placeholder="Step"><input type="date" class="cp-due" value="${esc(c.due || '')}" aria-label="Checkpoint date"><button type="button" class="cp-del" aria-label="Remove checkpoint">×</button></div>`;
+  return `<div class="cp-row" data-cpid="${esc(c.id || uid())}"><input type="checkbox" class="cp-done" ${c.done ? 'checked' : ''} aria-label="Done"><input class="cp-title" value="${esc(c.title || '')}" placeholder="Step"><input type="date" class="cp-due" value="${esc(c.due || '')}" aria-label="Checkpoint date"><button type="button" class="cp-del" aria-label="Remove checkpoint">${CI('close')}</button></div>`;
 }
 function checkpointsBlock(m) {
   const cps = m.checkpoints || [];
-  return `<div class="field"><label>Checkpoints <span class="muted">· progress is calculated from these</span></label>
+  return `<div class="field"><label>Checkpoints</label>
       <div class="cp-list" id="cpList">${cps.map(cpRow).join('')}</div>
       <div class="cp-actions"><button type="button" class="btn btn-tonal btn-sm" id="cpAdd">+ Add checkpoint</button>${cps.length ? '' : '<button type="button" class="btn btn-ghost btn-sm" id="cpSuggest">Suggest 3</button>'}</div></div>
     <div class="field" id="mDueWhyWrap" hidden><label>Why is the deadline moving? <span class="req">*</span></label><input id="mDueWhy" placeholder="Reason"></div>`;
@@ -2946,10 +2999,10 @@ function wireForecastUI(m) {
 }
 function readForecastUI(m) {
   const answer = ciAnswer, fc = ($('#ciForecast') || {}).value || '', note = ($('#ciNote') || {}).value || '';
-  if (answer && answer !== 'yes' && !fc) { toast('Add the expected finish date', 'err'); $('#ciForecast').focus(); return false; }
+  if (answer && answer !== 'yes' && !fc) { markInvalid($('#ciForecast'), 'Add the expected finish date'); return false; }
   const newDue = ($('#mDue') || {}).value || null, oldDue = m.due_date || null, why = (($('#mDueWhy') || {}).value || '').trim();
   const moved = !m._draft && !!oldDue && !!newDue && newDue !== oldDue;
-  if (moved && !why) { toast('Add a reason for moving the deadline', 'err'); $('#mDueWhyWrap').hidden = false; $('#mDueWhy').focus(); return false; }
+  if (moved && !why) { $('#mDueWhyWrap').hidden = false; markInvalid($('#mDueWhy'), 'Add a reason for moving the deadline'); return false; }
   const cps = $$('#cpList .cp-row').map(r => ({ id: r.dataset.cpid, title: r.querySelector('.cp-title').value.trim(), due: r.querySelector('.cp-due').value || null, done: r.querySelector('.cp-done').checked })).filter(c => c.title);
   return { answer, fc, note, moved, oldDue, newDue, why, cps };
 }
@@ -2967,7 +3020,7 @@ function closeSheet() { const w = $('#sheetBackdrop'); if (w) w.remove(); docume
 function openSheet(title, body, foot) {
   closeSheet();
   const w = document.createElement('div'); w.className = 'modal-backdrop open sheet-backdrop'; w.id = 'sheetBackdrop';
-  w.innerHTML = `<div class="modal sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="modal-head"><h3>${esc(title)}</h3><button class="icon-btn" data-sheet-close aria-label="Close"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div><div class="modal-body">${body}</div><div class="modal-foot"><div></div><div style="display:flex;gap:8px">${foot || ''}</div></div></div>`;
+  w.innerHTML = `<div class="modal sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="modal-head"><h3>${esc(title)}</h3><button class="icon-btn" data-sheet-close aria-label="Close"><svg viewBox="0 0 32 32" fill="currentColor" width="20" height="20"><path d="M17.4141 16L24 9.4141 22.5859 8 16 14.5859 9.4143 8 8 9.4141 14.5859 16 8 22.5859 9.4143 24 16 17.4141 22.5859 24 24 22.5859 17.4141 16z"/></svg></button></div><div class="modal-body">${body}</div><div class="modal-foot"><div></div><div style="display:flex;gap:8px">${foot || ''}</div></div></div>`;
   document.body.appendChild(w);
   w.addEventListener('click', e => { if (e.target === w || e.target.closest('[data-sheet-close]')) closeSheet(); });
   const onKey = e => { if (e.key === 'Escape') { closeSheet(); document.removeEventListener('keydown', onKey); } };
@@ -2996,7 +3049,7 @@ function openCheckins() {
   $('#ckSave').addEventListener('click', () => {
     const picked = $$('#sheetBackdrop .ck-row').filter(r => r.dataset.answer);
     const bad = picked.find(r => r.dataset.answer !== 'yes' && !r.querySelector('.ck-fc').value);
-    if (bad) { toast('Add an expected finish date for each "Probably" or "Unlikely"', 'err'); bad.querySelector('.ck-fc').focus(); return; }
+    if (bad) { markInvalid(bad.querySelector('.ck-fc'), 'Add the expected finish date'); return; }
     if (!picked.length) return closeSheet();
     snapshotForUndo(`Check-ins (${picked.length})`);
     picked.forEach(r => {
@@ -3012,13 +3065,13 @@ function openCheckins() {
 }
 function reminderText(stale) {
   const by = {}; stale.forEach(m => (ownersOf(m).length ? ownersOf(m) : ['Unassigned']).forEach(o => (by[o] = by[o] || []).push(m)));
-  return Object.entries(by).map(([o, ms]) => `${o}: please check in on ${ms.length} milestone${ms.length === 1 ? '' : 's'} in Growth Hub before our next meeting:\n` + ms.map(m => `  - ${m.activity} (due ${fmtDate(m.due_date)})`).join('\n')).join('\n\n');
+  return Object.entries(by).map(([o, ms]) => `${o}: please check in on ${ms.length} milestone${ms.length === 1 ? '' : 's'} in Growth Hub before our next meeting:\n` + ms.map(m => `  - ${m.activity} (due ${fmtDate(m.due_date)})`).join('\n')).join('\n\n') + `\n\n${location.origin}${location.pathname}#plan`;
 }
 function copyText(txt, msg) {
-  const done = () => toast(msg || 'Copied. Paste it into Slack or email.', 'ok');
+  const done = () => toast(msg || 'Copied', 'ok');
   if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(txt).then(done, () => fallback());
   fallback();
-  function fallback() { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) { toast("Couldn't copy. Select the text and copy it by hand.", 'err'); } ta.remove(); }
+  function fallback() { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) { toast("Couldn't copy", 'err'); } ta.remove(); }
 }
 function openAgenda() {
   const list = filtered(), open = list.filter(m => m.status !== 'complete');
@@ -3031,7 +3084,7 @@ function openAgenda() {
   const byOwner = {}; stale.forEach(m => (ownersOf(m).length ? ownersOf(m) : ['Unassigned']).forEach(o => (byOwner[o] = byOwner[o] || 0, byOwner[o]++)));
   const body = `<p class="modal-lede">${esc(new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }))} · current filters</p>`
     + `<div id="agSince"><p class="muted">Loading what changed since the last meeting</p></div><h3 class="ag-h">Open issues</h3>`
-    + sec('Off track', off, m => li(m, ciX(m)))
+    + sec('Behind', off, m => li(m, ciX(m)))
     + sec('Blocked', blocked, m => li(m, m.dependency ? 'Blocked by: ' + esc(m.dependency) : ''))
     + sec('At risk', risk, m => li(m, ciX(m)))
     + sec('Needs a look', wm, m => li(m, watermelonReasons(m).map(esc).join('; ')))
@@ -3110,7 +3163,7 @@ function teamNote(team) {
   const t = committeeSignals().teams.find(x => x.team === team); if (!t) return '';
   const nx = mtg().next ? ` before the ${fmtDate(mtg().next)} committee meeting` : '';
   return `${t.people.join(', ') || team}: a quick ${team} update${nx}, please.\n` + t.items.slice(0, 8).map(m => `  - ${m.activity} (${SM(effectiveStatus(m)).label.toLowerCase()}${m.due_date ? ', due ' + fmtDate(m.due_date) : ''})`).join('\n')
-    + `\nCheck in at Growth Hub, or let me know if you need help.`;
+    + `\nCheck in at ${location.origin}${location.pathname}#plan`;
 }
 function markMeetingHeld() {
   if (!guardAdmin()) return;
@@ -3133,13 +3186,12 @@ document.addEventListener('change', e => {
 });
 
 /* Sticky section headings: pinned while their group is on screen, then they scroll away with it.
-   --sticky-top keeps them below a pinned top bar (narrow layouts); 0 when the nav is a sidebar. */
+   --sticky-top keeps them below the Carbon header; --ctx-left starts the context bar at the side nav's edge. */
 function updateSticky() {
-  const h = document.querySelector('.app-header'); let top = 0, left = 0;
+  const h = document.querySelector('.app-header'); const top = 48; let left = 0;   // 48 = Carbon header
   if (h) {
     const r = h.getBoundingClientRect(), pos = getComputedStyle(h).position;
-    if ((pos === 'sticky' || pos === 'fixed') && r.width > innerWidth * 0.6 && r.top <= 1) top = Math.max(0, Math.round(r.bottom));
-    else if (r.width < innerWidth * 0.6 && r.left <= 1) left = Math.max(0, Math.round(r.right));   // sidebar nav: the bar starts where it ends
+    if (r.left >= 0 && r.left <= 1 && r.width < innerWidth * 0.6) left = Math.max(0, Math.round(r.right));   // sidebar nav: the bar starts where it ends
   }
   // Context bar: shown once the page title and filters have scrolled under it. While the
   // filter panel is open the filter bar floats, so keep whatever state we were in.
@@ -3168,7 +3220,7 @@ function renderMasthead() {
   if (state.view !== 'progress' || !state.data) { brief.innerHTML = ''; qt.innerHTML = ''; return; }
   const items = [];
   try {
-    const schools = schoolsInView();
+    const schools = hasSchoolWork() ? schoolsInView() : [];
     const sMs = s => state.filters.areas.size ? schoolMs(s).filter(m => state.filters.areas.has(m.functional_area)) : schoolMs(s);
     if (schools.length) {
       const keys = schools.map(s => ragReady(sMs(s)).key), onT = keys.filter(k => k === 'green' || k === 'blue').length;
@@ -3312,7 +3364,7 @@ function mentionsCard() {
 }
 
 /* ---------- documents and "waiting on" ---------- */
-const CLIP_IC = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>';
+const CLIP_IC = '<svg viewBox="0 0 32 32" fill="currentColor" width="13" height="13"><path d="M28.1,18.9L13.1,3.9c-2.5-2.6-6.6-2.6-9.2-0.1S1.3,10.5,3.9,13c0,0,0.1,0.1,0.1,0.1L6.8,16l1.4-1.4l-2.9-2.9	C3.6,10,3.6,7.1,5.3,5.4s4.6-1.8,6.3-0.1c0,0,0,0,0.1,0.1l14.9,14.9c1.8,1.7,1.8,4.6,0.1,6.3c-1.7,1.8-4.6,1.8-6.3,0.1	c0,0,0,0-0.1-0.1l-7.4-7.4c-1-1-0.9-2.6,0-3.5c1-0.9,2.5-0.9,3.5,0l4.1,4.1l1.4-1.4c0,0-4.2-4.2-4.2-4.2c-1.8-1.7-4.6-1.6-6.3,0.2	c-1.6,1.7-1.6,4.4,0,6.2l7.5,7.5c2.5,2.6,6.6,2.6,9.2,0.1S30.7,21.5,28.1,18.9C28.1,19,28.1,18.9,28.1,18.9L28.1,18.9z"/></svg>';
 function linksBadge(m) { const n = (m.links || []).length; return n ? `<span class="kc-notes" title="${n} document${n === 1 ? '' : 's'}">${CLIP_IC}${n}</span>` : ''; }
 function depIssue(m, d) {
   if (!d || d.status === 'complete') return '';
@@ -3328,23 +3380,24 @@ function depRowHtml(m, d) {
   const issue = depIssue(m, d);
   return `<div class="dep-row" data-depid="${esc(d.id)}">${statusDot(effectiveStatus(d))}<button type="button" class="dep-name" data-expand="${esc(d.id)}" title="Open">${esc(d.activity)}</button>
     <span class="dep-info"><span class="dep-meta">${d.status === 'complete' ? 'Done' : d.due_date ? 'Due ' + esc(fmtDate(d.due_date)) : 'No due date'}</span>${issue ? `<span class="dep-warn">${esc(issue.charAt(0).toUpperCase() + issue.slice(1))}</span>` : ''}</span>
-    <button type="button" class="dep-x" data-dep-x aria-label="Stop waiting on ${esc(d.activity)}">✕</button></div>`;
+    <button type="button" class="dep-x" data-dep-x aria-label="Stop waiting on ${esc(d.activity)}">${CI('close')}</button></div>`;
 }
 function depOptions(m, taken) {
-  const pool = M().filter(x => x.id !== m.id && !x._draft && x.status !== 'complete' && !taken.includes(x.id));
+  const waitsOnMe = x => { const seen = new Set(); const walk = id => { if (id === m.id) return true; if (seen.has(id)) return false; seen.add(id); const n = findM(id); return !!n && (n.blockedBy || []).some(walk); }; return walk(x.id); };   // adding one of these would create a loop
+  const pool = M().filter(x => x.id !== m.id && !x._draft && x.status !== 'complete' && !taken.includes(x.id) && !waitsOnMe(x));
   const byTeam = {}; pool.forEach(x => (byTeam[x.functional_area || 'Other'] = byTeam[x.functional_area || 'Other'] || []).push(x));
   return Object.keys(byTeam).sort().map(t => `<optgroup label="${esc(t)}">${byTeam[t].sort((a, b) => (a.due_date || '9999') < (b.due_date || '9999') ? -1 : 1).map(x => `<option value="${esc(x.id)}">${esc(clip(x.activity, 70))}${x.market ? ' · ' + esc(x.market) : ''}</option>`).join('')}</optgroup>`).join('');
 }
 function linkRowHtml(l) {
   const url = safeUrl(l.url); if (!url) return '';
-  return `<div class="lk-row" data-url="${esc(url)}" data-label="${esc(l.label || '')}">${CLIP_IC}<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(l.label || hostOf(url) || url)}</a><span class="lk-host">${esc(hostOf(url))}</span><button type="button" class="lk-x" aria-label="Remove link">✕</button></div>`;
+  return `<div class="lk-row" data-url="${esc(url)}" data-label="${esc(l.label || '')}">${CLIP_IC}<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(l.label || hostOf(url) || url)}</a><span class="lk-host">${esc(hostOf(url))}</span><button type="button" class="lk-x" aria-label="Remove link">${CI('close')}</button></div>`;
 }
 function linksDepsBlock(m) {
   const deps = (m.blockedBy || []).map(findM).filter(Boolean), needed = M().filter(x => (x.blockedBy || []).includes(m.id));
   return `<div class="m-sec-h">Waiting on</div>
     <div class="field"><div id="depList">${deps.map(d => depRowHtml(m, d)).join('')}</div>
       <select id="depAdd" aria-label="Add a milestone this waits on"><option value="">Add a milestone this waits on</option>${depOptions(m, deps.map(d => d.id))}</select>
-      <div class="help-text">Flags this one if a milestone it waits on falls behind or is due later</div></div>
+      </div>
     ${needed.length ? `<div class="field"><label>Needed by</label><div class="dep-needed">${needed.map(n => `<div class="dep-row">${statusDot(effectiveStatus(n))}<button type="button" class="dep-name" data-expand="${esc(n.id)}">${esc(n.activity)}</button><span class="dep-meta">${n.due_date ? 'Due ' + esc(fmtDate(n.due_date)) : ''}</span></div>`).join('')}</div></div>` : ''}
     <div class="m-sec-h">Documents</div>
     <div class="field"><div id="lkList">${(m.links || []).map(linkRowHtml).join('')}</div>
@@ -3353,7 +3406,7 @@ function linksDepsBlock(m) {
 function addLinkFromInputs() {
   const u = $('#lkUrl'), l = $('#lkLabel'); if (!u || !u.value.trim()) return true;
   const url = safeUrl(u.value.trim().match(/^https?:\/\//i) ? u.value.trim() : 'https://' + u.value.trim());
-  if (!url) { toast('Paste a full link that starts with https://', 'err'); u.focus(); return false; }
+  if (!url) { markInvalid(u, 'Paste a full link that starts with https://'); return false; }
   $('#lkList').insertAdjacentHTML('beforeend', linkRowHtml({ url, label: l.value.trim() }));
   u.value = ''; l.value = ''; modalDirty = true; return true;
 }
@@ -3457,8 +3510,8 @@ function downloadIcs(scope) {
 function calFeedBase() { const c = sbCfg(); return c && c.url ? c.url.replace(/\/$/, '') + '/functions/v1/growth-calendar' : ''; }
 async function fillCalSub(reset) {
   const box = $('#calSub'); if (!box) return;
-  const notReady = isAdmin() ? 'Calendar links need a one-time setup. See INTEGRATIONS-SETUP.md, part 3' : 'Calendar links are not turned on yet. Ask an admin, or download a file below';
-  if (!commentLive()) { box.innerHTML = '<p class="muted">Sign in to get a link that keeps your calendar up to date</p>'; return; }
+  const notReady = isAdmin() ? 'Calendar links are not set up yet' : 'Calendar links are not turned on yet. Ask an admin, or download a file below';
+  if (!commentLive()) { box.innerHTML = '<p class="muted">Sign in to get your link</p>'; return; }
   let tk = null, up = false;
   try { const r = await state.sb.client.rpc('growth_calendar_token', { p_owner: myOwnerName() || null, p_reset: !!reset }); if (r.error) throw r.error; tk = r.data; } catch (e) { box.innerHTML = `<p class="muted">${esc(notReady)}</p>`; return; }
   try { const pr = await fetch(calFeedBase() + '?ping=1'); up = pr.ok && (await pr.text()).trim() === 'ok'; } catch (e) {}
@@ -3468,20 +3521,20 @@ async function fillCalSub(reset) {
   const row = (sc, label) => `<div class="cal-row"><div class="cal-l">${label}</div><div class="cal-ctl"><input readonly class="cal-url" value="${esc(link(sc))}" aria-label="${label} calendar link"><button type="button" class="btn btn-sm" data-calcopy="${esc(link(sc))}">Copy</button></div></div>`;
   box.innerHTML = `${me ? row('mine', 'My milestones') : ''}${row('all', 'All milestones')}
     <ol class="cal-steps"><li>In Outlook, go to Calendar</li><li>Choose Add calendar, then Subscribe from web</li><li>Paste the link, name it, and choose Import</li></ol>
-    <p class="muted cal-note">Outlook checks for changes every few hours. Keep the link private: anyone who has it can see milestone names and dates.</p>
+    <p class="muted cal-note">Keep this link private</p>
     <button type="button" class="btn btn-text btn-sm" data-calreset>Get a new link</button>`;
 }
 function openCalendarSheet() {
   const me = myOwnerName();
-  const body = `<p class="modal-lede">See due dates and school openings in your calendar</p>
+  const body = `
     <section class="ag-sec"><h4>Subscribe in Outlook</h4><div id="calSub"><p class="muted">Getting your link</p></div></section>
-    <section class="ag-sec"><h4>Or download a file</h4><p class="muted cal-note">A one-time copy. Download again to pick up changes.</p>
+    <section class="ag-sec"><h4>Or download a file</h4><p class="muted cal-note">One-time copy</p>
       <div class="dw-btns">${me ? '<button type="button" class="btn" data-calfile="mine">My milestones</button>' : ''}<button type="button" class="btn" data-calfile="view">Milestones in the current view</button></div></section>`;
   const w = openSheet('Add deadlines to Outlook', body, '<button class="btn btn-filled" data-sheet-close>Done</button>');
   w.addEventListener('click', e => {
     const f = e.target.closest('[data-calfile]'); if (f) return downloadIcs(f.dataset.calfile);
     const c = e.target.closest('[data-calcopy]'); if (c) return copyText(c.dataset.calcopy, 'Link copied. Paste it in Outlook under Subscribe from web');
-    if (e.target.closest('[data-calreset]')) confirmDialog({ title: 'Get a new calendar link?', message: 'Your current link stops working. Calendars that use it stop updating until you subscribe with the new one.', confirmLabel: 'Get a new link', onConfirm: () => { $('#calSub').innerHTML = '<p class="muted">Getting your link</p>'; fillCalSub(true); } });
+    if (e.target.closest('[data-calreset]')) confirmDialog({ title: 'Get a new calendar link?', message: 'Your current link stops working', confirmLabel: 'Get a new link', onConfirm: () => { $('#calSub').innerHTML = '<p class="muted">Getting your link</p>'; fillCalSub(true); } });
   });
   fillCalSub(false);
 }
@@ -3493,20 +3546,20 @@ function integrationsSettingsHtml() {
 }
 async function loadIntegrations(info) {
   const box = $('#intBody'); if (!box) return;
-  if (!commentLive()) { box.innerHTML = '<p class="dw-help">Connect to the shared project to set up Slack</p>'; return; }
+  if (!commentLive()) { box.innerHTML = '<p class="dw-help">Sign in to set up Slack</p>'; return; }
   let st = info;
   if (!st) {
-    try { const r = await state.sb.client.rpc('growth_integrations_get'); if (r.error) throw r.error; st = r.data; }
-    catch (e) { box.innerHTML = '<div class="status-note warn">Slack is not set up yet. Run supabase-collab-integrations.sql in Supabase, then reload.</div>'; return; }
+    try { const r = await state.sb.client.rpc('growth_integrations_get'); if (r.error) throw r.error; st = r.data || {}; }
+    catch (e) { box.innerHTML = '<div class="status-note warn">Slack is not available yet. Contact your Growth Hub admin</div>'; return; }
   }
   if (!$('#intBody')) return;
   box.innerHTML = st.slack ? `<div class="status-note ok">Posting to Slack · link ends in ${esc(st.slack_hint || '')}</div>
       <label class="field-check"><input type="checkbox" id="intAlerts" ${st.alerts ? 'checked' : ''}> Instant alerts</label>
-      <div class="help-text">When a milestone turns at risk, behind, or blocked, a key milestone is done, someone is @mentioned, or an opening date moves</div>
+      <div class="help-text">Status changes, mentions, and moved openings</div>
       <label class="field-check"><input type="checkbox" id="intDigest" ${st.digest ? 'checked' : ''}> Monday digest at 8am</label>
-      <div class="help-text">Overdue, due this week, blocked, and check-ins needed</div>
+      
       <div class="dw-btns"><button class="btn" id="intTest">Send a test message</button><button class="btn" id="intDigestNow">Send the digest now</button><button class="btn btn-text" id="intClear">Disconnect</button></div>`
-    : `<p class="dw-help">Paste a Slack webhook link for your committee channel. INTEGRATIONS-SETUP.md shows how to get one.</p>
+    : `
       <div class="field"><label for="intUrl">Slack webhook link</label><input id="intUrl" type="url" placeholder="https://hooks.slack.com/services/…" autocomplete="off"></div>
       <div class="dw-btns"><button class="btn btn-filled" id="intSave">Connect Slack</button></div>`;
 }
@@ -3528,7 +3581,7 @@ function openDeepLink() {
     }
     const ows = wsOtherIds.get(id);   // the link points at another workstream's board
     if (ows && WS_PAGE[ows]) return location.replace(WS_PAGE[ows] + location.search);
-    if (++tries < 30) setTimeout(go, 500); else toast("That milestone wasn't found. It may have been deleted", 'warn');
+    if (++tries < (sbLoaded ? 3 : 30)) setTimeout(go, 500); else toast("That milestone wasn't found. It may have been deleted", 'warn');
   };
   setTimeout(go, 300);
 }
@@ -3566,11 +3619,11 @@ function wireCollab() {
   db.addEventListener('click', async e => {
     const id = e.target.id;
     if (id === 'intSave') {
-      const v = ($('#intUrl').value || '').trim(); if (!v) return $('#intUrl').focus();
-      const st = await intCall('growth_integrations_set', { p_slack_webhook: v }, 'Slack connected. Send a test message to check it'); if (st) loadIntegrations(st);
-    } else if (id === 'intTest') intCall('growth_slack_test', {}, 'Test message sent. Check your Slack channel');
+      const v = ($('#intUrl').value || '').trim(); if (!v) return flagEmpty($('#intUrl'));
+      const st = await intCall('growth_integrations_set', { p_slack_webhook: v }, 'Slack connected'); if (st) loadIntegrations(st);
+    } else if (id === 'intTest') intCall('growth_slack_test', {}, 'Test message sent');
     else if (id === 'intDigestNow') intCall('growth_slack_digest_now', {}, 'Digest sent to Slack');
-    else if (id === 'intClear') confirmDialog({ title: 'Disconnect Slack?', message: 'Alerts and the Monday digest stop. To turn them back on, paste the webhook link again.', confirmLabel: 'Disconnect', onConfirm: async () => { const st = await intCall('growth_integrations_set', { p_clear_slack: true }, 'Slack disconnected'); if (st) loadIntegrations(st); } });
+    else if (id === 'intClear') confirmDialog({ title: 'Disconnect Slack?', message: 'Alerts and the Monday digest stop', confirmLabel: 'Disconnect', onConfirm: async () => { const st = await intCall('growth_integrations_set', { p_clear_slack: true }, 'Slack disconnected'); if (st) loadIntegrations(st); } });
   });
   db.addEventListener('change', async e => {
     if (e.target.id !== 'intAlerts' && e.target.id !== 'intDigest') return;

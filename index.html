@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="KIPP Team &amp; Family workspace for growth planning" />
+  <meta name="theme-color" content="#ffffff" />
   <title>Growth Hub</title>
   <script>
     // Old tracker links (?m=<id>, #plan, sign-in and reset links) go to readiness.html unchanged.
     if (location.search || location.hash) location.replace('readiness.html' + location.search + location.hash);
-    try { if (localStorage.getItem('ngc_theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) {}
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -98,6 +99,7 @@
   </style>
 </head>
 <body>
+  <noscript><p style="font:16px/24px Arial,sans-serif;padding:32px">Growth Hub needs JavaScript. Turn it on in your browser settings, then reload this page.</p></noscript>
   <header class="cds--header">
     <div class="cds-grid">
       <img src="assets/logo-two-tone.png" alt="KIPP Team &amp; Family" />
@@ -151,7 +153,7 @@
         if (last) { var a = document.getElementById('lastLink'); a.textContent = last[0]; a.href = last[1]; document.getElementById('last').hidden = false; }
       } catch (e) {}
 
-      setInterval(function () { if (document.activeElement !== q && !q.value) { pi = (pi + 1) % ACTIONS.length; q.placeholder = ACTIONS[pi].t; } }, 3500);
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(function () { if (document.activeElement !== q && !q.value) { pi = (pi + 1) % ACTIONS.length; q.placeholder = ACTIONS[pi].t; } }, 3500);
 
       function match(a, words) { var s = (a.t + ' ' + a.ws).toLowerCase(); return words.every(function (w) { return s.indexOf(w) > -1; }); }
       function render() {
@@ -163,7 +165,7 @@
         }).join('') : '<li class="cds--list-box__empty">No results</li>';
         open(true);
       }
-      function open(on) { list.hidden = !on; box.setAttribute('aria-expanded', on ? 'true' : 'false'); }
+      function open(on) { list.hidden = !on; box.setAttribute('aria-expanded', on ? 'true' : 'false'); if (!on) q.removeAttribute('aria-activedescendant'); }
       function mark() { [].forEach.call(list.querySelectorAll('a'), function (el, i) { el.setAttribute('aria-selected', i === sel ? 'true' : 'false'); }); q.setAttribute('aria-activedescendant', 'opt' + sel); }
 
       q.addEventListener('focus', render);
@@ -175,6 +177,7 @@
         else if (e.key === 'Escape') { open(false); q.blur(); }
       });
       document.addEventListener('click', function (e) { if (!box.contains(e.target)) open(false); });
+      box.addEventListener('focusout', function (e) { if (!box.contains(e.relatedTarget)) open(false); });
     })();
   </script>
 </body>
