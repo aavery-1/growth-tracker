@@ -506,7 +506,7 @@ function otCard(s) {
       ${n ? `<div class="ot-prog">
         <div class="ot-prog-lbl"><b>${done} of ${n}</b> milestones clear<span class="ot-prog-pct">${pct}%</span></div>
         <div class="ot-prog-bar"><span style="width:${pct}%"></span></div>
-        ${late ? `<div class="ot-late">${late} past due</div>` : nextLbl ? `<div class="ot-next">Next: ${esc(nextLbl)}</div>` : ''}
+        ${late ? `<div class="ot-late">${late} past due</div>` : nextLbl ? `<div class="ot-next">Next due ${esc(nextLbl)}</div>` : ''}
       </div>` : `<div class="ot-prog"><div class="ot-prog-empty">No milestones yet</div></div>`}
     </article>`;
 }
@@ -668,6 +668,8 @@ function planListHtml() {
     return m.functional_area;
   };
   list.forEach(m => { const k = keyOf(m) || '-'; (g[k] = g[k] || []).push(m); });
+  const byDue = (a, b) => (effectiveStatus(a) === 'complete') - (effectiveStatus(b) === 'complete') || (a.due_date || '9999').localeCompare(b.due_date || '9999');
+  Object.values(g).forEach(a => a.sort(byDue));
   const keys = Object.keys(g).sort((a, b) => gb === 'year' ? (order[a] || 9999) - (order[b] || 9999) : gb === 'state' ? (order[a] ?? 9) - (order[b] ?? 9) : a.localeCompare(b));
   if (!keys.length) return (M().length ? '<div class="empty-state">No milestones match these filters<button class="btn btn-tonal btn-sm" data-clearfilters>Clear filters</button></div>' : '<div class="empty-state">No milestones yet</div>');
   state._planKeys = keys.map(k => 'pg:' + k);
@@ -694,7 +696,7 @@ function renderPlan() {
     <select id="planGroupSel" ${state.planFocus ? 'disabled' : ''}>${[['team', 'Team'], ['state', 'State, Florida first'], ['school', 'School opening'], ['market', 'Market'], ['year', 'Due year']].map(([v, l]) => `<option value="${v}" ${state.planGroup === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`;
   const allOpen = (state._planKeys || []).length > 0 && state._planKeys.every(k => state.expanded[k]);
   const expandBtns = (!state.planFocus && !isBoard) ? `<button class="btn btn-ghost btn-sm" id="planToggleAll">${allOpen ? 'Collapse all' : 'Expand all'}</button>` : '';
-  const csvBtn = `<button class="btn btn-ghost btn-sm" id="planCsv" >Export CSV</button>`;
+  const csvBtn = `<button class="btn btn-ghost btn-sm" id="planCsv">Export Excel</button>`;
   const right = `${appliedFilterChips({ hiddenOnly: true })}${viewToggle}${focusBtn}${viewSel}${expandBtns}${csvBtn}<button class="btn btn-filled" id="newItem"><svg viewBox="0 0 32 32" fill="currentColor" width="16" height="16"><path d="M17 15L17 8 15 8 15 15 8 15 8 17 15 17 15 24 17 24 17 17 24 17 24 15z"/></svg>New milestone</button>`;
   // No H2 - all actions live in the filter bar's right slot.
   $('#view-plan').innerHTML = `
@@ -861,7 +863,7 @@ function openingsTable(schools, sMs) {
     const issues = off || risk ? [off ? `<span class="dt-bad">${off} behind</span>` : '', risk ? `<span class="dt-warn">${risk} at risk</span>` : ''].filter(Boolean).join(' · ') : '<span class="muted">None</span>';
     return `<tr data-drillschool="${esc(s.id)}" title="Open ${esc(s.market)} ${esc(s.display_label)}">
       <td><span class="dt-dot" style="background:${mkColor(s.market)}"></span><b>${esc(s.market)} ${esc(s.display_label)}</b></td>
-      <td>Fall ${s.openingFY - 1}</td>
+      <td>${fallLbl(s.openingFY)}</td>
       <td>${statusPill(ms.length ? r.label.split(' · ')[0] : 'Not yet scoped', r.color)}</td>
       <td class="num"><span class="dt-prog"><span class="kc-bar"><span style="width:${p}%;background:${r.color}"></span></span>${p}%</span></td>
       <td>${issues}</td>
@@ -988,6 +990,7 @@ function lockModalIfReadOnly() {
   $('#modalTitle').textContent += ' (view only)';
 }
 function openModal(id) {
+  closePopover();
   modalMode = 'task'; modalId = id; modalDirty = false; const m = findM(id); if (!m) return;
   modalOpenDoc = clone(m); requestAnimationFrame(() => { const b = $('#modalBody'); if (b) b.scrollTop = 0; });
   $('#modalTitle').textContent = m._draft ? 'New milestone' : 'Milestone details';
@@ -997,9 +1000,8 @@ function openModal(id) {
   const linked = (m.schoolIds || []).map(id => schoolById(id)).filter(Boolean);
   const schoolLinks = linked.length ? `<div class="sm-school-links">Linked schools: ${linked.map(s => `<button class="sm-school-link" data-openschool="${esc(s.id)}" title="Open ${esc(s.display_label)}">${esc(s.market)} · ${esc(s.display_label)} ${CI('arrow')}</button>`).join('')}</div>` : '';
   const soSec = `
-    <div class="m-sec-h">School openings</div>
-    <div class="field"><div class="so-pick" id="mSchools">${schoolPicker(m)}</div>
-      <div class="help-text">Optional</div></div>
+    <div class="m-sec-h">School openings (optional)</div>
+    <div class="field"><div class="so-pick" id="mSchools">${schoolPicker(m)}</div></div>
     <div class="so-derived" id="mMarketDerived" ${(m.schoolIds || []).length ? '' : 'hidden'}>Market: <b id="mMarketName">${esc(m.market || '')}</b></div>
     <div class="field" id="mMarketWrap" ${(m.schoolIds || []).length ? 'hidden' : ''}><label>Market</label><select id="mMarket">${opt([['', 'Network-wide'], ...markets().map(x => [x, x])], (m.schoolIds || []).length ? '' : (m.market || ''))}</select></div>
 `;
@@ -1030,7 +1032,7 @@ function openModal(id) {
       <div class="field-row"><div class="field"><label>Target fiscal year</label><select id="mFy" ${m.due_date ? 'disabled title="Set from the due date"' : ''}><option value="">-</option>${fyList().map(fy => `<option value="${fy}" ${m.targetFY === fy ? 'selected' : ''}>${fyLabel(fy)}</option>`).join('')}</select></div><div class="field"><label>Quarter</label><select id="mQ" ${m.due_date ? 'disabled title="Set from the due date"' : ''}>${opt(['', 'Q1', 'Q2', 'Q3', 'Q4'], m.targetQuarter)}</select></div></div>
       <div class="field"><label>Start date</label><input type="date" id="mStart" value="${esc(m.startDate || '')}"></div>
       <div class="field"><label>Board column</label><select id="mStage">${opt(meta().stages, m.stage || 'to_do')}</select></div>
-      <div class="field"><label>Dependency / blockers</label><input id="mDep" value="${esc(m.dependency)}"></div>
+      <input type="hidden" id="mDep" value="${esc(m.dependency)}">
       <div class="field-row"><label class="field-check"><input type="checkbox" id="mKey" ${m.keyMilestone ? 'checked' : ''}> Key milestone</label><label class="field-check"><input type="checkbox" id="mTrans" ${m.transition ? 'checked' : ''}> Transition to Regional Ops</label></div>
     </details>
     ${notesSection('task', m.id, m.noteLog)}`;
@@ -1182,7 +1184,7 @@ function openSchoolModal(id) {
   const roll = sm.length ? rollupStatus(sm) : 'not_started';
   const taskList = sm.length ? sm.slice().sort(bySortUrgency).map(m => `<div class="sm-task" data-expand="${m.id}">${statusDot(effectiveStatus(m))}<span class="sm-t-title">${esc(m.activity)}</span><span class="sm-t-team">${esc(m.functional_area || '')}</span><span class="sm-t-due">${dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : '-')}</span></div>`).join('') : '<div class="muted" style="font-size:14px">No milestones yet</div>';
   const summary = isNew ? '' : `<div class="sm-summary">
-    <span><span class="state-badge sm" style="background:${stColor(s.state)}">${esc(s.state)}</span> <b>${esc(s.market)}</b> · Fall ${s.openingFY - 1}</span>
+    <span><span class="state-badge sm" style="background:${stColor(s.state)}">${esc(s.state)}</span> <b>${esc(s.market)}</b> · ${fallLbl(s.openingFY)}</span>
     <span class="sm-summary-r"><span class="muted">${sm.length} milestone${sm.length === 1 ? '' : 's'}</span>${sm.length ? `<button class="btn btn-text btn-sm sm-openplan" data-openplanschool="${esc(s.id)}" >Open in Milestones ${CI('arrow')}</button>` : ''}</span></div>`;
   // plain calendar year - a school with openingFY=2028 opens in August 2027, so we show "2027"
   const fyField = `<div class="field"><label>Opens <span class="req">*</span></label><select id="sFy">${fyList().map(fy => `<option value="${fy}" ${s.openingFY === fy ? 'selected' : ''}>Fall ${fy - 1} (${fyLabel(fy)})</option>`).join('')}</select></div>`;
@@ -1280,10 +1282,14 @@ function deleteSchool() {
   } });
 }
 /* ---------- milestone templates: quick-add starter pre-opening milestones ---------- */
+function fallLbl(fy) { return fy ? `Fall ${fy - 1}` : 'Not scheduled'; }
 function milestoneTemplates() { return (meta().milestoneTemplates || []); }
 function templatesButton(s) {
   const tpls = milestoneTemplates(); if (!tpls.length) return '';
-  return `<button class="btn btn-tonal btn-sm" id="tplToggle" >+ Load starter milestones (${tpls.length})</button>`;
+  const have = new Set(schoolMs(s).map(m => (m.activity || '').trim().toLowerCase()));
+  const n = tpls.filter(t => !have.has((t.activity || '').trim().toLowerCase())).length;
+  if (!n) return '';
+  return `<button class="btn btn-tonal btn-sm" id="tplToggle" >+ Load starter milestones (${n})</button>`;
 }
 function templatesPanel(s) {
   const tpls = milestoneTemplates(); if (!tpls.length) return '';
@@ -1294,18 +1300,18 @@ function templatesPanel(s) {
     <div class="tpl-group">
       <div class="tpl-group-h">${esc(ws)}</div>
       ${byWs[ws].map(t => {
-        const dup = already.has(t.activity.trim().toLowerCase());
+        const dup = already.has((t.activity || '').trim().toLowerCase());
         const due = s.openingFY ? offsetDateISO(`${s.openingFY - 1}-08-01`, -(t.monthsBefore || 0)) : '';
         const flags = [t.keyMilestone && 'Key', t.greenlight && 'Greenlight', t.transition && 'Transition'].filter(Boolean).join(' ');
-        return `<label class="tpl-item ${dup ? 'is-dup' : ''}" title="${dup ? 'A milestone with this name already exists on this school' : `Due ${due} (${t.monthsBefore} mo before opening)`}">
+        return `<label class="tpl-item ${dup ? 'is-dup' : ''}" title="${dup ? 'Already on this school' : due ? `Due ${due}` : 'Set an opening date to calculate the due date'}">
           <input type="checkbox" class="tpl-check" data-tplid="${esc(t.id)}" ${dup ? 'disabled' : ''}>
           <span class="tpl-act">${esc(t.activity)}${flags ? ` <span class="tpl-flags">${flags}</span>` : ''}</span>
-          <span class="tpl-when">${t.monthsBefore} mo before</span>
+          <span class="tpl-when">${t.monthsBefore || 0} mo before</span>
         </label>`;
       }).join('')}
     </div>`).join('');
   return `<div class="tpl-panel hide" id="tplPanel">
-    <div class="tpl-help">Check the milestones to add. Due dates are calculated from this school's opening (Fall ${s.openingFY - 1}). Milestones you already have are dimmed.</div>
+    <div class="tpl-help">${s.openingFY ? `Due dates count back from Fall ${s.openingFY - 1}.` : 'No opening date yet, so these are added without due dates.'}</div>
     <div class="tpl-groups">${groups}</div>
     <div class="tpl-actions">
       <label class="tpl-selectall"><input type="checkbox" id="tplAll"> Select all available</label>
@@ -1388,7 +1394,7 @@ function schoolPicker(m) {
   const sel = new Set(m.schoolIds || []), groups = {};
   state.data.schools.filter(x => x.openingFY).sort((a, b) => (a.market || '').localeCompare(b.market || '') || a.openingFY - b.openingFY || (a.display_label || '').localeCompare(b.display_label || ''))
     .forEach(x => (groups[x.market] = groups[x.market] || []).push(x));
-  const html = Object.entries(groups).map(([mk, list]) => `<div class="so-group"><div class="so-mk"><i style="background:${mkColor(mk)}"></i>${esc(mk)}</div><div class="so-opts">${list.map(x => `<label class="so-opt ${sel.has(x.id) ? 'on' : ''}"><input type="checkbox" class="m-school" value="${esc(x.id)}" ${sel.has(x.id) ? 'checked' : ''}><span class="so-name">${esc(x.display_label)}</span><span class="so-when">Fall ${x.openingFY - 1}</span></label>`).join('')}</div></div>`).join('');
+  const html = Object.entries(groups).map(([mk, list]) => `<div class="so-group"><div class="so-mk"><i style="background:${mkColor(mk)}"></i>${esc(mk)}</div><div class="so-opts">${list.map(x => `<label class="so-opt ${sel.has(x.id) ? 'on' : ''}"><input type="checkbox" class="m-school" value="${esc(x.id)}" ${sel.has(x.id) ? 'checked' : ''}><span class="so-name">${esc(x.display_label)}</span><span class="so-when">${fallLbl(x.openingFY)}</span></label>`).join('')}</div></div>`).join('');
   return html || '<p class="muted">No school openings yet</p>';
 }
 function derivedMarket(ids) {
@@ -1710,14 +1716,14 @@ function renderDrawer() {
     <details class="dw-sec dw-fold"><summary>${num()}Manage school openings</summary>
       ${schoolsPanel()}
       <div class="ms-bulk">
-        <div class="ms-bulk-warn">Bulk delete removes every school opening <b>and</b> every milestone tied to those schools. Milestones with no school attached remain untouched.</div>
+        <div class="ms-bulk-warn">Deletes all school openings and their milestones</div>
         <button class="btn btn-danger-solid" id="msDeleteAll" ${state.data.schools.length ? '' : 'disabled'}>Delete all school openings</button>
       </div>
     </details>` : ''}
 
     <details class="dw-sec dw-fold"><summary>${num()}Back up${admin ? ' and restore' : ''} data</summary>
       <p class="dw-help">${admin ? 'Import adds and updates. It never deletes.' : ''}</p>
-      <div class="dw-btns"><button class="btn" id="expBtn">Download backup</button><button class="btn" id="csvBtn">Export milestones to CSV</button>${admin ? '<button class="btn" id="impBtn">Import</button><input type="file" id="impFile" accept="application/json" class="hide">' : ''}</div>
+      <div class="dw-btns"><button class="btn" id="expBtn">Download backup</button><button class="btn" id="csvBtn">Export milestones to Excel</button>${admin ? '<button class="btn" id="impBtn">Import</button><input type="file" id="impFile" accept="application/json" class="hide">' : ''}</div>
     </details>
 
     <div class="dw-about">${WS_SEED[WS] ? WS_SEED[WS].title : 'Growth Readiness'} · ${M().length} milestones · ${state.data.schools.length} schools · v${meta().version || 1}</div>`;
@@ -1731,7 +1737,7 @@ function schoolsPanel() {
     const taskCount = schoolMs(s).length;
     return `<div class="ms-row">
       <span class="ms-badge" style="background:${stColor(s.state)}">${esc(s.state)}</span>
-      <div class="ms-info"><b>${esc(s.market)}</b> · ${esc(s.display_label)}<span class="muted"> · Fall ${s.openingFY - 1}</span></div>
+      <div class="ms-info"><b>${esc(s.market)}</b> · ${esc(s.display_label)}<span class="muted"> · ${fallLbl(s.openingFY)}</span></div>
       <span class="ms-count" title="${taskCount} milestone${taskCount === 1 ? '' : 's'} tied to this school">${taskCount}</span>
       <button class="btn btn-text btn-sm" data-msedit="${esc(s.id)}" title="Edit school">Edit</button>
       <button class="btn btn-text btn-sm ms-del-btn" data-msdel="${esc(s.id)}" title="Remove school">Remove</button>
@@ -1828,15 +1834,63 @@ function czAdd(type) {
 }
 function exportJson() { const b = new Blob([JSON.stringify(state.data, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `growth-hub-backup-${todayISO()}.json`; a.click(); URL.revokeObjectURL(a.href); toast('Backup downloaded', 'ok'); }
 // Spreadsheet export of what's on screen (current filters), for Excel and Google Sheets users
-function exportCsv() {
-  const list = filtered(), q = v => { let t = String(v == null ? '' : v); if (/^[=+\-@\t\r]/.test(t)) t = "'" + t; return `"${t.replace(/"/g, '""')}"`; };
-  const head = ['Milestone', 'Status', 'Progress %', 'Due date', 'Owner', 'Co-owners', 'Team', 'Market', 'Schools', 'Priority', 'Blocked by', 'Notes', 'Last updated', 'Updated by'];
-  const rows = list.map(m => [m.activity, SM(effectiveStatus(m)).label, m.progress_percent || 0, m.due_date || '', m.owner || '', (m.coOwners || []).join('; '), m.functional_area || '', m.market || '',
-    (m.schoolIds || []).map(id => (schoolById(id) || {}).display_label).filter(Boolean).join('; '), (PRIORITY[m.priority] || {}).label || '', m.status === 'blocked' ? (m.dependency || '') : '', m.notes || '',
-    m.updatedAt ? m.updatedAt.slice(0, 10) : '', m.updatedBy || ''].map(q).join(','));
-  const b = new Blob(['\ufeff' + [head.map(q).join(','), ...rows].join('\r\n')], { type: 'text/csv;charset=utf-8' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `growth-hub-milestones-${todayISO()}.csv`; a.click(); URL.revokeObjectURL(a.href);
-  toast(`Exported ${list.length} milestone${list.length === 1 ? '' : 's'}`, 'ok');
+/* Excel export styled with IBM Carbon. Written directly so the page needs no spreadsheet library. */
+function xmlEsc(v) { return String(v == null ? '' : v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function zipStore(files) {   // a .xlsx is a zip; stored entries need no compression library
+  const table = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+  const crc = b => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = table[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+  const enc = new TextEncoder(), parts = [], central = []; let offset = 0;
+  const u16 = n => [n & 255, n >>> 8 & 255], u32 = n => [n & 255, n >>> 8 & 255, n >>> 16 & 255, n >>> 24 & 255];
+  files.forEach(([name, text]) => {
+    const nm = enc.encode(name), data = enc.encode(text), c = crc(data);
+    const common = [...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(c), ...u32(data.length), ...u32(data.length), ...u16(nm.length), ...u16(0)];
+    const local = new Uint8Array([0x50, 0x4B, 3, 4, ...common]);
+    parts.push(local, nm, data);
+    central.push(new Uint8Array([0x50, 0x4B, 1, 2, ...u16(20), ...common, ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(offset)]), nm);
+    offset += local.length + nm.length + data.length;
+  });
+  const size = central.reduce((a, b) => a + b.length, 0);
+  return new Blob([...parts, ...central, new Uint8Array([0x50, 0x4B, 5, 6, 0, 0, 0, 0, ...u16(files.length), ...u16(files.length), ...u32(size), ...u32(offset), 0, 0])], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+const XL_STATUS = { not_started: 7, on_track: 8, at_risk: 9, behind: 10, blocked: 11, complete: 12 };
+function xlsxStyles() {
+  const font = (size, color, bold) => `<font>${bold ? '<b/>' : ''}<sz val="${size}"/><color rgb="FF${color}"/><name val="IBM Plex Sans"/><family val="2"/></font>`;
+  const fill = c => `<fill><patternFill patternType="solid"><fgColor rgb="FF${c}"/><bgColor indexed="64"/></patternFill></fill>`;
+  const fonts = [font(11, '161616'), font(20, '161616'), font(11, '525252'), font(11, '161616', true), font(11, '0043CE'), font(11, '684E00'), font(11, 'A2191F'), font(11, '0E6027')];
+  const fills = ['<fill><patternFill patternType="none"/></fill>', '<fill><patternFill patternType="gray125"/></fill>', fill('E0E0E0'), fill('D0E2FF'), fill('FCF4D6'), fill('FFD7D9'), fill('A7F0BA')];
+  const xf = (f, fl, b, num, al) => `<xf numFmtId="${num}" fontId="${f}" fillId="${fl}" borderId="${b}" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyNumberFormat="1" applyAlignment="1"><alignment ${al}/></xf>`;
+  const top = 'vertical="center" horizontal="left" wrapText="1"', ctr = 'vertical="center" horizontal="left"';
+  const xfs = [xf(0, 0, 0, 0, ctr), xf(1, 0, 0, 0, ctr), xf(2, 0, 0, 0, ctr), xf(3, 2, 0, 0, ctr), xf(0, 0, 1, 0, top), xf(0, 0, 1, 164, ctr), xf(0, 0, 1, 9, 'vertical="center" horizontal="right"'),
+    xf(0, 2, 1, 0, ctr), xf(4, 3, 1, 0, ctr), xf(5, 4, 1, 0, ctr), xf(6, 5, 1, 0, ctr), xf(6, 5, 1, 0, ctr), xf(7, 6, 1, 0, ctr), xf(2, 0, 1, 0, top)];
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="mmm d, yyyy"/></numFmts><fonts count="${fonts.length}">${fonts.join('')}</fonts><fills count="${fills.length}">${fills.join('')}</fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left/><right/><top/><bottom style="thin"><color rgb="FFE0E0E0"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${xfs.length}">${xfs.join('')}</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+}
+function exportXlsx() {
+  const list = filtered();
+  if (!list.length) return toast('No milestones to export', 'warn');
+  const colName = n => String.fromCharCode(65 + n);
+  const txt = (c, r, v, st) => (v === '' || v == null) ? `<c r="${colName(c)}${r}" s="${st}"/>` : `<c r="${colName(c)}${r}" s="${st}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(v)}</t></is></c>`;
+  const num = (c, r, v, st) => v == null ? `<c r="${colName(c)}${r}" s="${st}"/>` : `<c r="${colName(c)}${r}" s="${st}"><v>${v}</v></c>`;
+  const serial = d => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || ''); return m ? (Date.UTC(+m[1], +m[2] - 1, +m[3]) - Date.UTC(1899, 11, 30)) / 86400000 : null; };
+  const COLS = [['Milestone', 52], ['Status', 14], ['Progress', 11], ['Due date', 14], ['Owner', 22], ['Co-owners', 24], ['Team', 22], ['Market', 14], ['Schools', 18], ['Priority', 10], ['Blocked by', 28], ['Notes', 44], ['Last updated', 14], ['Updated by', 20]];
+  const board = WS_SEED[WS] ? WS_SEED[WS].title : 'Growth Readiness', n = list.length, last = 4 + n;
+  const when = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const rows = [`<row r="1" ht="36" customHeight="1">${txt(0, 1, 'Milestones', 1)}</row>`, `<row r="2" ht="20" customHeight="1">${txt(0, 2, `${board} · ${when} · ${n} milestone${n === 1 ? '' : 's'}`, 2)}</row>`, `<row r="4" ht="32" customHeight="1">${COLS.map((c, i) => txt(i, 4, c[0], 3)).join('')}</row>`];
+  list.forEach((m, i) => {
+    const r = 5 + i, es = effectiveStatus(m), p = Math.max(0, Math.min(100, m.progress_percent || 0)) / 100;
+    rows.push(`<row r="${r}">` + [txt(0, r, m.activity, 4), txt(1, r, SM(es).label, XL_STATUS[es] || 7), num(2, r, p, 6), num(3, r, serial(m.due_date), 5), txt(4, r, m.owner, 4), txt(5, r, (m.coOwners || []).join('; '), 4), txt(6, r, m.functional_area, 4), txt(7, r, m.market, 4),
+      txt(8, r, (m.schoolIds || []).map(id => (schoolById(id) || {}).display_label).filter(Boolean).join('; '), 4), txt(9, r, (PRIORITY[m.priority] || {}).label, 4), txt(10, r, m.status === 'blocked' ? m.dependency : '', 4), txt(11, r, m.notes, 13), num(12, r, serial(m.updatedAt), 5), txt(13, r, m.updatedBy, 4)].join('') + '</row>');
+  });
+  const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetPr><tabColor rgb="FF0F62FE"/></sheetPr><dimension ref="A1:N${last}"/><sheetViews><sheetView showGridLines="0" workbookViewId="0"><pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A5" sqref="A5"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="24" customHeight="1"/><cols>${COLS.map((c, i) => `<col min="${i + 1}" max="${i + 1}" width="${c[1]}" customWidth="1"/>`).join('')}</cols><sheetData>${rows.join('')}</sheetData><autoFilter ref="A4:N${last}"/><pageMargins left="0.5" right="0.5" top="0.5" bottom="0.5" header="0.3" footer="0.3"/><pageSetup orientation="landscape" fitToHeight="0"/></worksheet>`;
+  const blob = zipStore([
+    ['[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'],
+    ['_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+    ['xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Milestones" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">Milestones!$A$4:$N$' + last + '</definedName></definedNames></workbook>'],
+    ['xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],
+    ['xl/styles.xml', xlsxStyles()],
+    ['xl/worksheets/sheet1.xml', sheet]
+  ]);
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `growth-hub-milestones-${todayISO()}.xlsx`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast(`Exported ${n} milestone${n === 1 ? '' : 's'}`, 'ok');
 }
 // Admin only. Adds and updates records from a backup file; never deletes anything, so
 // teammates' newer work stays. Shared settings in the file are not changed.
@@ -2011,7 +2065,7 @@ function wireEvents() {
     const dro = e.target.closest('[data-drillowner]'); if (dro) { clearFilters(); const nm = dro.dataset.drillowner; state.filters.search = nm; const cb = $('#cbSearch'); if (cb) cb.value = nm; setView('plan'); return; }
     const gp = e.target.closest('[data-goplan]'); if (gp) { const m = findM(gp.dataset.goplan); if (m) { state.filters.search = m.activity; const cb = $('#cbSearch'); if (cb) cb.value = m.activity; } setView('plan'); return; }
     if (e.target.closest('#planFocus')) { state.planFocus = !state.planFocus; return renderPlan(); }
-    if (e.target.closest('#planCsv')) return exportCsv();
+    if (e.target.closest('#planCsv')) return exportXlsx();
     const tAll = e.target.closest('#planToggleAll');
     if (tAll) { const keys = state._planKeys || [], open = keys.length > 0 && keys.every(k => state.expanded[k]); keys.forEach(k => { if (open) delete state.expanded[k]; else state.expanded[k] = true; }); tAll.textContent = open ? 'Expand all' : 'Collapse all'; return refreshBody(); }
     if (e.target.closest('#addSchool')) return openSchoolModal(null);
@@ -2028,7 +2082,7 @@ function wireEvents() {
   $('#drawerBody').addEventListener('click', e => {
     if (e.target.id === 'sbReconnect') { const sc = sbCfg(); if (sc && sc.url && sc.key) sbConnect(sc.url, sc.key); return; }
     if (e.target.id === 'expBtn') return exportJson();
-    if (e.target.id === 'csvBtn') return exportCsv();
+    if (e.target.id === 'csvBtn') return exportXlsx();
     if (e.target.id === 'impBtn') { if (guardAdmin()) $('#impFile').click(); return; }
     if ((e.target.id === 'msDeleteAll' || e.target.closest('[data-msdel], [data-czadd], .cz-del')) && !guardAdmin()) return;
     if (e.target.id === 'msDeleteAll') return bulkDeleteAllSchools();
@@ -2550,7 +2604,7 @@ function activityIcon(action) {
 function renderActivityPanel() {
   const body = $('#activityBody'); if (!body) return;
   const log = activityEntries(50);
-  const scope = activityIsTeam() ? '<div class="activity-scope">Team-wide · all signed-in members</div>' : '';
+  const scope = activityIsTeam() ? '<div class="activity-scope">Everyone\'s changes</div>' : '';
   if (!log.length) { body.innerHTML = scope + '<div class="activity-empty">No activity yet</div>'; return; }
   body.innerHTML = scope + log.map(e => {
     const when = fmtWhen(e.ts);
@@ -2603,7 +2657,7 @@ function buildCmdkItems(q) {
   items.push({ icon: ic('<path d="M16 22H30V24H16zM14 19.4L12.6 18 6 24.6 3.4 22 2 23.4 6 27.4zM16 8H30V10H16zM14 5.4L12.6 4 6 10.6 3.4 8 2 9.4 6 13.4z"/>'), name: 'Check in on my milestones', hint: 'Forecast', kbd: '', action: () => openCheckins() });
   items.push({ icon: ic('<circle cx="7" cy="9" r="3"/><circle cx="7" cy="23" r="3"/><path d="M16 22H30V24H16zM16 8H30V10H16z"/>'), name: 'Meeting agenda', hint: 'What changed, off track, missing updates', kbd: '', action: () => openAgenda() });
   items.push({ icon: ic('<path d="M26,4h-4V2h-2v2h-8V2h-2v2H6C4.9,4,4,4.9,4,6v20c0,1.1,0.9,2,2,2h20c1.1,0,2-0.9,2-2V6C28,4.9,27.1,4,26,4z M26,26H6V12h20	V26z M26,10H6V6h4v2h2V6h8v2h2V6h4V10z"/>'), name: 'Add deadlines to Outlook', hint: 'Calendar', kbd: '', action: () => openCalendarSheet() });
-  items.push({ icon: ic('<path d="M26 24v4H6V24H4v4H4a2 2 0 002 2H26a2 2 0 002-2h0V24zM26 14L24.59 12.59 17 20.17 17 2 15 2 15 20.17 7.41 12.59 6 14 16 24 26 14z"/>'), name: 'Export milestones (CSV)', hint: 'Current filters', kbd: '', action: () => exportCsv() });
+  items.push({ icon: ic('<path d="M26 24v4H6V24H4v4H4a2 2 0 002 2H26a2 2 0 002-2h0V24zM26 14L24.59 12.59 17 20.17 17 2 15 2 15 20.17 7.41 12.59 6 14 16 24 26 14z"/>'), name: 'Export milestones to Excel', hint: 'Current filters', kbd: '', action: () => exportXlsx() });
   items.push({ icon: ic('<path d="M27,16.76c0-.25,0-.5,0-.76s0-.51,0-.77l1.92-1.68A2,2,0,0,0,29.3,11L26.94,7a2,2,0,0,0-1.73-1,2,2,0,0,0-.64.1l-2.43.82a11.35,11.35,0,0,0-1.31-.75l-.51-2.52a2,2,0,0,0-2-1.61H13.64a2,2,0,0,0-2,1.61l-.51,2.52a11.48,11.48,0,0,0-1.32.75L7.43,6.06A2,2,0,0,0,6.79,6,2,2,0,0,0,5.06,7L2.7,11a2,2,0,0,0,.41,2.51L5,15.24c0,.25,0,.5,0,.76s0,.51,0,.77L3.11,18.45A2,2,0,0,0,2.7,21L5.06,25a2,2,0,0,0,1.73,1,2,2,0,0,0,.64-.1l2.43-.82a11.35,11.35,0,0,0,1.31.75l.51,2.52a2,2,0,0,0,2,1.61h4.72a2,2,0,0,0,2-1.61l.51-2.52a11.48,11.48,0,0,0,1.32-.75l2.42.82a2,2,0,0,0,.64.1,2,2,0,0,0,1.73-1L29.3,21a2,2,0,0,0-.41-2.51ZM25.21,24l-3.43-1.16a8.86,8.86,0,0,1-2.71,1.57L18.36,28H13.64l-.71-3.55a9.36,9.36,0,0,1-2.7-1.57L6.79,24,4.43,20l2.72-2.4a8.9,8.9,0,0,1,0-3.13L4.43,12,6.79,8l3.43,1.16a8.86,8.86,0,0,1,2.71-1.57L13.64,4h4.72l.71,3.55a9.36,9.36,0,0,1,2.7,1.57L25.21,8,27.57,12l-2.72,2.4a8.9,8.9,0,0,1,0,3.13L27.57,20Z"/><path d="M16,22a6,6,0,1,1,6-6A5.94,5.94,0,0,1,16,22Zm0-10a3.91,3.91,0,0,0-4,4,3.91,3.91,0,0,0,4,4,3.91,3.91,0,0,0,4-4A3.91,3.91,0,0,0,16,12Z"/>'), name: 'Open settings', hint: '', kbd: '', action: () => { const s = $('#settingsBtn'); if (s) s.click(); } });
   items.push({ icon: ic('<path d="M28.7071,19.293,26,16.5859V13a10.0136,10.0136,0,0,0-9-9.9492V1H15V3.0508A10.0136,10.0136,0,0,0,6,13v3.5859L3.2929,19.293A1,1,0,0,0,3,20v3a1,1,0,0,0,1,1h7v.7768a5.152,5.152,0,0,0,4.5,5.1987A5.0057,5.0057,0,0,0,21,25V24h7a1,1,0,0,0,1-1V20A1,1,0,0,0,28.7071,19.293ZM19,25a3,3,0,0,1-6,0V24h6Zm8-3H5V20.4141L7.707,17.707A1,1,0,0,0,8,17V13a8,8,0,0,1,16,0v4a1,1,0,0,0,.293.707L27,20.4141Z"/>'), name: 'Activity log', hint: '', kbd: '⌃⇧A', action: () => toggleActivity() });
 
@@ -2620,7 +2674,7 @@ function buildCmdkItems(q) {
   const mils = (state.data.milestones ? M() : []);
   const words = ql.split(/\s+/).filter(Boolean), hit = txt => { const t = txt.toLowerCase(); return words.every(w => t.includes(w)); };
   (state.data.schools || []).filter(s => hit(`${s.display_label || ''} ${s.code || ''} ${s.market || ''} ${s.state || ''} fall ${s.openingFY - 1} ${fyLabel(s.openingFY)}`))
-    .slice(0, 4).forEach(s => results.push({ icon: sIc, name: `${s.market} ${s.display_label}`, hint: `School opening · Fall ${s.openingFY - 1}`, kbd: '', action: () => openSchoolModal(s.id) }));
+    .slice(0, 4).forEach(s => results.push({ icon: sIc, name: `${s.market} ${s.display_label}`, hint: `School opening · ${fallLbl(s.openingFY)}`, kbd: '', action: () => openSchoolModal(s.id) }));
   mils.filter(m => hit(`${m.activity} ${ownersOf(m).join(' ')} ${m.market} ${m.functional_area} ${m.workstream || ''} ${(m.tags || []).join(' ')} ${m.notes || ''}`))
     .slice(0, 8).forEach(m => results.push({ icon: mIc, name: m.activity, hint: `${m.market || 'Network'} · ${m.functional_area}${m.due_date ? ' · Due ' + fmtDate(m.due_date) : ''}${ownersOf(m).length ? ' · ' + ownersOf(m).join(' / ') : ''}`, kbd: '', action: () => openModal(m.id) }));
   [...new Set(mils.flatMap(ownersOf))].filter(o => o.toLowerCase().includes(ql)).slice(0, 5).forEach(o => {
@@ -2682,6 +2736,11 @@ function syncNavTitles() {   // labels are visible when the nav is open, so tool
   const rail = document.body.classList.contains('nav-collapsed');
   document.querySelectorAll('.nav-tab, .app-header .ws-home, #settingsBtn').forEach(el => { const t = (el.querySelector('span') || el).textContent.trim(); if (rail) el.title = t; else el.removeAttribute('title'); });
 }
+function syncCheckpointProgress() {   // with checkpoints, progress is calculated, so the field shows the result and locks
+  const list = $$('#cpList input[type=checkbox]'), p = $('#mProg'); if (!p) return;
+  if (list.length) { p.value = Math.round(100 * list.filter(c => c.checked).length / list.length); p.disabled = true; }
+  else if (canEdit()) p.disabled = false;
+}
 function initDialogFocus() {   // focus moves into a dialog, Tab stays inside it, and focus returns on close
   const SEL = ['#confirmBackdrop .confirm-box', '.sheet-backdrop .sheet', '#cmdkBackdrop:not(.hide) .cmdk', '.modal-backdrop.open .modal', '#drawer.open'];
   const top = () => { for (const s of SEL) { const all = document.querySelectorAll(s); if (all.length) return all[all.length - 1]; } return null; };
@@ -2693,7 +2752,7 @@ function initDialogFocus() {   // focus moves into a dialog, Tab stays inside it
     cur = d;
     if (d) {
       if (d.contains(document.activeElement)) return;
-      const first = matchMedia('(pointer: coarse)').matches ? null : (items(d).find(e => e.matches('input, select, textarea')) || items(d)[0]);
+      const first = (matchMedia('(pointer: coarse)').matches || d.id === 'drawer') ? null : (items(d).find(e => e.matches('input, select, textarea')) || items(d)[0]);
       if (first) first.focus({ preventScroll: true }); else { d.tabIndex = -1; d.focus({ preventScroll: true }); }
     } else if (ret && document.contains(ret)) { ret.focus({ preventScroll: true }); ret = null; }
   };
@@ -2747,6 +2806,8 @@ function initShellMenu() {   // Carbon UI shell: off-canvas side nav below 1056p
 }
 async function init() {
   initShellMenu(); initA11yLabels(); initDialogFocus(); syncNavTitles();
+  document.addEventListener('change', e => { if (e.target.closest('#cpList')) syncCheckpointProgress(); });
+  new MutationObserver(() => syncCheckpointProgress()).observe($('#modalBody'), { childList: true, subtree: false });
   document.documentElement.setAttribute('data-theme', 'light');
   if (lsGet('ngc_nav') === '1') { document.body.classList.add('nav-collapsed'); const nt = $('#navToggle'); if (nt) { nt.title = 'Expand menu'; const lbl = nt.querySelector('.nav-util-lbl'); if (lbl) lbl.textContent = 'Expand'; } }
   const data = await loadData(); if (!data) return; state.data = data;
@@ -3167,9 +3228,10 @@ function teamNote(team) {
 }
 function markMeetingHeld() {
   if (!guardAdmin()) return;
-  const mt = mtg(), t = todayISO(); mt.last = t; mt.next = offsetDateISO(t, 1);
+  const mt = mtg(), t = todayISO(), before = { last: mt.last, next: mt.next };
+  mt.last = t; if (!(mt.next && mt.next > t)) mt.next = offsetDateISO(t, 1);   // keep a future date someone already set
   logActivity('edit', 'Marked committee meeting held'); autosave(); rerender();
-  toast(`Meeting marked as held. Next meeting set to ${fmtDate(mt.next)}`, 'ok');
+  toastAction(`Meeting held. Next one ${fmtDate(mt.next)}`, 'Undo', () => { const m2 = mtg(); m2.last = before.last; m2.next = before.next; autosave(); rerender(); });
 }
 function meetingSettingsHtml() {
   const mt = mtg();

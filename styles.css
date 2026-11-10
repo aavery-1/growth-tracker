@@ -2653,3 +2653,15 @@ body .filterbar .fb-mine, body .fb-mine { font-weight: 400 !important; }
 /* Cycle 24: the page behind a dialog stays still */
 html { scrollbar-gutter: stable; }
 body:has(.modal-backdrop.open), body:has(#confirmBackdrop), body:has(#drawer.open), body:has(#cmdkBackdrop:not(.hide)) { overflow: hidden; }
+
+/* Passes 29 to 78 */
+.auth-foot { align-items: flex-start !important; }
+@media print { .dash .dt tr, .ag-sec li, .ex-card-head { break-inside: avoid; } }
+.m-mail { height: 24px !important; min-height: 24px !important; padding: 0 !important; }
+
+/* Passes 79 to 88 */
+@media (max-width: 600px) {
+  body .filterbar { flex-wrap: wrap !important; overflow-x: visible !important; }
+  .cm-row { flex-wrap: wrap; }
+  .cm-row .cm-main { flex: 1 1 100%; }
+}
