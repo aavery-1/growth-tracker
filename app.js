@@ -506,7 +506,7 @@ function otCard(s) {
         <span class="ot-mkt"><i style="background:${mk}"></i>${esc(s.market)}</span>
         ${n ? statusLozenge(rollupStatus(sm)) : `<span class="stpill st-not_started"><i></i>Not yet scoped</span>`}
       </div>
-      <h4 class="ot-title">${esc(s.display_label)}<small>${esc(s.market)}, ${esc(s.state)}${s.confirmed === false ? ' · <span class="ot-tent">Tentative</span>' : ''}</small></h4>
+      <h4 class="ot-title">${esc(s.display_label)}<small>${esc(s.market)}, ${esc(s.state)}</small></h4>
       ${when ? `<p class="ot-when">${esc(when)}</p>` : ''}
       ${n ? `<div class="ot-prog">
         <div class="ot-prog-lbl"><b>${done} of ${n}</b> ${n === 1 ? "milestone" : "milestones"} done<span class="ot-prog-pct" title="Average progress across this school's milestones">${pct}%</span></div>
@@ -833,7 +833,7 @@ function dashboardHtml(list) {
   const rptHead = `<header class="print-only rpt-head"><div class="rpt-kicker">KIPP Team &amp; Family · Network Growth Committee</div><h1>Growth status report</h1><div class="rpt-meta">As of ${asOf} · ${esc(scopeParts.length ? scopeParts.join(', ') : 'All openings and teams')}</div></header>`;
   return `<div class="dash dash-v2">
     ${rptHead}
-    ${isAdmin() ? committeeCard() : ''}
+    ${MEETINGS_ON && isAdmin() ? committeeCard() : ''}
     ${greetBanner(list)}
     ${mentionsCard()}
     ${hasSchoolWork() ? openingsTable(schools, sMs) : ''}
@@ -863,7 +863,7 @@ function openingsTable(schools, sMs) {
     const issues = off || risk ? [off ? `<span class="dt-bad">${off} behind</span>` : '', risk ? `<span class="dt-warn">${risk} at risk</span>` : ''].filter(Boolean).join(' · ') : '<span class="muted">None</span>';
     return `<tr data-drillschool="${esc(s.id)}" title="Open ${esc(s.market)} ${esc(s.display_label)}">
       <td><span class="dt-dot" style="background:${mkColor(s.market)}"></span><b>${esc(s.market)} ${esc(s.display_label)}</b></td>
-      <td>${fallLbl(s.openingFY)}${s.confirmed === false ? ' <span class="muted">(tentative)</span>' : ''}</td>
+      <td>${fallLbl(s.openingFY)}</td>
       <td>${statusPill(ms.length ? r.label.split(' · ')[0] : 'Not yet scoped', r.color)}</td>
       <td class="num"><span class="dt-prog"><span class="kc-bar"><span style="width:${p}%;background:${r.color}"></span></span>${p}%</span></td>
       <td>${issues}</td>
@@ -1283,35 +1283,36 @@ function openSchoolModal(id) {
   const taskList = sm.length ? sm.slice().sort((a, b) => ((a.status === 'complete') - (b.status === 'complete')) || (a.due_date || '9999').localeCompare(b.due_date || '9999')).map(m => `<div class="sm-task" data-expand="${m.id}">${statusDot(effectiveStatus(m))}<span class="sm-t-title">${esc(m.activity)}</span><span class="sm-t-team">${esc(m.functional_area || '')}${ownersOf(m).length ? ' · ' + esc(ownersOf(m)[0]) : ''}</span><span class="sm-t-due">${m.status === 'complete' ? 'Done' : dueBadge(m) || (m.due_date ? fmtDate(m.due_date) : 'No due date')}</span></div>`).join('') : '<div class="muted" style="font-size:14px">No milestones yet</div>';
   const summary = isNew ? '' : `<div class="sm-summary">
     <span><span class="state-badge sm" style="background:${stColor(s.state)}">${esc(s.state)}</span> <b>${esc(s.market)}</b> · ${fallLbl(s.openingFY)}</span>
-    <span class="sm-summary-r">${isAdmin() ? `<button type="button" class="btn btn-text btn-sm" data-mt-addschool="${esc(s.id)}">Add to meeting</button>` : ''}<button type="button" class="btn btn-text btn-sm" data-copyschool="${esc(s.id)}">Copy link</button><span class="muted">${sm.filter(x => x.status === 'complete').length} of ${sm.length} milestone${sm.length === 1 ? '' : 's'} done</span>${sm.length ? `<button class="btn btn-text btn-sm sm-openplan" data-openplanschool="${esc(s.id)}" >Open in Milestones ${CI('arrow')}</button>` : ''}</span></div>`;
+    <span class="sm-summary-r">${MEETINGS_ON && isAdmin() ? `<button type="button" class="btn btn-text btn-sm" data-mt-addschool="${esc(s.id)}">Add to meeting</button>` : ''}<button type="button" class="btn btn-text btn-sm" data-copyschool="${esc(s.id)}">Copy link</button></span></div>`;
+  const msHead = `<div class="sd-head"><h3 class="sd-title">Milestones <span class="muted">${sm.filter(x => x.status === 'complete').length} of ${sm.length} done</span></h3>${sm.length ? `<button class="btn btn-text btn-sm sm-openplan" data-openplanschool="${esc(s.id)}">Open in Milestones ${CI('arrow')}</button>` : ''}</div>`;
   // plain calendar year - a school with openingFY=2028 opens in August 2027, so we show "2027"
   const fyField = `<div class="field"><label>Opens <span class="req">*</span></label><select id="sFy">${fyList().filter(fy => fy > currentFY() || fy === s.openingFY).map(fy => `<option value="${fy}" ${s.openingFY === fy ? 'selected' : ''}>Fall ${fy - 1} (${fyLabel(fy)})</option>`).join('')}</select></div>`;
   const qField = `<input type="hidden" id="sQ" value="${esc(s.openingQuarter || 'Q1')}">`;   // every opening is in August; quarter kept for old data
   const marketOnly = `<div class="field"><label>Market <span class="req">*</span></label><select id="sMarket">${opt(markets(), s.market)}</select></div>`;
   const labelField = `<div class="field-row"><div class="field"><label for="sLabel">Name <span class="req">*</span></label><input id="sLabel" value="${esc(s.display_label || s.code || '')}" placeholder="ES4"></div><div class="field"><label>School type</label><select id="sType">${opt([['ES', 'Elementary (ES)'], ['MS', 'Middle (MS)'], ['HS', 'High (HS)']], s.school_type)}</select></div></div>`;
   const marketField = `<div class="field-row"><div class="field"><label>Market</label><select id="sMarket">${opt(markets(), s.market)}</select></div><div class="field"><label>Pod</label><input id="sPod" type="number" min="1" value="${s.pod_number || ''}" placeholder="4"></div></div>`;
-  const confField = `<label class="field-check"><input type="checkbox" id="sConf" ${s.confirmed !== false ? 'checked' : ''}> Opening confirmed</label><div class="help-text">Uncheck while the date is tentative. Cards then say "Tentative"</div>`;
   $('#modalBody').innerHTML = isNew ? `
     ${labelField}
     ${marketOnly}
     ${fyField}
-    <div class="field-row">${confField}</div>
     <details class="sm-details"><summary>More details</summary>
       <div class="field-row"><div class="field"><label>Pod</label><input id="sPod" type="number" min="1" value="${s.pod_number || ''}" placeholder="4"></div></div>${qField}
     </details>`
     : `
     ${summary}
-    <div class="reschedule">
-      <div class="rs-head">Reschedule opening</div>
-      ${fyField}${qField}
-      <label class="field-check"><input type="checkbox" id="sShift" checked> <span>Move open milestone deadlines too${((k) => k ? ` (${k})` : '')(schoolMs(s).filter(x => x.status !== 'complete' && x.due_date).length)}</span></label>
-    </div>
-    <div class="field"><label>Milestones</label><div class="sm-tasks">${taskList}</div>
-      <div class="sm-task-actions"><button class="btn btn-tonal btn-sm" id="addTaskForSchool">+ Add milestone</button>${templatesButton(s)}</div>${templatesPanel(s)}</div>
+    <section class="sd-sec">
+      ${msHead}
+      <div class="sm-tasks">${taskList}</div>
+      <div class="sm-task-actions"><button class="btn btn-tonal btn-sm" id="addTaskForSchool">+ Add milestone</button>${templatesButton(s)}</div>${templatesPanel(s)}
+    </section>
+    <section class="sd-sec reschedule">
+      <h3 class="sd-title">Opening date</h3>
+      ${fyField.replace('<select id="sFy">', `<select id="sFy" onchange="document.getElementById('sShiftWrap').hidden = +this.value === ${s.openingFY}">`)}${qField}
+      <label class="field-check" id="sShiftWrap" hidden><input type="checkbox" id="sShift" checked> <span>Also move open milestone deadlines${((k) => k ? ` (${k})` : '')(schoolMs(s).filter(x => x.status !== 'complete' && x.due_date).length)}</span></label>
+    </section>
     <details class="sm-details"><summary>More school details</summary>
       ${labelField}
       ${marketField}
-      <div class="field-row">${confField}</div>
     </details>
     ${notesSection('school', s.id, s.noteLog)}`;
   $('#modalDelete').style.display = isNew ? 'none' : '';
@@ -1338,7 +1339,7 @@ function saveSchool() {
   s.pod_number = $('#sPod').value ? +$('#sPod').value : null;
   s.market = $('#sMarket').value; s.location = s.market; s.state = stateOfMarket(s.market);
   s.openingFY = +$('#sFy').value; s.fiscal_year = s.openingFY; s.openingQuarter = $('#sQ').value;
-  s.opening_date = `${s.openingFY - 1}-08-01`; s.confirmed = $('#sConf').checked;
+  s.opening_date = `${s.openingFY - 1}-08-01`; delete s.confirmed;
   if (!isNew) keepTeammateEdits(s, modalOpenDoc, current);
   const shiftEl = $('#sShift');
   const shift = (old.openingFY && s.openingFY && (!shiftEl || shiftEl.checked)) ? (s.openingFY - old.openingFY) : 0;
