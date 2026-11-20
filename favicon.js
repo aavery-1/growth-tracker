@@ -21,10 +21,22 @@
       link.href = cv.toDataURL('image/png');
     };
     // A timer, not animation frames: background tabs pause frames, and the icon must still finish and settle there.
-    var t0 = Date.now(), D = 2400;
+    var t0 = Date.now(), D = 2400, intro = true, busy = false, loop = null, ph = 0, last = 0;
     var iv = setInterval(function () {
       var t = Math.min(1, (Date.now() - t0) / D);
-      if (t < 1) draw(-19.2 * (1 - ease(t))); else { clearInterval(iv); link.href = still; }
+      if (t < 1) draw(-19.2 * (1 - ease(t))); else { clearInterval(iv); intro = false; link.href = still; if (busy) run(); }
     }, 66);
+    /* While Causeway saves or syncs (cwBusy in app.js), the water flows one wave per 1.2s; when it's done,
+       the current wave finishes and the static icon comes back. */
+    function run() {
+      if (loop || intro) return;
+      last = Date.now(); ph = 0;
+      loop = setInterval(function () {
+        var now = Date.now(); ph += (now - last) / 1200; last = now;
+        if (busy) ph %= 1; else if (ph >= 1) { clearInterval(loop); loop = null; link.href = still; return; }
+        draw(-9.6 * (1 - ph));
+      }, 66);
+    }
+    window.cwFavBusy = function (on) { busy = !!on; if (busy) run(); };
   } catch (e) { /* the static icon stays */ }
 })();

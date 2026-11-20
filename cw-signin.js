@@ -32,7 +32,9 @@
     '#cwSignin .cw-link:hover{text-decoration:underline}',
     '#cwSignin .cw-err{margin-top:16px;font-size:12px;line-height:16px;letter-spacing:.32px;color:#da1e28}',
     '#cwSignin .cw-info{margin-top:16px;padding:12px 16px;font-size:14px;line-height:20px;background:#edf5ff;border-left:3px solid #0043ce}',
-    '#cwSignin .cw-wave{animation:cwFlow 3s cubic-bezier(.2,0,.38,.9) both,cwDrift 4s linear 3s infinite}',
+    '#cwSignin .cw-wave{animation:cwFlow 3s cubic-bezier(.2,0,.38,.9) both}',
+    '#cwSignin.is-seen .cw-wave{animation:none}',
+    '@media (prefers-reduced-motion:no-preference){#cwSignin.is-busy .cw-wave{animation:cwDrift 1.2s linear infinite}}',
     '#cwSignin.cw-loading .cw-form-wrap{display:none}',
     '@keyframes cwFlow{from{transform:translateX(-19.2px)}to{transform:translateX(0)}}',
     '@keyframes cwDrift{from{transform:translateX(-9.6px)}to{transform:translateX(0)}}',
@@ -46,8 +48,9 @@
   document.body.appendChild(root);
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
+  var rendered = false;
   function render(mode, err, info, email) {
-    root.className = '';
+    root.className = rendered ? 'is-seen' : ''; rendered = true;   // the water flows in once; later screens start still
     var signin = mode !== 'forgot';
     root.innerHTML = '<main class="cw-card" aria-labelledby="cwTitle">' +
       '<img class="cw-logo" src="assets/logo-two-tone.png" alt="KIPP Team &amp; Family">' +
@@ -70,7 +73,7 @@
       e.preventDefault();
       var em = root.querySelector('#cwEmail').value.trim();
       if (!em) return render(mode, 'Enter your work email.', null, em);
-      sub.disabled = true; sub.textContent = 'One moment…';
+      sub.disabled = true; sub.textContent = 'One moment…'; root.classList.add('is-busy');   // the water flows while we wait
       if (!signin) {
         client.auth.resetPasswordForEmail(em, { redirectTo: location.origin + location.pathname }).then(function () {
           render('signin', null, 'If that email has an account, a reset link is on its way. Check your inbox.', em);
