@@ -36,6 +36,11 @@
     '#cwSignin.is-seen .cw-wave{animation:none}',
     '@media (prefers-reduced-motion:no-preference){#cwSignin.is-busy .cw-wave{animation:cwDrift 1.2s linear infinite}}',
     '#cwSignin.cw-loading .cw-form-wrap{display:none}',
+    '#cwSignin.cw-loading{background:#fff}',
+    '#cwSignin .cw-boot{opacity:0;animation:cwBootIn .24s cubic-bezier(0,0,.38,.9) .3s forwards}',
+    '#cwSignin .cw-boot .cw-mark{display:block;width:48px;height:48px}',
+    '@keyframes cwBootIn{to{opacity:1}}',
+    '@media (prefers-reduced-motion:no-preference){#cwSignin .cw-boot .cw-wave{animation:cwDrift 1.2s linear infinite}}',
     '@keyframes cwFlow{from{transform:translateX(-19.2px)}to{transform:translateX(0)}}',
     '@keyframes cwDrift{from{transform:translateX(-9.6px)}to{transform:translateX(0)}}',
     '@media (prefers-reduced-motion:reduce){#cwSignin .cw-wave{animation:none}}'
@@ -44,7 +49,8 @@
   document.documentElement.classList.add('cw-wait');
 
   var MARK = '<svg class="cw-mark" viewBox="0 0 32 32" width="64" height="64" aria-hidden="true" focusable="false"><circle cx="16" cy="16" r="16" fill="#001d6c"/><path fill="#fff" transform="translate(6.5 8.5) scale(.73) translate(-3 -10.5)" d="M3 10.5H29V20H27.5A3.333 3.333 0 0 0 20.833 20H19.333A3.333 3.333 0 0 0 12.667 20H11.167A3.333 3.333 0 0 0 4.5 20H3Z"/><rect x="6.5" y="9.96" width="19" height=".66" fill="#001d6c"/><svg x="5" y="18.4" width="22" height="6" viewBox="0 0 22 6"><path class="cw-wave" fill="none" stroke="#72c1ea" stroke-width="1.5" stroke-linecap="round" d="M-19.2 3 c1.6-1.2 3.2-1.2 4.8 0s3.2 1.2 4.8 0 c1.6-1.2 3.2-1.2 4.8 0s3.2 1.2 4.8 0 c1.6-1.2 3.2-1.2 4.8 0s3.2 1.2 4.8 0 c1.6-1.2 3.2-1.2 4.8 0s3.2 1.2 4.8 0 c1.6-1.2 3.2-1.2 4.8 0s3.2 1.2 4.8 0 c1.6-1.2 3.2-1.2 4.8 0s3.2 1.2 4.8 0 c1.6-1.2 3.2-1.2 4.8 0s3.2 1.2 4.8 0"/></svg></svg>';
-  var root = document.createElement('div'); root.id = 'cwSignin'; root.className = 'cw-loading';
+  var BOOT = '<div class="cw-boot" role="status" aria-label="Loading Causeway">' + MARK + '</div>';   // the water flows while the app loads; shows only if it takes over 0.3s
+  var root = document.createElement('div'); root.id = 'cwSignin'; root.className = 'cw-loading'; root.innerHTML = BOOT;
   document.body.appendChild(root);
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
@@ -105,11 +111,11 @@
   }
 
   function boot() {
-    root.className = 'cw-loading';
+    root.className = 'cw-loading'; root.innerHTML = BOOT;
     Promise.all([getText('styles.css'), getText('app.js')]).then(function (t) {
       var s = document.createElement('style'); s.id = 'cwAppCss'; s.textContent = t[0]; document.head.appendChild(s);
       var j = document.createElement('script'); j.textContent = t[1]; document.body.appendChild(j);
-      root.remove(); st.remove(); document.documentElement.classList.remove('cw-wait');
+      document.documentElement.classList.add('cw-styled'); root.remove(); st.remove(); document.documentElement.classList.remove('cw-wait');
     }, function () {
       render('signin', "Couldn't load Causeway. Refresh the page, or ask your admin if it keeps happening.");
     });
