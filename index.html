@@ -45,8 +45,9 @@
     .cds--header__name { display: inline-flex; align-items: center; gap: 8px; height: 24px; font-size: 14px; font-weight: 400; line-height: 18px; letter-spacing: .16px; white-space: nowrap; padding-left: 16px; border-left: 1px solid var(--cds-border-subtle-01); }
     .cds--header__name b { font-weight: 600; }
     .cw-mark { flex: none; display: block; width: 28px; height: 28px; border-radius: 50%; }
-    .cw-wave { animation: cwFlow 2.4s cubic-bezier(.2, 0, .38, .9) both; }
+    .cw-wave { animation: cwFlow 2.4s cubic-bezier(.2, 0, .38, .9) both, cwDrift 4s linear 2.4s infinite; }
     @keyframes cwFlow { from { transform: translateX(-19.2px); } to { transform: translateX(0); } }
+    @keyframes cwDrift { from { transform: translateX(-9.6px); } to { transform: translateX(0); } }
     @media (prefers-reduced-motion: reduce) { .cw-wave { animation: none; } }
 
     /* phones: the header collapses to the Causeway mark (Nov 20 2026) */
@@ -130,8 +131,8 @@
     </div>
   </main>
   <footer class="home-foot"><div class="cds-grid"><span class="app-credit">Built by the Growth Team, fueled by cafecito ☕ and Miami ☀️</span><span id="ghVersion"></span></div></footer>
-  <script src="version.js?v=202611201116"></script>
-  <script src="favicon.js?v=202611201116"></script>
+  <script src="version.js?v=202611201123"></script>
+  <script src="favicon.js?v=202611201123"></script>
   <script>try { document.getElementById('ghVersion').textContent = 'Version ' + window.GH_VERSION; } catch (e) {}</script>
 
   <script>
